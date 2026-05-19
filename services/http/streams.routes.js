@@ -8,83 +8,165 @@ import { listRunningStreams, startFfmpegStream, stopFfmpegStream } from '../ffmp
 export const streamsRouter = Router();
 streamsRouter.use(requireAuth);
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Pilih 1 aset secara acak dari daftar ID yang diberikan.
+ * Jika daftar kosong, fallback ke semua aset dengan tipe tersebut.
+ * @returns {{ asset: object|null, error: string|null }}
+ */
+function pickRandomAsset(ids = [], type = 'Video') {
+  if (ids.length > 0) {
+    const validIds = ids.map(Number).filter(Boolean);
+    const placeholders = validIds.map(() => '?').join(', ');
+    const candidates = db.prepare(
+      `SELECT * FROM assets WHERE id IN (${placeholders}) AND type = ?`
+    ).all(...validIds, type);
+
+    if (candidates.length === 0) {
+      return { asset: null, error: `Tidak ada ${type} valid dari ID yang dipilih di kampanye.` };
+    }
+    return { asset: candidates[Math.floor(Math.random() * candidates.length)], error: null };
+  }
+
+  // Fallback: ambil acak dari seluruh pustaka
+  const fallback = db.prepare(
+    `SELECT * FROM assets WHERE type = ? ORDER BY RANDOM() LIMIT 1`
+  ).get(type);
+
+  if (!fallback) {
+    return { asset: null, error: `Tidak ada ${type} di Pustaka Aset. Upload dulu sebelum live.` };
+  }
+  return { asset: fallback, error: null };
+}
+
+// ── GET /streams ──────────────────────────────────────────────────────────────
 streamsRouter.get('/', asyncHandler(async (req, res) => {
   const rows = db.prepare('SELECT * FROM streams ORDER BY created_at DESC LIMIT 100').all();
   res.json({ streams: rows.map(serializeStream), running: listRunningStreams() });
 }));
 
+// ── POST /streams/start  (start langsung dengan inputPath / assetId) ─────────
 streamsRouter.post('/start', asyncHandler(async (req, res) => {
   const campaignId = req.body.campaignId ? Number(req.body.campaignId) : null;
-  const platform = String(req.body.platform || 'Manual RTMP');
-  const assetId = req.body.assetId ? Number(req.body.assetId) : null;
-  const asset = assetId ? db.prepare('SELECT * FROM assets WHERE id = ?').get(assetId) : null;
-  const inputPath = String(req.body.inputPath || asset?.path || '').trim();
-  const rtmpUrl = String(req.body.rtmpUrl || '').trim();
-  const streamKey = String(req.body.streamKey || '').trim();
-  const encoder = req.body.encoder || {};
+  const platform   = String(req.body.platform || 'Manual RTMP');
+  const assetId    = req.body.assetId ? Number(req.body.assetId) : null;
+  const asset      = assetId ? db.prepare('SELECT * FROM assets WHERE id = ?').get(assetId) : null;
+  const inputPath  = String(req.body.inputPath || asset?.path || '').trim();
+  const rtmpUrl    = String(req.body.rtmpUrl   || '').trim();
+  const streamKey  = String(req.body.streamKey || '').trim();
+  const encoder    = req.body.encoder || {};
 
   if (!inputPath) return res.status(400).json({ error: 'Pilih asset video atau isi inputPath.' });
+
   const started = startFfmpegStream({ campaignId, platform, inputPath, rtmpUrl, streamKey, encoder });
-  res.status(201).json(started);
+  res.status(201).json({
+    ...started,
+    chosenVideo: asset ? { id: asset.id, name: asset.name, path: inputPath } : { path: inputPath },
+  });
 }));
 
-// ── Mulai stream dari draft kampanye: pilih video acak dari asset pool ──────
+// ── POST /streams/start-campaign ─────────────────────────────────────────────
+// Baca campaign dari SQLite → pilih video & thumbnail acak → jalankan FFmpeg
+// ─────────────────────────────────────────────────────────────────────────────
 streamsRouter.post('/start-campaign', asyncHandler(async (req, res) => {
   const campaignId = req.body.campaignId ? Number(req.body.campaignId) : null;
   if (!campaignId) return res.status(400).json({ error: 'campaignId wajib diisi.' });
 
+  // 1. Ambil campaign dari SQLite
   const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(campaignId);
   if (!campaign) return res.status(404).json({ error: 'Kampanye tidak ditemukan.' });
 
   let cfg = {};
   try { cfg = JSON.parse(campaign.config_json || '{}'); } catch { cfg = {}; }
 
-  const rtmpUrl = String(req.body.rtmpUrl || cfg.rtmpUrl || '').trim();
+  // 2. Resolve RTMP URL (dari request atau config)
+  const rtmpUrl   = String(req.body.rtmpUrl   || cfg.rtmpUrl   || '').trim();
   const streamKey = String(req.body.streamKey || cfg.streamKey || '').trim();
-  if (!rtmpUrl) return res.status(400).json({ error: 'RTMP URL wajib diisi untuk memulai stream.' });
-
-  // Resolve video asset: gunakan videoAssetIds dari config, fallback ke semua video
-  const videoIds = Array.isArray(cfg.videoAssetIds) && cfg.videoAssetIds.length > 0
-    ? cfg.videoAssetIds.map(Number).filter(Boolean)
-    : [];
-
-  let inputPath = '';
-  let chosenAsset = null;
-
-  if (videoIds.length > 0) {
-    // Ambil semua asset valid dari ID terpilih
-    const placeholders = videoIds.map(() => '?').join(', ');
-    const candidates = db.prepare(
-      `SELECT * FROM assets WHERE id IN (${placeholders}) AND type = 'Video'`
-    ).all(...videoIds);
-
-    if (candidates.length === 0) {
-      return res.status(400).json({ error: 'Tidak ada video valid dari asset yang dipilih di kampanye ini.' });
-    }
-
-    // Pilih acak dari pool
-    chosenAsset = candidates[Math.floor(Math.random() * candidates.length)];
-    inputPath = chosenAsset.path || '';
-  } else {
-    // Fallback: ambil video manapun dari SQLite secara acak
-    const any = db.prepare("SELECT * FROM assets WHERE type = 'Video' ORDER BY RANDOM() LIMIT 1").get();
-    if (!any) return res.status(400).json({ error: 'Tidak ada video di Pustaka Aset. Upload dulu sebelum live.' });
-    chosenAsset = any;
-    inputPath = any.path || '';
+  if (!rtmpUrl) {
+    return res.status(400).json({ error: 'RTMP URL wajib diisi untuk memulai stream.' });
   }
 
-  if (!inputPath) return res.status(400).json({ error: `File video tidak ditemukan di disk: ${chosenAsset?.name}` });
+  // 3. Pilih VIDEO acak dari pool videoAssetIds
+  const videoIds = Array.isArray(cfg.videoAssetIds) ? cfg.videoAssetIds : [];
+  const { asset: chosenVideo, error: videoError } = pickRandomAsset(videoIds, 'Video');
+  if (videoError) return res.status(400).json({ error: videoError });
+  if (!chosenVideo.path) {
+    return res.status(400).json({ error: `File video tidak ditemukan di disk: ${chosenVideo.name}` });
+  }
 
-  const encoder = cfg.encoder || req.body.encoder || {};
+  // 4. Pilih THUMBNAIL acak dari pool thumbnailAssetIds (tidak wajib)
+  const thumbIds = Array.isArray(cfg.thumbnailAssetIds) ? cfg.thumbnailAssetIds : [];
+  let chosenThumbnail = null;
+  if (thumbIds.length > 0) {
+    const validThumbIds = thumbIds.map(Number).filter(Boolean);
+    const placeholders  = validThumbIds.map(() => '?').join(', ');
+    const thumbCandidates = db.prepare(
+      `SELECT * FROM assets WHERE id IN (${placeholders})`
+    ).all(...validThumbIds);
+    if (thumbCandidates.length > 0) {
+      chosenThumbnail = thumbCandidates[Math.floor(Math.random() * thumbCandidates.length)];
+    }
+  }
+  // Fallback thumbnail: ambil gambar acak dari pustaka (opsional)
+  if (!chosenThumbnail && cfg.thumbnailMode !== 'Tanpa thumbnail') {
+    const fallbackThumb = db.prepare(
+      `SELECT * FROM assets WHERE type IN ('Images', 'Thumbnail') ORDER BY RANDOM() LIMIT 1`
+    ).get();
+    if (fallbackThumb) chosenThumbnail = fallbackThumb;
+  }
+
+  // 5. Pilih JUDUL acak dari daftar liveTitles
+  const titles     = String(cfg.liveTitles || '').split('\n').map((t) => t.trim()).filter(Boolean);
+  const chosenTitle = titles.length > 0
+    ? titles[Math.floor(Math.random() * titles.length)]
+    : campaign.name;
+
+  // 6. Update status campaign → Aktif
+  db.prepare('UPDATE campaigns SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+    .run('Aktif', campaignId);
+
+  // 7. Jalankan FFmpeg
+  const encoder  = cfg.encoder || req.body.encoder || {};
   const platform = cfg.platform || 'YouTube API';
 
-  const started = startFfmpegStream({ campaignId, platform, inputPath, rtmpUrl, streamKey, encoder });
+  const started = startFfmpegStream({
+    campaignId,
+    platform,
+    inputPath: chosenVideo.path,
+    rtmpUrl,
+    streamKey,
+    encoder,
+  });
+
+  // 8. Simpan info sesi ke DB stream (chosenVideo, chosenThumbnail, chosenTitle)
+  db.prepare(
+    `UPDATE streams SET chosen_video_id = ?, chosen_thumbnail_id = ?, chosen_title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+  ).run(
+    chosenVideo.id ?? null,
+    chosenThumbnail?.id ?? null,
+    chosenTitle,
+    started.streamId
+  );
+
   res.status(201).json({
     ...started,
-    chosenVideo: { id: chosenAsset.id, name: chosenAsset.name, path: inputPath },
+    chosenVideo:     { id: chosenVideo.id, name: chosenVideo.name, path: chosenVideo.path },
+    chosenThumbnail: chosenThumbnail
+      ? { id: chosenThumbnail.id, name: chosenThumbnail.name, url: chosenThumbnail.url }
+      : null,
+    chosenTitle,
   });
 }));
 
+// ── POST /streams/:id/stop ────────────────────────────────────────────────────
 streamsRouter.post('/:id/stop', asyncHandler(async (req, res) => {
-  res.json(stopFfmpegStream(req.params.id));
+  const result = stopFfmpegStream(req.params.id);
+  // Update status campaign terkait → Draft
+  const stream = db.prepare('SELECT campaign_id FROM streams WHERE id = ?').get(Number(req.params.id));
+  if (stream?.campaign_id) {
+    db.prepare('UPDATE campaigns SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .run('Draft', stream.campaign_id);
+  }
+  res.json(result);
 }));

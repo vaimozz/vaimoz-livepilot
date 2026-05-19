@@ -85,6 +85,10 @@ export function serializeStream(row) {
     rtmpUrl: row.rtmp_url,
     startedAt: row.started_at,
     stoppedAt: row.stopped_at,
+    // Aset yang dipilih acak saat stream dimulai
+    chosenVideoId: row.chosen_video_id ?? null,
+    chosenThumbnailId: row.chosen_thumbnail_id ?? null,
+    chosenTitle: row.chosen_title ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

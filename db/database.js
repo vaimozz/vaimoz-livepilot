@@ -106,6 +106,22 @@ export function initDatabase() {
 
   seedAdmin();
   seedInitialData();
+  runMigrations();
+}
+
+// ── Migrasi aman: tambahkan kolom baru tanpa merusak data lama ────────────────
+function runMigrations() {
+  const streamCols = db.prepare("PRAGMA table_info(streams)").all().map((c) => c.name);
+
+  if (!streamCols.includes('chosen_video_id')) {
+    db.exec('ALTER TABLE streams ADD COLUMN chosen_video_id INTEGER');
+  }
+  if (!streamCols.includes('chosen_thumbnail_id')) {
+    db.exec('ALTER TABLE streams ADD COLUMN chosen_thumbnail_id INTEGER');
+  }
+  if (!streamCols.includes('chosen_title')) {
+    db.exec('ALTER TABLE streams ADD COLUMN chosen_title TEXT');
+  }
 }
 
 function seedAdmin() {
