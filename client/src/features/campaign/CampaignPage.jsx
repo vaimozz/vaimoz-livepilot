@@ -211,6 +211,15 @@ export function CampaignPage() {
   };
 
   const saveCampaignDraft = async () => {
+    // Resolve selected asset details dari ID (AssetRunnerPanel kini pakai ID)
+    const selectedVideos = campaignAssets.filter((a) =>
+      youtubeSelectedVideoNames.includes(String(a.id || a.name)) && a.type === 'Video'
+    );
+    const selectedThumbnails = campaignAssets.filter((a) =>
+      youtubeSelectedThumbnailNames.includes(String(a.id || a.name)) &&
+      (a.type === 'Images' || a.type === 'Thumbnail')
+    );
+
     try {
       if (isManualMode) {
         const summary = `Draft kampanye ${campaignMode} berhasil disiapkan. ${formatManualCampaignSchedule(manualStartDate, manualStartTime, manualStopDate, manualStopTime, autoStopEnabled)}. ${formatSmartStopRule(smartStopEnabled, smartStopViewerThreshold, smartStopDelayMinutes)}. ${formatManualEncoderSettings(manualEncoderMode, manualBitrate, manualFps, manualResolution)}.`;
@@ -236,15 +245,20 @@ export function CampaignPage() {
         return;
       }
 
-      const summary = `Draft kampanye ${campaignMode} berhasil disiapkan. ${formatYoutubeScheduleMode(youtubeScheduleType, youtubeDurationMode)}. ${formatYoutubePlaylistSelection(selectedYoutubePlaylist)}. ${formatAssetRotation('Video', youtubeSelectedVideoNames.length)}. ${formatAssetRotation('Thumbnail', youtubeSelectedThumbnailNames.length)}. ${formatManualCampaignSchedule(youtubeStartDate, youtubeStartTime, youtubeStopDate, youtubeStopTime, youtubeAutoStopEnabled)}. ${formatSmartStopRule(youtubeSmartStopEnabled, youtubeSmartStopViewerThreshold, youtubeSmartStopDelayMinutes)}. ${formatManualEncoderSettings(youtubeEncoderMode, youtubeBitrate, youtubeFps, youtubeResolution)}. ${formatReplayPrivacy(youtubeReplayPrivacy)}. ${formatAutoChatbotSettings(youtubeChatbotEnabled, youtubeChatbotMode, youtubeChatbotInterval, youtubeChatbotMessages)}. ${formatYouTubeCampaignSettings(youtubeMonetizationEnabled, youtubeAiContentAnswer, youtubeTags)}.`;
+      const summary = `Draft kampanye ${campaignMode} berhasil disiapkan. ${formatYoutubeScheduleMode(youtubeScheduleType, youtubeDurationMode)}. ${formatYoutubePlaylistSelection(selectedYoutubePlaylist)}. ${formatAssetRotation('Video', selectedVideos.length)}. ${formatAssetRotation('Thumbnail', selectedThumbnails.length)}. ${formatManualCampaignSchedule(youtubeStartDate, youtubeStartTime, youtubeStopDate, youtubeStopTime, youtubeAutoStopEnabled)}. ${formatSmartStopRule(youtubeSmartStopEnabled, youtubeSmartStopViewerThreshold, youtubeSmartStopDelayMinutes)}. ${formatManualEncoderSettings(youtubeEncoderMode, youtubeBitrate, youtubeFps, youtubeResolution)}. ${formatReplayPrivacy(youtubeReplayPrivacy)}. ${formatAutoChatbotSettings(youtubeChatbotEnabled, youtubeChatbotMode, youtubeChatbotInterval, youtubeChatbotMessages)}. ${formatYouTubeCampaignSettings(youtubeMonetizationEnabled, youtubeAiContentAnswer, youtubeTags)}.`;
       await api.campaigns.create({
         name: `YouTube API ${new Date().toLocaleString('id-ID')}`,
         mode: campaignMode,
         status: 'Draft',
         config: {
           platform: 'YouTube',
-          videoNames: youtubeSelectedVideoNames,
-          thumbnailNames: youtubeSelectedThumbnailNames,
+          // Asset IDs + paths agar backend bisa langsung pakai
+          videoAssetIds: selectedVideos.map((a) => a.id),
+          videoNames: selectedVideos.map((a) => a.name),
+          videoPaths: selectedVideos.map((a) => a.path || a.url || a.name),
+          thumbnailAssetIds: selectedThumbnails.map((a) => a.id),
+          thumbnailNames: selectedThumbnails.map((a) => a.name),
+          thumbnailPaths: selectedThumbnails.map((a) => a.path || a.url || a.name),
           playlist: selectedYoutubePlaylist,
           tags: youtubeTags,
           categoryId: youtubeCategoryId,
