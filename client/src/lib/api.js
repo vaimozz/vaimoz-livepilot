@@ -80,16 +80,19 @@ export const api = {
     remove: (id) => apiRequest(`/playlists/${id}`, { method: 'DELETE' }),
   },
   campaigns: {
-    list: () => apiRequest('/campaigns'),
+    list:   () => apiRequest('/campaigns'),
     create: (payload) => apiRequest('/campaigns', { method: 'POST', body: JSON.stringify(payload) }),
     update: (id, payload) => apiRequest(`/campaigns/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
     remove: (id) => apiRequest(`/campaigns/${id}`, { method: 'DELETE' }),
+    start:  (id, payload = {}) => apiRequest(`/campaigns/${id}/start`, { method: 'POST', body: JSON.stringify(payload) }),
+    stop:   (id) => apiRequest(`/campaigns/${id}/stop`, { method: 'POST' }),
   },
   streams: {
-    list: () => apiRequest('/streams'),
-    start: (payload) => apiRequest('/streams/start', { method: 'POST', body: JSON.stringify(payload) }),
+    list:    () => apiRequest('/streams'),
+    running: () => apiRequest('/streams/running'),
+    start:   (payload) => apiRequest('/streams/start', { method: 'POST', body: JSON.stringify(payload) }),
     startCampaign: (campaignId, payload) => apiRequest('/streams/start-campaign', { method: 'POST', body: JSON.stringify({ campaignId, ...payload }) }),
-    stop: (id) => apiRequest(`/streams/${id}/stop`, { method: 'POST' }),
+    stop:    (id) => apiRequest(`/streams/${id}/stop`, { method: 'POST' }),
   },
   youtube: {
     authUrl: () => apiRequest('/youtube/auth-url'),

@@ -46,6 +46,19 @@ streamsRouter.get('/', asyncHandler(async (req, res) => {
   res.json({ streams: rows.map(serializeStream), running: listRunningStreams() });
 }));
 
+// ── GET /streams/running — hanya stream yang sedang Online ───────────────────
+streamsRouter.get('/running', asyncHandler(async (req, res) => {
+  const rows = db.prepare(
+    "SELECT * FROM streams WHERE status IN ('Online','Starting') ORDER BY created_at DESC"
+  ).all();
+  const running = listRunningStreams();
+  res.json({
+    streams: rows.map(serializeStream),
+    processes: running,
+    count: rows.length,
+  });
+}));
+
 // ── POST /streams/start  (start langsung dengan inputPath / assetId) ─────────
 streamsRouter.post('/start', asyncHandler(async (req, res) => {
   const campaignId = req.body.campaignId ? Number(req.body.campaignId) : null;
