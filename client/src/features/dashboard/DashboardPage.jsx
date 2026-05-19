@@ -121,7 +121,7 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform }) {
                 ))}
               </div>
             </div>
-            <CampaignTable visibleCampaigns={visibleCampaigns} selectedPlatform={selectedPlatform} />
+            <CampaignTable visibleCampaigns={visibleCampaigns} selectedPlatform={selectedPlatform} onRefresh={loadDashboardData} />
           </CardContent>
         </Card>
       </section>

@@ -88,6 +88,7 @@ export const api = {
   streams: {
     list: () => apiRequest('/streams'),
     start: (payload) => apiRequest('/streams/start', { method: 'POST', body: JSON.stringify(payload) }),
+    startCampaign: (campaignId, payload) => apiRequest('/streams/start-campaign', { method: 'POST', body: JSON.stringify({ campaignId, ...payload }) }),
     stop: (id) => apiRequest(`/streams/${id}/stop`, { method: 'POST' }),
   },
   youtube: {

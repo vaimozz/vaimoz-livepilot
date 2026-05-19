@@ -1,6 +1,8 @@
-import { useRef } from 'react';
-import { FileVideo, Loader2, Music2, RefreshCw, Save } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Cloud, FileVideo, Image as ImageIcon, Loader2, Music2, RefreshCw, Save, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
+import { GDriveModal } from '@/features/assets/GDriveModal.jsx';
+import { api } from '@/lib/api.js';
 import { cx } from '@/lib/cn.js';
 import {
   countChatbotMessages,
@@ -93,60 +95,64 @@ function VideoCard({ asset, isSelected, onToggle }) {
 
 // ─── Thumbnail picker card ────────────────────────────────────────────────────
 function ThumbnailCard({ asset, isSelected, onToggle }) {
-  const key = String(asset.id || asset.name);
+  const id = String(asset.id || asset.name);
 
   return (
     <label
       className={cx(
-        'group relative flex cursor-pointer items-center gap-3 overflow-hidden rounded-xl border px-3 py-2.5 transition',
+        'group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border transition',
         isSelected
-          ? 'border-pink-400 bg-pink-500/10 ring-1 ring-pink-500/20'
+          ? 'border-pink-400 bg-pink-500/10 ring-1 ring-pink-500/30'
           : 'border-slate-700 bg-slate-900 hover:border-slate-500'
       )}
     >
-      <input
-        type="checkbox"
-        checked={isSelected}
-        onChange={() => onToggle(key)}
-        className="sr-only"
-      />
+      <input type="checkbox" checked={isSelected} onChange={() => onToggle(id)} className="sr-only" />
 
-      {/* Checkmark */}
-      <div
-        className={cx(
-          'flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border transition',
-          isSelected
-            ? 'border-pink-400 bg-pink-500 text-white'
-            : 'border-slate-500 bg-slate-800 text-transparent'
-        )}
-      >
-        <span className="text-[8px] font-black leading-none">✓</span>
-      </div>
+      {/* Preview gambar — 16:9 */}
+      <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+        <div className="absolute inset-0 bg-slate-800">
+          {asset.url ? (
+            <img
+              src={asset.url}
+              alt={asset.name}
+              className="h-full w-full object-cover transition group-hover:scale-105"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center">
+              <ImageIcon className="h-7 w-7 text-slate-600" />
+            </div>
+          )}
+          {/* Overlay gradient */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-      {/* Thumbnail preview */}
-      <div className="h-14 w-24 flex-shrink-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-800">
-        {asset.url ? (
-          <img
-            src={asset.url}
-            alt={asset.name}
-            className="h-full w-full object-cover"
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <Music2 className="h-5 w-5 text-slate-600" />
+          {/* Checkmark pojok kanan atas */}
+          <div
+            className={cx(
+              'absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded border-2 transition',
+              isSelected
+                ? 'border-pink-400 bg-pink-500 text-white shadow shadow-pink-500/50'
+                : 'border-white/60 bg-black/30 text-transparent backdrop-blur-sm'
+            )}
+          >
+            <span className="text-[10px] font-black leading-none">✓</span>
           </div>
-        )}
+
+          {/* Badge ukuran pojok kiri bawah */}
+          {asset.size && (
+            <span className="absolute bottom-1.5 left-2 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-slate-300">
+              {asset.size}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Info */}
-      <div className="min-w-0 flex-1">
-        <p className={cx('truncate text-[11px] font-bold', isSelected ? 'text-pink-200' : 'text-slate-200')}>
+      {/* Nama file */}
+      <div className="px-2.5 py-2">
+        <p className={cx('truncate text-[11px] font-bold leading-tight', isSelected ? 'text-pink-200' : 'text-slate-200')}>
           {asset.name}
         </p>
-        <p className="mt-0.5 text-[10px] text-slate-500">
-          {asset.source || 'Lokal'} {asset.size ? `• ${asset.size}` : ''}
-        </p>
+        <p className="mt-0.5 truncate text-[9px] text-slate-500">{asset.source || 'Lokal'}</p>
       </div>
     </label>
   );
@@ -169,8 +175,31 @@ export function AssetRunnerPanel({
   saveCampaignDraft,
   isLoadingAssets = false,
   onRefreshAssets,
+  campaignId = null,
 }) {
-  // Gunakan ID sebagai identifier, fallback ke nama
+  const fileInputRef = useRef(null);
+  const [showGdriveModal, setShowGdriveModal] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState('');
+
+  // Upload lokal inline
+  const handleFileChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+    setIsUploading(true);
+    setUploadMsg(`Mengupload ${files.length} file...`);
+    try {
+      await api.assets.upload(files);
+      setUploadMsg(`${files.length} file berhasil diupload ke Pustaka Aset.`);
+      onRefreshAssets?.();
+    } catch (err) {
+      setUploadMsg(`Upload gagal: ${err.message}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const selectedVideoIds = state.youtubeSelectedVideoNames; // field ini sekarang berisi id string
   const selectedThumbnailIds = state.youtubeSelectedThumbnailNames;
 
@@ -204,29 +233,67 @@ export function AssetRunnerPanel({
 
   return (
     <div className="space-y-4">
-      {/* Header info aset */}
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3">
-        <div>
-          <p className="text-sm font-bold text-white">Aset dari SQLite</p>
-          <p className="mt-1 text-xs text-slate-500">
-            {campaignVideoAssets.length} Video •{' '}
-            {campaignThumbnailAssets.length} Thumbnail
-          </p>
+      {/* input file tersembunyi */}
+      <input ref={fileInputRef} type="file" multiple accept="video/*,audio/*,image/*" className="hidden" onChange={handleFileChange} />
+
+      {/* GDrive Modal */}
+      {showGdriveModal && (
+        <GDriveModal
+          onClose={() => setShowGdriveModal(false)}
+          onAssetAdded={(asset) => {
+            setShowGdriveModal(false);
+            setUploadMsg(`${asset.name} berhasil diunduh dari Google Drive.`);
+            onRefreshAssets?.();
+          }}
+        />
+      )}
+
+      {/* Header info aset + tombol upload */}
+      <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold text-white">Aset dari SQLite</p>
+            <p className="mt-1 text-xs text-slate-500">
+              {campaignVideoAssets.length} Video • {campaignThumbnailAssets.length} Thumbnail
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onRefreshAssets}
+            disabled={isLoadingAssets}
+            className="rounded-xl border-slate-700 bg-slate-900 px-3 text-xs font-bold text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isLoadingAssets ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            Refresh
+          </Button>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onRefreshAssets}
-          disabled={isLoadingAssets}
-          className="rounded-xl border-slate-700 bg-slate-900 px-3 text-xs font-bold text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isLoadingAssets ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="mr-2 h-4 w-4" />
-          )}
-          Refresh
-        </Button>
+
+        {/* Tombol upload inline */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-[11px] font-bold text-slate-200 transition hover:border-cyan-500/40 hover:bg-slate-800 disabled:opacity-50"
+          >
+            {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5 text-cyan-400" />}
+            Upload Lokal
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowGdriveModal(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-[11px] font-bold text-slate-200 transition hover:border-blue-500/40 hover:bg-slate-800"
+          >
+            <Cloud className="h-3.5 w-3.5 text-blue-400" />
+            Google Drive
+          </button>
+        </div>
+
+        {/* Pesan upload status */}
+        {uploadMsg && (
+          <p className="mt-2 text-[11px] text-emerald-400">{uploadMsg}</p>
+        )}
       </div>
 
       {/* ── Sumber Video ──────────────────────────────────── */}
@@ -310,7 +377,7 @@ export function AssetRunnerPanel({
             <Loader2 className="h-4 w-4 animate-spin" /> Memuat thumbnail dari SQLite...
           </div>
         ) : campaignThumbnailAssets.length > 0 ? (
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
             {campaignThumbnailAssets.map((asset) => {
               const id = String(asset.id || asset.name);
               return (

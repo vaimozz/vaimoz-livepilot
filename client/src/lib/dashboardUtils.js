@@ -13,6 +13,11 @@ export function normalizeDashboardCampaign(campaign) {
     thumbnails: 0,
     video: config.videoNames?.[0] || config.inputAssetNames?.[0] || 'Belum dipilih',
     privacy: config.privacy || 'Private',
+    // Data tambahan untuk Start/Stop dari CampaignTable
+    rtmpUrl: config.rtmpUrl || '',
+    streamKey: config.streamKey || '',
+    streamId: campaign.streamId || null,
+    config,
   };
 }
 

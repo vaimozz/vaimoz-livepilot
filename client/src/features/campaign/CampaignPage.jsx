@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Radio } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card.jsx';
 import { SectionTitle } from '@/components/shared/SectionTitle.jsx';
@@ -68,6 +68,13 @@ export function CampaignPage() {
   const [manualResolution, setManualResolution] = useState('Ikuti sumber');
   const [manualBitrate, setManualBitrate] = useState('Ikuti sumber');
   const [manualFps, setManualFps] = useState('Ikuti sumber');
+  const [manualCampaignName, setManualCampaignName] = useState('');
+  const [manualPlatform, setManualPlatform] = useState('YouTube Manual RTMP');
+  const [manualRtmpUrl, setManualRtmpUrl] = useState('');
+  const [manualStreamKey, setManualStreamKey] = useState('');
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isStartingLive, setIsStartingLive] = useState(false);
+  const lastCampaignIdRef = useRef(null);
 
   const [youtubeMonetizationEnabled, setYoutubeMonetizationEnabled] = useState(false);
   const [youtubeAiContentAnswer, setYoutubeAiContentAnswer] = useState('');
@@ -184,9 +191,9 @@ export function CampaignPage() {
     loadYoutubeChannels();
   }, []);
 
-  const manualState = { manualStartDate, manualStartTime, manualStopDate, manualStopTime, autoStopEnabled, smartStopEnabled, smartStopViewerThreshold, smartStopDelayMinutes, manualEncoderMode, manualResolution, manualBitrate, manualFps };
+  const manualState = { manualCampaignName, manualPlatform, manualRtmpUrl, manualStreamKey, manualStartDate, manualStartTime, manualStopDate, manualStopTime, autoStopEnabled, smartStopEnabled, smartStopViewerThreshold, smartStopDelayMinutes, manualEncoderMode, manualResolution, manualBitrate, manualFps };
   const youtubeState = { youtubeChannels, youtubeMonetizationEnabled, youtubeAiContentAnswer, youtubeChannelId, youtubeTags, youtubeReplayPrivacy, youtubeCategoryId, youtubeScheduleType, youtubeDurationMode, youtubeRandomStopMin, youtubeRandomStopMax, youtubeRepeatLiveDuration, youtubeRepeatBreakDuration, youtubeRepeatCount, youtubeWeeklyDays, youtubeStartDate, youtubeStartTime, youtubeStopDate, youtubeStopTime, youtubeAutoStopEnabled, youtubeSmartStopEnabled, youtubeSmartStopViewerThreshold, youtubeSmartStopDelayMinutes, youtubeEncoderMode, youtubeResolution, youtubeBitrate, youtubeFps, isYoutubeEncoderOpen, isYoutubeChatbotOpen, youtubeChatbotEnabled, youtubeChatbotMode, youtubeChatbotInterval, youtubeChatbotMessages, youtubeSelectedVideoNames, youtubeSelectedThumbnailNames };
-  const setters = { setManualStartDate, setManualStartTime, setManualStopDate, setManualStopTime, setAutoStopEnabled, setSmartStopEnabled, setSmartStopViewerThreshold, setSmartStopDelayMinutes, setManualEncoderMode, setManualResolution, setManualBitrate, setManualFps, setYoutubeMonetizationEnabled, setYoutubeAiContentAnswer, setYoutubeChannelId, setYoutubeTags, setYoutubeReplayPrivacy, setYoutubeCategoryId, setYoutubeScheduleType, setYoutubeDurationMode, setYoutubeRandomStopMin, setYoutubeRandomStopMax, setYoutubeRepeatLiveDuration, setYoutubeRepeatBreakDuration, setYoutubeRepeatCount, setYoutubeWeeklyDays, setYoutubeStartDate, setYoutubeStartTime, setYoutubeStopDate, setYoutubeStopTime, setYoutubeAutoStopEnabled, setYoutubeSmartStopEnabled, setYoutubeSmartStopViewerThreshold, setYoutubeSmartStopDelayMinutes, setYoutubeEncoderMode, setYoutubeResolution, setYoutubeBitrate, setYoutubeFps, setIsYoutubeEncoderOpen, setIsYoutubeChatbotOpen, setYoutubeChatbotEnabled, setYoutubeChatbotMode, setYoutubeChatbotInterval, setYoutubeChatbotMessages, setYoutubeSelectedVideoNames, setYoutubeSelectedThumbnailNames, setYoutubePlaylistId, setIsYoutubePlaylistModalOpen };
+  const setters = { setManualCampaignName, setManualPlatform, setManualRtmpUrl, setManualStreamKey, setManualStartDate, setManualStartTime, setManualStopDate, setManualStopTime, setAutoStopEnabled, setSmartStopEnabled, setSmartStopViewerThreshold, setSmartStopDelayMinutes, setManualEncoderMode, setManualResolution, setManualBitrate, setManualFps, setYoutubeMonetizationEnabled, setYoutubeAiContentAnswer, setYoutubeChannelId, setYoutubeTags, setYoutubeReplayPrivacy, setYoutubeCategoryId, setYoutubeScheduleType, setYoutubeDurationMode, setYoutubeRandomStopMin, setYoutubeRandomStopMax, setYoutubeRepeatLiveDuration, setYoutubeRepeatBreakDuration, setYoutubeRepeatCount, setYoutubeWeeklyDays, setYoutubeStartDate, setYoutubeStartTime, setYoutubeStopDate, setYoutubeStopTime, setYoutubeAutoStopEnabled, setYoutubeSmartStopEnabled, setYoutubeSmartStopViewerThreshold, setYoutubeSmartStopDelayMinutes, setYoutubeEncoderMode, setYoutubeResolution, setYoutubeBitrate, setYoutubeFps, setIsYoutubeEncoderOpen, setIsYoutubeChatbotOpen, setYoutubeChatbotEnabled, setYoutubeChatbotMode, setYoutubeChatbotInterval, setYoutubeChatbotMessages, setYoutubeSelectedVideoNames, setYoutubeSelectedThumbnailNames, setYoutubePlaylistId, setIsYoutubePlaylistModalOpen };
 
   const changeYoutubeChannel = async (nextChannelId) => {
     setYoutubeChannelId(nextChannelId);
@@ -210,8 +217,87 @@ export function CampaignPage() {
     }
   };
 
+  // ── Simpan draft Manual RTMP ──────────────────────────────────────────────
+  const saveManualDraft = async () => {
+    setIsSavingDraft(true);
+    try {
+      const result = await api.campaigns.create({
+        name: manualCampaignName.trim() || `Manual RTMP ${new Date().toLocaleString('id-ID')}`,
+        mode: 'Manual (RTMP)',
+        status: 'Draft',
+        config: {
+          platform: manualPlatform,
+          rtmpUrl: manualRtmpUrl,
+          streamKey: manualStreamKey,
+          startDate: manualStartDate,
+          startTime: manualStartTime,
+          stopDate: manualStopDate,
+          stopTime: manualStopTime,
+          scheduleText: `${manualStartDate} ${manualStartTime}`,
+          autoStopEnabled,
+          smartStopEnabled,
+          smartStopViewerThreshold,
+          smartStopDelayMinutes,
+          encoder: { mode: manualEncoderMode, resolution: manualResolution, bitrate: manualBitrate, fps: manualFps },
+        },
+      });
+      lastCampaignIdRef.current = result.campaign?.id || null;
+      setCampaignMessage(`Draft disimpan ke SQLite: ${result.campaign?.name}.`);
+      return result.campaign;
+    } catch (error) {
+      setCampaignMessage(`Gagal menyimpan draft: ${error instanceof Error ? error.message : 'Kesalahan tidak dikenal.'}`);
+      return null;
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
+  // ── Start Manual Live via FFmpeg ──────────────────────────────────────────
+  const startManualLive = async () => {
+    if (!manualRtmpUrl.trim()) return setCampaignMessage('⚠ RTMP URL wajib diisi sebelum mulai live.');
+    setIsStartingLive(true);
+    setCampaignMessage('Menyimpan draft dan menghubungkan FFmpeg...');
+    try {
+      // 1. Simpan/update draft campaign
+      let campaign = null;
+      if (lastCampaignIdRef.current) {
+        await api.campaigns.update(lastCampaignIdRef.current, { status: 'Aktif' });
+        campaign = { id: lastCampaignIdRef.current };
+      } else {
+        campaign = await saveManualDraft();
+      }
+
+      // 2. Ambil video random dari Pustaka Aset
+      const assetResult = await api.assets.list();
+      const videos = (assetResult.assets || []).filter((a) => a.type === 'Video');
+      if (!videos.length) {
+        setCampaignMessage('⚠ Tidak ada video di Pustaka Aset. Upload video dulu sebelum mulai live.');
+        return;
+      }
+      const chosen = videos[Math.floor(Math.random() * videos.length)];
+
+      // 3. Mulai stream via backend FFmpeg
+      const started = await api.streams.start({
+        campaignId: campaign?.id || null,
+        platform: manualPlatform,
+        assetId: chosen.id,
+        rtmpUrl: manualRtmpUrl,
+        streamKey: manualStreamKey,
+        encoder: { mode: manualEncoderMode, resolution: manualResolution, bitrate: manualBitrate, fps: manualFps },
+      });
+
+      setCampaignMessage(
+        `🔴 Stream dimulai! Video: ${chosen.name} → ${manualRtmpUrl} (PID: ${started.pid || '-'})`
+      );
+    } catch (error) {
+      setCampaignMessage(`Gagal memulai live: ${error instanceof Error ? error.message : 'Kesalahan tidak dikenal.'}`);
+    } finally {
+      setIsStartingLive(false);
+    }
+  };
+
+  // ── Simpan draft YouTube API ─────────────────────────────────────────────
   const saveCampaignDraft = async () => {
-    // Resolve selected asset details dari ID (AssetRunnerPanel kini pakai ID)
     const selectedVideos = campaignAssets.filter((a) =>
       youtubeSelectedVideoNames.includes(String(a.id || a.name)) && a.type === 'Video'
     );
@@ -292,8 +378,8 @@ export function CampaignPage() {
       <CampaignModeSelector campaignMode={campaignMode} setCampaignMode={setCampaignMode} setCampaignMessage={setCampaignMessage} />
       <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm text-slate-300">{campaignMessage}</section>
       <section className={cx('grid gap-5', showAssetRunner ? 'xl:grid-cols-3' : 'xl:grid-cols-1')}>
-        <Card className={cx('rounded-3xl border-slate-800 bg-slate-900/70', showAssetRunner ? 'xl:col-span-2' : 'xl:col-span-1')}><CardContent className="p-5"><div className="mb-6 flex flex-col justify-between gap-3 md:flex-row md:items-center"><div><h3 className="text-lg font-bold text-white">{isManualMode ? 'Manual RTMP Stream' : 'YouTube API Broadcast'}</h3><p className="mt-1 text-sm text-slate-400">{isManualMode ? 'Masukkan data RTMP dari platform tujuan.' : 'Buat live otomatis menggunakan channel YouTube yang sudah terhubung.'}</p></div><span className={cx('w-fit rounded-full px-3 py-1 text-xs font-bold', isManualMode ? 'bg-amber-500/10 text-amber-300' : 'bg-emerald-500/10 text-emerald-300')}>{isManualMode ? 'RTMP Manual' : 'YouTube API v3'}</span></div>{isManualMode ? <ManualRtmpForm state={manualState} setters={setters} /> : <YoutubeApiForm state={youtubeState} setters={setters} youtubeChannels={youtubeChannels} availableYoutubePlaylists={availableYoutubePlaylists} selectedYoutubePlaylist={selectedYoutubePlaylist} changeYoutubeChannel={changeYoutubeChannel} />}</CardContent></Card>
-        {showAssetRunner ? <Card className="rounded-3xl border-slate-800 bg-slate-900/70"><CardContent className="p-5"><h3 className="mb-1 text-lg font-bold text-white">Aset & Runner</h3><p className="mb-5 text-sm text-slate-400">Pilih sumber video dan pengaturan proses FFmpeg.</p><AssetRunnerPanel state={youtubeState} setters={setters} campaignVideoAssets={campaignVideoAssets} campaignThumbnailAssets={campaignThumbnailAssets} saveCampaignDraft={saveCampaignDraft} isLoadingAssets={isLoadingCampaignAssets} onRefreshAssets={() => loadCampaignAssets('Aset kampanye dimuat ulang dari SQLite.')} /></CardContent></Card> : null}
+         <Card className={cx('rounded-3xl border-slate-800 bg-slate-900/70', showAssetRunner ? 'xl:col-span-2' : 'xl:col-span-1')}><CardContent className="p-5"><div className="mb-6 flex flex-col justify-between gap-3 md:flex-row md:items-center"><div><h3 className="text-lg font-bold text-white">{isManualMode ? 'Manual RTMP Stream' : 'YouTube API Broadcast'}</h3><p className="mt-1 text-sm text-slate-400">{isManualMode ? 'Masukkan data RTMP dari platform tujuan.' : 'Buat live otomatis menggunakan channel YouTube yang sudah terhubung.'}</p></div><span className={cx('w-fit rounded-full px-3 py-1 text-xs font-bold', isManualMode ? 'bg-amber-500/10 text-amber-300' : 'bg-emerald-500/10 text-emerald-300')}>{isManualMode ? 'RTMP Manual' : 'YouTube API v3'}</span></div>{isManualMode ? <ManualRtmpForm state={manualState} setters={setters} onSaveDraft={saveManualDraft} onStartLive={startManualLive} isSaving={isSavingDraft} isStarting={isStartingLive} /> : <YoutubeApiForm state={youtubeState} setters={setters} youtubeChannels={youtubeChannels} availableYoutubePlaylists={availableYoutubePlaylists} selectedYoutubePlaylist={selectedYoutubePlaylist} changeYoutubeChannel={changeYoutubeChannel} />}</CardContent></Card>
+        {showAssetRunner ? <Card className="rounded-3xl border-slate-800 bg-slate-900/70"><CardContent className="p-5"><h3 className="mb-1 text-lg font-bold text-white">Aset &amp; Runner</h3><p className="mb-5 text-sm text-slate-400">Pilih sumber video dan pengaturan proses FFmpeg.</p><AssetRunnerPanel state={youtubeState} setters={setters} campaignVideoAssets={campaignVideoAssets} campaignThumbnailAssets={campaignThumbnailAssets} saveCampaignDraft={saveCampaignDraft} isLoadingAssets={isLoadingCampaignAssets} onRefreshAssets={() => loadCampaignAssets('Aset kampanye dimuat ulang dari SQLite.')} /></CardContent></Card> : null}
       </section>
       <YoutubePlaylistModal open={isYoutubePlaylistModalOpen} onClose={() => setIsYoutubePlaylistModalOpen(false)} value={newYoutubePlaylistName} setValue={setNewYoutubePlaylistName} onCreate={createYoutubePlaylist} channelName={youtubeChannels.find((channel) => String(channel.id) === String(youtubeChannelId))?.name || 'Channel YouTube'} />
     </>
