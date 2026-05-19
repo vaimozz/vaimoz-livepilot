@@ -1,0 +1,110 @@
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const TOKEN_KEY = 'vaimoz_token';
+
+export function getToken() {
+  return localStorage.getItem(TOKEN_KEY) || '';
+}
+
+export function setToken(token) {
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+  else localStorage.removeItem(TOKEN_KEY);
+}
+
+export async function apiRequest(path, options = {}) {
+  const token = getToken();
+  const headers = new Headers(options.headers || {});
+  if (!(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const contentType = response.headers.get('content-type') || '';
+  const data = contentType.includes('application/json') ? await response.json() : await response.text();
+  if (!response.ok) {
+    const message = typeof data === 'string' ? data : data.error || 'Request gagal.';
+    // Jika server membalas 401, token sudah expired — paksa logout
+    if (response.status === 401) {
+      setToken(null);
+      window.dispatchEvent(new CustomEvent('vaimoz:unauthorized'));
+    }
+    throw new Error(message);
+  }
+  return data;
+}
+
+export const api = {
+  health: () => apiRequest('/health'),
+  auth: {
+    login: (username, password) => apiRequest('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+    register: (username, password, displayName) => apiRequest('/auth/register', { method: 'POST', body: JSON.stringify({ username, password, displayName }) }),
+    me: () => apiRequest('/auth/me'),
+    updateMe: (payload) => apiRequest('/auth/me', { method: 'PATCH', body: JSON.stringify(payload) }),
+  },
+  assets: {
+    list: (type = '') => apiRequest(`/assets${type ? `?type=${encodeURIComponent(type)}` : ''}`),
+    upload: (files) => {
+      const formData = new FormData();
+      Array.from(files).forEach((file) => formData.append('files', file));
+      return apiRequest('/assets/upload', { method: 'POST', body: formData });
+    },
+    uploadWithProgress: (files, onProgress) => new Promise((resolve, reject) => {
+      const formData = new FormData();
+      Array.from(files).forEach((file) => formData.append('files', file));
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_BASE}/assets/upload`);
+      const token = getToken();
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded, e.total); };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(JSON.parse(xhr.responseText));
+        } else {
+          const msg = (() => { try { return JSON.parse(xhr.responseText).error; } catch { return 'Upload gagal.'; } })();
+          if (xhr.status === 401) { setToken(null); window.dispatchEvent(new CustomEvent('vaimoz:unauthorized')); }
+          reject(new Error(msg));
+        }
+      };
+      xhr.onerror = () => reject(new Error('Koneksi gagal saat upload.'));
+      xhr.send(formData);
+    }),
+    rename: (id, name) => apiRequest(`/assets/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+    remove: (id) => apiRequest(`/assets/${id}`, { method: 'DELETE' }),
+    gdriveStart: (url) => apiRequest('/assets/gdrive', { method: 'POST', body: JSON.stringify({ url }) }),
+    gdriveProgress: (jobId) => apiRequest(`/assets/gdrive/progress/${encodeURIComponent(jobId)}`),
+  },
+  playlists: {
+    list: (params = {}) => {
+      const search = new URLSearchParams(params).toString();
+      return apiRequest(`/playlists${search ? `?${search}` : ''}`);
+    },
+    create: (payload) => apiRequest('/playlists', { method: 'POST', body: JSON.stringify(payload) }),
+    remove: (id) => apiRequest(`/playlists/${id}`, { method: 'DELETE' }),
+  },
+  campaigns: {
+    list: () => apiRequest('/campaigns'),
+    create: (payload) => apiRequest('/campaigns', { method: 'POST', body: JSON.stringify(payload) }),
+    update: (id, payload) => apiRequest(`/campaigns/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+    remove: (id) => apiRequest(`/campaigns/${id}`, { method: 'DELETE' }),
+  },
+  streams: {
+    list: () => apiRequest('/streams'),
+    start: (payload) => apiRequest('/streams/start', { method: 'POST', body: JSON.stringify(payload) }),
+    stop: (id) => apiRequest(`/streams/${id}/stop`, { method: 'POST' }),
+  },
+  youtube: {
+    authUrl: () => apiRequest('/youtube/auth-url'),
+    channels: () => apiRequest('/youtube/channels'),
+    removeChannel: (id) => apiRequest(`/youtube/channels/${id}`, { method: 'DELETE' }),
+    setDefaultChannel: (id) => apiRequest(`/youtube/channels/${id}/default`, { method: 'POST' }),
+    playlists: (channelId) => apiRequest(`/youtube/channels/${channelId}/playlists`),
+    createPlaylist: (channelId, payload) => apiRequest(`/youtube/channels/${channelId}/playlists`, { method: 'POST', body: JSON.stringify(payload) }),
+    createBroadcast: (channelId, payload) => apiRequest(`/youtube/channels/${channelId}/broadcasts`, { method: 'POST', body: JSON.stringify(payload) }),
+  },
+  monitor: {
+    metrics: () => apiRequest('/monitor/metrics'),
+    logs: (params = {}) => {
+      const search = new URLSearchParams(params).toString();
+      return apiRequest(`/monitor/logs${search ? `?${search}` : ''}`);
+    },
+    clearLogs: () => apiRequest('/monitor/logs', { method: 'DELETE' }),
+  },
+};

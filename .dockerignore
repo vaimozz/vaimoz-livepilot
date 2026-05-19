@@ -1,0 +1,8 @@
+node_modules
+client/node_modules
+.git
+.env
+*.sqlite
+*.sqlite-*
+public/uploads/*
+public/frontend

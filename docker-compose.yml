@@ -1,0 +1,17 @@
+services:
+  vaimoz-livepilot:
+    build: .
+    container_name: vaimoz-livepilot
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    env_file:
+      - .env
+    volumes:
+      - ./database.sqlite:/app/database.sqlite
+      - ./public/uploads:/app/public/uploads
+    environment:
+      - NODE_ENV=production
+      - CLIENT_ORIGIN=http://localhost:8787
+      - APP_BASE_URL=http://localhost:8787
+      - GOOGLE_REDIRECT_URI=http://localhost:8787/api/youtube/callback

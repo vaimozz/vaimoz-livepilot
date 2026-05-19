@@ -1,0 +1,50 @@
+{
+  "name": "vaimoz-livepilot",
+  "private": true,
+  "version": "0.3.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n SERVER,CLIENT -c green,cyan \"npm run server:dev\" \"npm run client:dev\"",
+    "client:dev": "vite --config client/vite.config.js --host 0.0.0.0",
+    "server:dev": "nodemon app.js",
+    "server": "node app.js",
+    "build": "vite build --config client/vite.config.js",
+    "preview": "vite preview --config client/vite.config.js --host 0.0.0.0",
+    "smoke:server": "node --check app.js && node scripts/smoke-server.js",
+    "start": "node app.js",
+    "migrate": "node scripts/migrate.js",
+    "seed:admin": "node scripts/seed-admin.js",
+    "reset-password": "node scripts/reset-password.js",
+    "generate-secret": "node scripts/generate-secret.js",
+    "docker:build": "docker build -t vaimoz-livepilot .",
+    "docker:up": "docker compose up --build",
+    "reset:data": "node scripts/reset-data.js",
+    "clean:data": "node scripts/reset-data.js"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "lucide-react": "latest",
+    "framer-motion": "latest",
+    "recharts": "latest",
+    "express": "latest",
+    "cors": "latest",
+    "multer": "latest",
+    "better-sqlite3": "latest",
+    "bcryptjs": "latest",
+    "jsonwebtoken": "latest",
+    "dotenv": "latest",
+    "googleapis": "latest",
+    "node-cron": "latest"
+  },
+  "devDependencies": {
+    "tailwindcss": "latest",
+    "postcss": "latest",
+    "autoprefixer": "latest",
+    "concurrently": "latest",
+    "nodemon": "latest",
+    "@tailwindcss/postcss": "latest"
+  }
+}
