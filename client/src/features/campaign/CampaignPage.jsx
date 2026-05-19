@@ -117,6 +117,11 @@ export function CampaignPage() {
   const [youtubeChatbotMode, setYoutubeChatbotMode] = useState('Pesan berkala');
   const [youtubeChatbotInterval, setYoutubeChatbotInterval] = useState('10');
   const [youtubeChatbotMessages, setYoutubeChatbotMessages] = useState(defaultYoutubeChatbotMessages);
+  // Judul, deskripsi, privasi, thumbnail mode
+  const [youtubeLiveTitles, setYoutubeLiveTitles] = useState('');
+  const [youtubeDescription, setYoutubeDescription] = useState('');
+  const [youtubePrivacy, setYoutubePrivacy] = useState('Publik');
+  const [youtubeThumbnailMode, setYoutubeThumbnailMode] = useState('Rotasi otomatis');
 
   const isManualMode = campaignMode === 'Manual (RTMP)';
   const showAssetRunner = shouldShowCampaignAssetRunner(campaignMode);
@@ -192,8 +197,8 @@ export function CampaignPage() {
   }, []);
 
   const manualState = { manualCampaignName, manualPlatform, manualRtmpUrl, manualStreamKey, manualStartDate, manualStartTime, manualStopDate, manualStopTime, autoStopEnabled, smartStopEnabled, smartStopViewerThreshold, smartStopDelayMinutes, manualEncoderMode, manualResolution, manualBitrate, manualFps };
-  const youtubeState = { youtubeChannels, youtubeMonetizationEnabled, youtubeAiContentAnswer, youtubeChannelId, youtubeTags, youtubeReplayPrivacy, youtubeCategoryId, youtubeScheduleType, youtubeDurationMode, youtubeRandomStopMin, youtubeRandomStopMax, youtubeRepeatLiveDuration, youtubeRepeatBreakDuration, youtubeRepeatCount, youtubeWeeklyDays, youtubeStartDate, youtubeStartTime, youtubeStopDate, youtubeStopTime, youtubeAutoStopEnabled, youtubeSmartStopEnabled, youtubeSmartStopViewerThreshold, youtubeSmartStopDelayMinutes, youtubeEncoderMode, youtubeResolution, youtubeBitrate, youtubeFps, isYoutubeEncoderOpen, isYoutubeChatbotOpen, youtubeChatbotEnabled, youtubeChatbotMode, youtubeChatbotInterval, youtubeChatbotMessages, youtubeSelectedVideoNames, youtubeSelectedThumbnailNames };
-  const setters = { setManualCampaignName, setManualPlatform, setManualRtmpUrl, setManualStreamKey, setManualStartDate, setManualStartTime, setManualStopDate, setManualStopTime, setAutoStopEnabled, setSmartStopEnabled, setSmartStopViewerThreshold, setSmartStopDelayMinutes, setManualEncoderMode, setManualResolution, setManualBitrate, setManualFps, setYoutubeMonetizationEnabled, setYoutubeAiContentAnswer, setYoutubeChannelId, setYoutubeTags, setYoutubeReplayPrivacy, setYoutubeCategoryId, setYoutubeScheduleType, setYoutubeDurationMode, setYoutubeRandomStopMin, setYoutubeRandomStopMax, setYoutubeRepeatLiveDuration, setYoutubeRepeatBreakDuration, setYoutubeRepeatCount, setYoutubeWeeklyDays, setYoutubeStartDate, setYoutubeStartTime, setYoutubeStopDate, setYoutubeStopTime, setYoutubeAutoStopEnabled, setYoutubeSmartStopEnabled, setYoutubeSmartStopViewerThreshold, setYoutubeSmartStopDelayMinutes, setYoutubeEncoderMode, setYoutubeResolution, setYoutubeBitrate, setYoutubeFps, setIsYoutubeEncoderOpen, setIsYoutubeChatbotOpen, setYoutubeChatbotEnabled, setYoutubeChatbotMode, setYoutubeChatbotInterval, setYoutubeChatbotMessages, setYoutubeSelectedVideoNames, setYoutubeSelectedThumbnailNames, setYoutubePlaylistId, setIsYoutubePlaylistModalOpen };
+  const youtubeState = { youtubeChannels, youtubeMonetizationEnabled, youtubeAiContentAnswer, youtubeChannelId, youtubeTags, youtubeReplayPrivacy, youtubeCategoryId, youtubeScheduleType, youtubeDurationMode, youtubeRandomStopMin, youtubeRandomStopMax, youtubeRepeatLiveDuration, youtubeRepeatBreakDuration, youtubeRepeatCount, youtubeWeeklyDays, youtubeStartDate, youtubeStartTime, youtubeStopDate, youtubeStopTime, youtubeAutoStopEnabled, youtubeSmartStopEnabled, youtubeSmartStopViewerThreshold, youtubeSmartStopDelayMinutes, youtubeEncoderMode, youtubeResolution, youtubeBitrate, youtubeFps, isYoutubeEncoderOpen, isYoutubeChatbotOpen, youtubeChatbotEnabled, youtubeChatbotMode, youtubeChatbotInterval, youtubeChatbotMessages, youtubeSelectedVideoNames, youtubeSelectedThumbnailNames, youtubeLiveTitles, youtubeDescription, youtubePrivacy, youtubeThumbnailMode };
+  const setters = { setManualCampaignName, setManualPlatform, setManualRtmpUrl, setManualStreamKey, setManualStartDate, setManualStartTime, setManualStopDate, setManualStopTime, setAutoStopEnabled, setSmartStopEnabled, setSmartStopViewerThreshold, setSmartStopDelayMinutes, setManualEncoderMode, setManualResolution, setManualBitrate, setManualFps, setYoutubeMonetizationEnabled, setYoutubeAiContentAnswer, setYoutubeChannelId, setYoutubeTags, setYoutubeReplayPrivacy, setYoutubeCategoryId, setYoutubeScheduleType, setYoutubeDurationMode, setYoutubeRandomStopMin, setYoutubeRandomStopMax, setYoutubeRepeatLiveDuration, setYoutubeRepeatBreakDuration, setYoutubeRepeatCount, setYoutubeWeeklyDays, setYoutubeStartDate, setYoutubeStartTime, setYoutubeStopDate, setYoutubeStopTime, setYoutubeAutoStopEnabled, setYoutubeSmartStopEnabled, setYoutubeSmartStopViewerThreshold, setYoutubeSmartStopDelayMinutes, setYoutubeEncoderMode, setYoutubeResolution, setYoutubeBitrate, setYoutubeFps, setIsYoutubeEncoderOpen, setIsYoutubeChatbotOpen, setYoutubeChatbotEnabled, setYoutubeChatbotMode, setYoutubeChatbotInterval, setYoutubeChatbotMessages, setYoutubeSelectedVideoNames, setYoutubeSelectedThumbnailNames, setYoutubePlaylistId, setIsYoutubePlaylistModalOpen, setYoutubeLiveTitles, setYoutubeDescription, setYoutubePrivacy, setYoutubeThumbnailMode };
 
   const changeYoutubeChannel = async (nextChannelId) => {
     setYoutubeChannelId(nextChannelId);
@@ -338,29 +343,49 @@ export function CampaignPage() {
         status: 'Draft',
         config: {
           platform: 'YouTube',
-          // Asset IDs + paths agar backend bisa langsung pakai
+          // Judul & konten
+          liveTitles: youtubeLiveTitles,
+          description: youtubeDescription,
+          privacy: youtubePrivacy,
+          thumbnailMode: youtubeThumbnailMode,
+          tags: youtubeTags,
+          categoryId: youtubeCategoryId,
+          replayPrivacy: youtubeReplayPrivacy,
+          // Playlist & channel
+          channelId: youtubeChannelId,
+          playlist: selectedYoutubePlaylist,
+          // Asset IDs + paths
           videoAssetIds: selectedVideos.map((a) => a.id),
           videoNames: selectedVideos.map((a) => a.name),
           videoPaths: selectedVideos.map((a) => a.path || a.url || a.name),
           thumbnailAssetIds: selectedThumbnails.map((a) => a.id),
           thumbnailNames: selectedThumbnails.map((a) => a.name),
           thumbnailPaths: selectedThumbnails.map((a) => a.path || a.url || a.name),
-          playlist: selectedYoutubePlaylist,
-          tags: youtubeTags,
-          categoryId: youtubeCategoryId,
-          replayPrivacy: youtubeReplayPrivacy,
+          // Jadwal
+          scheduleType: youtubeScheduleType,
+          weeklyDays: youtubeWeeklyDays,
           startDate: youtubeStartDate,
           startTime: youtubeStartTime,
           stopDate: youtubeStopDate,
           stopTime: youtubeStopTime,
           scheduleText: `${youtubeScheduleType} ${youtubeStartTime}`,
+          // Durasi & stop
           durationMode: youtubeDurationMode,
           autoStopEnabled: youtubeAutoStopEnabled,
+          randomStopMin: youtubeRandomStopMin,
+          randomStopMax: youtubeRandomStopMax,
+          repeatLiveDuration: youtubeRepeatLiveDuration,
+          repeatBreakDuration: youtubeRepeatBreakDuration,
+          repeatCount: youtubeRepeatCount,
+          // Smart stop
           smartStopEnabled: youtubeSmartStopEnabled,
           smartStopViewerThreshold: youtubeSmartStopViewerThreshold,
           smartStopDelayMinutes: youtubeSmartStopDelayMinutes,
+          // Encoder
           encoder: { mode: youtubeEncoderMode, resolution: youtubeResolution, bitrate: youtubeBitrate, fps: youtubeFps },
+          // Chatbot
           chatbot: { enabled: youtubeChatbotEnabled, mode: youtubeChatbotMode, interval: youtubeChatbotInterval, messages: youtubeChatbotMessages },
+          // Monetisasi & AI
           monetizationEnabled: youtubeMonetizationEnabled,
           aiContentAnswer: youtubeAiContentAnswer,
         },
