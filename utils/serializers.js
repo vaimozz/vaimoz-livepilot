@@ -87,6 +87,22 @@ export function serializeStream(row) {
     youtubeBroadcastId: row.youtube_broadcast_id ?? null,
     youtubeStreamId: row.youtube_stream_id ?? null,
     youtubeWatchUrl: row.youtube_watch_url ?? null,
+    youtubeLiveChatId: row.youtube_live_chat_id ?? null,
+    // Chatbot info
+    chatbotStatus: row.chatbot_status ?? 'inactive',
+    chatbotStartedAt: row.chatbot_started_at ?? null,
+    chatbotStoppedAt: row.chatbot_stopped_at ?? null,
+    chatbotMessageCount: row.chatbot_message_count ?? 0,
+    chatbotLastMessage: row.chatbot_last_message ?? null,
+    // Analytics info
+    youtubeConcurrentViewers: row.youtube_concurrent_viewers ?? 0,
+    youtubeTotalViews: row.youtube_total_views ?? 0,
+    youtubeLikes: row.youtube_likes ?? 0,
+    youtubeComments: row.youtube_comments ?? 0,
+    youtubeStatsUpdatedAt: row.youtube_stats_updated_at ?? null,
+    // Smart stop info
+    smartStopDelayedUntil: row.smart_stop_delayed_until ?? null,
+    smartStopReason: row.smart_stop_reason ?? null,
     startedAt: row.started_at,
     stoppedAt: row.stopped_at,
     // Aset yang dipilih acak saat stream dimulai

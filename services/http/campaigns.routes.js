@@ -11,6 +11,18 @@ import {
   addBroadcastToPlaylist,
   completeBroadcast,
 } from '../youtubeLiveService.js';
+import {
+  getLiveChatId,
+  startChatbot,
+  stopChatbot,
+  getChatbotStatus,
+  sendChatMessage,
+} from '../youtubeChatService.js';
+import {
+  startStreamMonitoring,
+  stopStreamMonitoring,
+  getLiveStreamStats,
+} from '../youtubeAnalyticsService.js';
 
 export const campaignsRouter = Router();
 campaignsRouter.use(requireAuth);
@@ -263,6 +275,58 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
     started.streamId
   );
 
+  // ── Get live chat ID and save ────────────────────────────────────────────
+  let liveChatId = null;
+  try {
+    liveChatId = await getLiveChatId(youtubeChannelId, broadcastId);
+    if (liveChatId) {
+      db.prepare(`
+        UPDATE streams 
+        SET youtube_live_chat_id = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(liveChatId, started.streamId);
+      
+      logEvent('INFO', 'YouTube Live', `Live chat ID saved: ${liveChatId}`);
+    }
+  } catch (error) {
+    logEvent('WARN', 'YouTube Live', `Failed to get live chat ID: ${error.message}`);
+  }
+
+  // ── Start analytics monitoring ───────────────────────────────────────────
+  try {
+    startStreamMonitoring(started.streamId, {
+      channelId: youtubeChannelId,
+      broadcastId,
+      youtubeStreamId: streamId,
+      intervalSeconds: 30, // Update every 30 seconds
+    });
+    logEvent('INFO', 'YouTube Analytics', `Started monitoring stream #${started.streamId}`);
+  } catch (error) {
+    logEvent('WARN', 'YouTube Analytics', `Failed to start monitoring: ${error.message}`);
+  }
+
+  // ── Start chatbot if enabled ─────────────────────────────────────────────
+  if (cfg.chatbot?.enabled && liveChatId) {
+    try {
+      const chatbotMessages = cfg.chatbot.messages || [];
+      const chatbotInterval = parseInt(cfg.chatbot.interval || '10');
+      const chatbotMode = cfg.chatbot.mode || 'sequential';
+
+      startChatbot(started.streamId, {
+        channelId: youtubeChannelId,
+        liveChatId,
+        messages: chatbotMessages,
+        intervalMinutes: chatbotInterval,
+        mode: chatbotMode === 'Pesan berkala' ? 'sequential' : 'random',
+      });
+
+      logEvent('INFO', 'YouTube Chatbot', `Started chatbot for stream #${started.streamId}`);
+    } catch (error) {
+      logEvent('WARN', 'YouTube Chatbot', `Failed to start chatbot: ${error.message}`);
+    }
+  }
+
   // ── Transition broadcast to live (after a delay) ─────────────────────────
   // Wait for FFmpeg to start streaming, then transition to live
   setTimeout(async () => {
@@ -311,6 +375,22 @@ campaignsRouter.post('/:id/stop', asyncHandler(async (req, res) => {
     return res.json({ ok: true, stopped: false, message: 'Tidak ada stream aktif untuk kampanye ini.' });
   }
 
+  // Stop chatbot if active
+  try {
+    stopChatbot(activeStream.id);
+    logEvent('INFO', 'YouTube Chatbot', `Stopped chatbot for stream #${activeStream.id}`);
+  } catch (error) {
+    logEvent('WARN', 'YouTube Chatbot', `Failed to stop chatbot: ${error.message}`);
+  }
+
+  // Stop analytics monitoring
+  try {
+    stopStreamMonitoring(activeStream.id);
+    logEvent('INFO', 'YouTube Analytics', `Stopped monitoring stream #${activeStream.id}`);
+  } catch (error) {
+    logEvent('WARN', 'YouTube Analytics', `Failed to stop monitoring: ${error.message}`);
+  }
+
   // Stop FFmpeg stream
   const result = stopFfmpegStream(activeStream.id);
 
@@ -336,4 +416,240 @@ campaignsRouter.post('/:id/stop', asyncHandler(async (req, res) => {
   logEvent('INFO', 'Kampanye', `Campaign #${id} "${campaign.name}" dihentikan. Stream #${activeStream.id}`);
 
   res.json({ ok: true, stopped: result.stopped, streamId: activeStream.id });
+}));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// POST /campaigns/:id/chatbot/start
+// Start chatbot manually for active stream
+// ═══════════════════════════════════════════════════════════════════════════════
+campaignsRouter.post('/:id/chatbot/start', asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(id);
+  if (!campaign) return res.status(404).json({ error: 'Kampanye tidak ditemukan.' });
+
+  // Find active stream
+  const activeStream = db.prepare(
+    "SELECT * FROM streams WHERE campaign_id = ? AND status IN ('Online','Starting') ORDER BY created_at DESC LIMIT 1"
+  ).get(id);
+
+  if (!activeStream) {
+    return res.status(404).json({ error: 'Tidak ada stream aktif untuk kampanye ini.' });
+  }
+
+  if (!activeStream.youtube_live_chat_id) {
+    return res.status(400).json({ error: 'Stream ini tidak punya live chat ID. Hanya YouTube live yang support chatbot.' });
+  }
+
+  // Get config
+  let cfg = {};
+  try { cfg = JSON.parse(campaign.config_json || '{}'); } catch { cfg = {}; }
+
+  const youtubeChannelId = cfg.youtubeChannelId;
+  if (!youtubeChannelId) {
+    return res.status(400).json({ error: 'YouTube channel tidak ditemukan di config kampanye.' });
+  }
+
+  // Start chatbot
+  const chatbotMessages = req.body.messages || cfg.chatbot?.messages || [];
+  const chatbotInterval = parseInt(req.body.intervalMinutes || cfg.chatbot?.interval || '10');
+  const chatbotMode = req.body.mode || cfg.chatbot?.mode || 'sequential';
+
+  if (chatbotMessages.length === 0) {
+    return res.status(400).json({ error: 'Tidak ada pesan chatbot. Tambahkan pesan di config kampanye.' });
+  }
+
+  const started = startChatbot(activeStream.id, {
+    channelId: youtubeChannelId,
+    liveChatId: activeStream.youtube_live_chat_id,
+    messages: chatbotMessages,
+    intervalMinutes: chatbotInterval,
+    mode: chatbotMode === 'Pesan berkala' ? 'sequential' : 'random',
+  });
+
+  if (!started) {
+    return res.status(500).json({ error: 'Gagal memulai chatbot.' });
+  }
+
+  res.json({
+    ok: true,
+    streamId: activeStream.id,
+    chatbot: {
+      status: 'active',
+      intervalMinutes: chatbotInterval,
+      messageCount: chatbotMessages.length,
+      mode: chatbotMode,
+    },
+  });
+}));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// POST /campaigns/:id/chatbot/stop
+// Stop chatbot for active stream
+// ═══════════════════════════════════════════════════════════════════════════════
+campaignsRouter.post('/:id/chatbot/stop', asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(id);
+  if (!campaign) return res.status(404).json({ error: 'Kampanye tidak ditemukan.' });
+
+  // Find active stream
+  const activeStream = db.prepare(
+    "SELECT * FROM streams WHERE campaign_id = ? AND status IN ('Online','Starting') ORDER BY created_at DESC LIMIT 1"
+  ).get(id);
+
+  if (!activeStream) {
+    return res.status(404).json({ error: 'Tidak ada stream aktif untuk kampanye ini.' });
+  }
+
+  const stopped = stopChatbot(activeStream.id);
+
+  res.json({
+    ok: true,
+    streamId: activeStream.id,
+    stopped,
+  });
+}));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GET /campaigns/:id/chatbot/status
+// Get chatbot status for active stream
+// ═══════════════════════════════════════════════════════════════════════════════
+campaignsRouter.get('/:id/chatbot/status', asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(id);
+  if (!campaign) return res.status(404).json({ error: 'Kampanye tidak ditemukan.' });
+
+  // Find active stream
+  const activeStream = db.prepare(
+    "SELECT * FROM streams WHERE campaign_id = ? AND status IN ('Online','Starting') ORDER BY created_at DESC LIMIT 1"
+  ).get(id);
+
+  if (!activeStream) {
+    return res.json({
+      ok: true,
+      active: false,
+      message: 'Tidak ada stream aktif.',
+    });
+  }
+
+  const status = getChatbotStatus(activeStream.id);
+  const streamData = serializeStream(activeStream);
+
+  res.json({
+    ok: true,
+    streamId: activeStream.id,
+    chatbot: {
+      ...status,
+      messageCount: streamData.chatbotMessageCount,
+      lastMessage: streamData.chatbotLastMessage,
+      startedAt: streamData.chatbotStartedAt,
+      stoppedAt: streamData.chatbotStoppedAt,
+    },
+  });
+}));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// POST /campaigns/:id/chatbot/send
+// Send single message to live chat
+// ═══════════════════════════════════════════════════════════════════════════════
+campaignsRouter.post('/:id/chatbot/send', asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(id);
+  if (!campaign) return res.status(404).json({ error: 'Kampanye tidak ditemukan.' });
+
+  const message = String(req.body.message || '').trim();
+  if (!message) {
+    return res.status(400).json({ error: 'Pesan wajib diisi.' });
+  }
+
+  // Find active stream
+  const activeStream = db.prepare(
+    "SELECT * FROM streams WHERE campaign_id = ? AND status IN ('Online','Starting') ORDER BY created_at DESC LIMIT 1"
+  ).get(id);
+
+  if (!activeStream) {
+    return res.status(404).json({ error: 'Tidak ada stream aktif untuk kampanye ini.' });
+  }
+
+  if (!activeStream.youtube_live_chat_id) {
+    return res.status(400).json({ error: 'Stream ini tidak punya live chat ID.' });
+  }
+
+  // Get config
+  let cfg = {};
+  try { cfg = JSON.parse(campaign.config_json || '{}'); } catch { cfg = {}; }
+
+  const youtubeChannelId = cfg.youtubeChannelId;
+  if (!youtubeChannelId) {
+    return res.status(400).json({ error: 'YouTube channel tidak ditemukan.' });
+  }
+
+  // Send message
+  await sendChatMessage(youtubeChannelId, activeStream.youtube_live_chat_id, message);
+
+  res.json({
+    ok: true,
+    streamId: activeStream.id,
+    message,
+    sentAt: new Date().toISOString(),
+  });
+}));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GET /campaigns/:id/analytics
+// Get live stream analytics (viewer count, etc.)
+// ═══════════════════════════════════════════════════════════════════════════════
+campaignsRouter.get('/:id/analytics', asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(id);
+  if (!campaign) return res.status(404).json({ error: 'Kampanye tidak ditemukan.' });
+
+  // Find active stream
+  const activeStream = db.prepare(
+    "SELECT * FROM streams WHERE campaign_id = ? AND status IN ('Online','Starting') ORDER BY created_at DESC LIMIT 1"
+  ).get(id);
+
+  if (!activeStream) {
+    return res.json({
+      ok: true,
+      active: false,
+      message: 'Tidak ada stream aktif.',
+    });
+  }
+
+  if (!activeStream.youtube_broadcast_id) {
+    return res.json({
+      ok: true,
+      active: true,
+      streamId: activeStream.id,
+      analytics: null,
+      message: 'Stream ini bukan YouTube live, tidak ada analytics.',
+    });
+  }
+
+  // Get config
+  let cfg = {};
+  try { cfg = JSON.parse(campaign.config_json || '{}'); } catch { cfg = {}; }
+
+  const youtubeChannelId = cfg.youtubeChannelId;
+  if (!youtubeChannelId) {
+    return res.status(400).json({ error: 'YouTube channel tidak ditemukan.' });
+  }
+
+  // Get live stats
+  const stats = await getLiveStreamStats(youtubeChannelId, activeStream.youtube_broadcast_id);
+
+  const streamData = serializeStream(activeStream);
+
+  res.json({
+    ok: true,
+    streamId: activeStream.id,
+    analytics: {
+      concurrentViewers: streamData.youtubeConcurrentViewers,
+      totalViews: streamData.youtubeTotalViews,
+      likes: streamData.youtubeLikes,
+      comments: streamData.youtubeComments,
+      statsUpdatedAt: streamData.youtubeStatsUpdatedAt,
+      live: stats,
+    },
+  });
 }));

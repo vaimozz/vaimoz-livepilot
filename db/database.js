@@ -134,6 +134,51 @@ function runMigrations() {
   if (!streamCols.includes('youtube_watch_url')) {
     db.exec('ALTER TABLE streams ADD COLUMN youtube_watch_url TEXT');
   }
+  
+  // Chatbot columns
+  if (!streamCols.includes('youtube_live_chat_id')) {
+    db.exec('ALTER TABLE streams ADD COLUMN youtube_live_chat_id TEXT');
+  }
+  if (!streamCols.includes('chatbot_status')) {
+    db.exec('ALTER TABLE streams ADD COLUMN chatbot_status TEXT DEFAULT "inactive"');
+  }
+  if (!streamCols.includes('chatbot_started_at')) {
+    db.exec('ALTER TABLE streams ADD COLUMN chatbot_started_at TEXT');
+  }
+  if (!streamCols.includes('chatbot_stopped_at')) {
+    db.exec('ALTER TABLE streams ADD COLUMN chatbot_stopped_at TEXT');
+  }
+  if (!streamCols.includes('chatbot_message_count')) {
+    db.exec('ALTER TABLE streams ADD COLUMN chatbot_message_count INTEGER DEFAULT 0');
+  }
+  if (!streamCols.includes('chatbot_last_message')) {
+    db.exec('ALTER TABLE streams ADD COLUMN chatbot_last_message TEXT');
+  }
+  
+  // Analytics columns
+  if (!streamCols.includes('youtube_concurrent_viewers')) {
+    db.exec('ALTER TABLE streams ADD COLUMN youtube_concurrent_viewers INTEGER DEFAULT 0');
+  }
+  if (!streamCols.includes('youtube_total_views')) {
+    db.exec('ALTER TABLE streams ADD COLUMN youtube_total_views INTEGER DEFAULT 0');
+  }
+  if (!streamCols.includes('youtube_likes')) {
+    db.exec('ALTER TABLE streams ADD COLUMN youtube_likes INTEGER DEFAULT 0');
+  }
+  if (!streamCols.includes('youtube_comments')) {
+    db.exec('ALTER TABLE streams ADD COLUMN youtube_comments INTEGER DEFAULT 0');
+  }
+  if (!streamCols.includes('youtube_stats_updated_at')) {
+    db.exec('ALTER TABLE streams ADD COLUMN youtube_stats_updated_at TEXT');
+  }
+  
+  // Smart stop columns
+  if (!streamCols.includes('smart_stop_delayed_until')) {
+    db.exec('ALTER TABLE streams ADD COLUMN smart_stop_delayed_until TEXT');
+  }
+  if (!streamCols.includes('smart_stop_reason')) {
+    db.exec('ALTER TABLE streams ADD COLUMN smart_stop_reason TEXT');
+  }
 }
 
 function seedAdmin() {
