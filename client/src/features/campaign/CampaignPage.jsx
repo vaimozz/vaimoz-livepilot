@@ -23,6 +23,8 @@ import { ManualRtmpForm } from './ManualRtmpForm.jsx';
 import { YoutubeApiForm } from './YoutubeApiForm.jsx';
 import { AssetRunnerPanel } from './AssetRunnerPanel.jsx';
 import { YoutubePlaylistModal } from './YoutubePlaylistModal.jsx';
+import { YoutubeLiveControls } from './YoutubeLiveControls.jsx';
+import { YoutubeLiveStats } from './YoutubeLiveStats.jsx';
 
 function todayString() {
   return new Date().toISOString().slice(0, 10);
@@ -74,6 +76,7 @@ export function CampaignPage() {
   const [manualStreamKey, setManualStreamKey] = useState('');
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isStartingLive, setIsStartingLive] = useState(false);
+  const [isStartingYoutubeLive, setIsStartingYoutubeLive] = useState(false);
   const [activeStreamId, setActiveStreamId] = useState(null);
   const [streamInfo, setStreamInfo] = useState(null); // { chosenVideo, chosenThumbnail, chosenTitle }
   const lastCampaignIdRef = useRef(null);
@@ -312,6 +315,72 @@ export function CampaignPage() {
     }
   };
 
+  // ── Start YouTube Live ───────────────────────────────────────────────
+  const startYoutubeLive = async () => {
+    if (!youtubeChannelId) {
+      return setCampaignMessage('⚠ Pilih YouTube channel terlebih dahulu.');
+    }
+
+    setIsStartingYoutubeLive(true);
+    setCampaignMessage('Menyimpan draft dan membuat YouTube broadcast...');
+
+    try {
+      // 1. Save draft first
+      let campaign = null;
+      if (lastCampaignIdRef.current) {
+        campaign = { id: lastCampaignIdRef.current };
+      } else {
+        campaign = await saveCampaignDraft();
+      }
+
+      if (!campaign?.id) {
+        setCampaignMessage('⚠ Gagal menyimpan draft campaign. Coba lagi.');
+        return;
+      }
+
+      // 2. Start YouTube Live
+      const result = await api.campaigns.startYoutubeLive(campaign.id, {
+        youtubeChannelId,
+      });
+
+      setActiveStreamId(result.streamId);
+      setStreamInfo({
+        chosenVideo: result.chosenVideo,
+        chosenThumbnail: result.chosenThumbnail,
+        chosenTitle: result.chosenTitle,
+        youtubeWatchUrl: result.youtube?.watchUrl,
+        youtubeBroadcastId: result.youtube?.broadcastId,
+        youtubeLiveChatId: result.youtube?.liveChatId,
+        sendMessage: async (message) => {
+          await api.chatbot.send(campaign.id, message);
+        },
+      });
+
+      setCampaignMessage(
+        `🔴 YouTube Live started! Video: ${result.chosenVideo?.name} | Watch: ${result.youtube?.watchUrl}`
+      );
+    } catch (error) {
+      setCampaignMessage(
+        `Gagal memulai YouTube Live: ${error instanceof Error ? error.message : 'Kesalahan tidak dikenal.'}`
+      );
+    } finally {
+      setIsStartingYoutubeLive(false);
+    }
+  };
+
+  // ── Stop YouTube Live ────────────────────────────────────────────────
+  const stopYoutubeLive = async () => {
+    if (!lastCampaignIdRef.current) return setCampaignMessage('⚠ Tidak ada campaign aktif.');
+    try {
+      await api.campaigns.stop(lastCampaignIdRef.current);
+      setActiveStreamId(null);
+      setStreamInfo(null);
+      setCampaignMessage('⏹ YouTube Live berhasil dihentikan.');
+    } catch (error) {
+      setCampaignMessage(`Gagal menghentikan YouTube Live: ${error instanceof Error ? error.message : 'Kesalahan tidak dikenal.'}`);
+    }
+  };
+
   // ── Simpan draft YouTube API ─────────────────────────────────────────────
   const saveCampaignDraft = async () => {
     const selectedVideos = campaignAssets.filter((a) =>
@@ -413,6 +482,31 @@ export function CampaignPage() {
       <header className="mb-8 flex flex-col justify-between gap-4 lg:flex-row lg:items-center"><SectionTitle eyebrow="Kampanye Live" title="Form Kampanye Baru" description="Pilih mode live: Manual RTMP atau YouTube API otomatis penuh." /></header>
       <CampaignModeSelector campaignMode={campaignMode} setCampaignMode={setCampaignMode} setCampaignMessage={setCampaignMessage} />
       <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm text-slate-300">{campaignMessage}</section>
+      
+      {/* YouTube Live Controls & Stats */}
+      {!isManualMode && (
+        <div className="mb-6 grid gap-5 xl:grid-cols-3">
+          <div className="xl:col-span-2">
+            <YoutubeLiveControls
+              campaignId={lastCampaignIdRef.current}
+              youtubeChannelId={youtubeChannelId}
+              isStarting={isStartingYoutubeLive}
+              isLive={!!activeStreamId && !isManualMode}
+              streamInfo={streamInfo}
+              onStartYoutubeLive={startYoutubeLive}
+              onStopLive={stopYoutubeLive}
+              onSaveDraft={saveCampaignDraft}
+            />
+          </div>
+          <div>
+            <YoutubeLiveStats
+              campaignId={lastCampaignIdRef.current}
+              isLive={!!activeStreamId && !isManualMode}
+            />
+          </div>
+        </div>
+      )}
+
       <section className={cx('grid gap-5', showAssetRunner ? 'xl:grid-cols-3' : 'xl:grid-cols-1')}>
          <Card className={cx('rounded-3xl border-slate-800 bg-slate-900/70', showAssetRunner ? 'xl:col-span-2' : 'xl:col-span-1')}><CardContent className="p-5"><div className="mb-6 flex flex-col justify-between gap-3 md:flex-row md:items-center"><div><h3 className="text-lg font-bold text-white">{isManualMode ? 'Manual RTMP Stream' : 'YouTube API Broadcast'}</h3><p className="mt-1 text-sm text-slate-400">{isManualMode ? 'Masukkan data RTMP dari platform tujuan.' : 'Buat live otomatis menggunakan channel YouTube yang sudah terhubung.'}</p></div><span className={cx('w-fit rounded-full px-3 py-1 text-xs font-bold', isManualMode ? 'bg-amber-500/10 text-amber-300' : 'bg-emerald-500/10 text-emerald-300')}>{isManualMode ? 'RTMP Manual' : 'YouTube API v3'}</span></div>{isManualMode ? <ManualRtmpForm state={manualState} setters={setters} onSaveDraft={saveManualDraft} onStartLive={startManualLive} onStopLive={stopManualLive} isSaving={isSavingDraft} isStarting={isStartingLive} isLive={!!activeStreamId} streamInfo={streamInfo} /> : <YoutubeApiForm state={youtubeState} setters={setters} youtubeChannels={youtubeChannels} availableYoutubePlaylists={availableYoutubePlaylists} selectedYoutubePlaylist={selectedYoutubePlaylist} changeYoutubeChannel={changeYoutubeChannel} />}</CardContent></Card>
         {showAssetRunner ? <Card className="rounded-3xl border-slate-800 bg-slate-900/70"><CardContent className="p-5"><h3 className="mb-1 text-lg font-bold text-white">Aset &amp; Runner</h3><p className="mb-5 text-sm text-slate-400">Pilih sumber video dan pengaturan proses FFmpeg.</p><AssetRunnerPanel state={youtubeState} setters={setters} campaignVideoAssets={campaignVideoAssets} campaignThumbnailAssets={campaignThumbnailAssets} saveCampaignDraft={saveCampaignDraft} isLoadingAssets={isLoadingCampaignAssets} onRefreshAssets={() => loadCampaignAssets('Aset kampanye dimuat ulang dari SQLite.')} /></CardContent></Card> : null}

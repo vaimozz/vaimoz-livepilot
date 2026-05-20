@@ -99,6 +99,77 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform }) {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{dashboardStats.map((stat, index) => <StatCard key={stat.title} {...stat} index={index} />)}</div>
       </section>
 
+      {/* Active YouTube Streams */}
+      {liveCount > 0 && (
+        <section className="mb-6">
+          <SectionLabel title="🔴 Live Streams" description="Stream yang sedang aktif saat ini" />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {streams
+              .filter((stream) => ['Online', 'Starting'].includes(stream.status))
+              .map((stream) => (
+                <Card key={stream.id} className="rounded-3xl border-slate-800 bg-gradient-to-br from-red-500/10 to-slate-900/70">
+                  <CardContent className="p-5">
+                    <div className="mb-4 flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                        <span className="text-xs font-bold text-red-300">LIVE</span>
+                      </div>
+                      <span className="rounded-full bg-slate-700 px-2 py-1 text-xs text-slate-300">
+                        {stream.platform}
+                      </span>
+                    </div>
+
+                    <h3 className="mb-2 truncate text-lg font-bold text-white">
+                      {stream.chosenTitle || `Stream #${stream.id}`}
+                    </h3>
+
+                    {stream.youtubeBroadcastId && (
+                      <div className="mb-3 grid grid-cols-2 gap-2">
+                        <div className="rounded-xl border border-slate-700 bg-slate-950 p-2">
+                          <p className="text-[10px] text-slate-500">Viewers</p>
+                          <p className="text-xl font-bold text-red-300">
+                            {stream.youtubeConcurrentViewers?.toLocaleString() || '0'}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-slate-700 bg-slate-950 p-2">
+                          <p className="text-[10px] text-slate-500">Views</p>
+                          <p className="text-xl font-bold text-blue-300">
+                            {stream.youtubeTotalViews?.toLocaleString() || '0'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-2 text-xs text-slate-400">
+                      {stream.chosenVideo && (
+                        <p className="truncate">📹 {stream.chosenVideo.name || 'Video'}</p>
+                      )}
+                      {stream.startedAt && (
+                        <p>⏱ Started: {new Date(stream.startedAt).toLocaleTimeString('id-ID')}</p>
+                      )}
+                      {stream.chatbotStatus === 'active' && (
+                        <p className="text-green-400">
+                          🤖 Chatbot Active • {stream.chatbotMessageCount || 0} messages
+                        </p>
+                      )}
+                      {stream.youtubeWatchUrl && (
+                        <a
+                          href={stream.youtubeWatchUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block truncate text-cyan-400 hover:underline"
+                        >
+                          🔗 Watch on YouTube
+                        </a>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+          </div>
+        </section>
+      )}
+
       <section className="mb-6">
         <SectionLabel title="Statistik Server" description="Pantau resource server berdasarkan endpoint monitor backend." />
         <div className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-4">

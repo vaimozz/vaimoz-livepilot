@@ -156,23 +156,83 @@ export function StreamMonitorPage() {
             </div>
             <div className="space-y-3">
               {runningStreams.map((stream) => (
-                <div key={stream.id} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-white">Stream #{stream.id} — {stream.platform}</p>
-                    {stream.chosenTitle && <p className="mt-0.5 truncate text-xs text-slate-300">📌 {stream.chosenTitle}</p>}
-                    <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-slate-400">
-                      {stream.startedAt && <span>Mulai: {new Date(stream.startedAt).toLocaleTimeString('id-ID')}</span>}
-                      {stream.pid && <span>PID: {stream.pid}</span>}
-                      {stream.rtmpUrl && <span className="truncate">→ {stream.rtmpUrl}</span>}
+                <div key={stream.id} className="rounded-2xl border border-slate-700 bg-slate-900 p-4">
+                  <div className="mb-3 flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-white">Stream #{stream.id}</p>
+                        <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-bold text-emerald-300">
+                          {stream.platform}
+                        </span>
+                        {stream.youtubeBroadcastId && (
+                          <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs font-bold text-red-300">
+                            🔴 LIVE
+                          </span>
+                        )}
+                      </div>
+                      {stream.chosenTitle && (
+                        <p className="mt-1 truncate text-sm text-slate-300">📌 {stream.chosenTitle}</p>
+                      )}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => stopStream(stream.id, stream.campaignId)}
+                      className="flex shrink-0 items-center gap-1.5 rounded-xl bg-red-600 px-3 py-2 text-xs font-bold text-white hover:bg-red-500"
+                    >
+                      <Square className="h-3 w-3 fill-white" /> Stop
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => stopStream(stream.id, stream.campaignId)}
-                    className="flex shrink-0 items-center gap-1.5 rounded-xl bg-red-600 px-3 py-2 text-xs font-bold text-white hover:bg-red-500"
-                  >
-                    <Square className="h-3 w-3 fill-white" /> Stop
-                  </button>
+
+                  {/* YouTube Live Stats */}
+                  {stream.youtubeBroadcastId && (
+                    <div className="mb-3 grid gap-2 sm:grid-cols-4">
+                      <div className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2">
+                        <p className="text-[10px] text-slate-500">Viewers</p>
+                        <p className="text-lg font-bold text-red-300">
+                          {stream.youtubeConcurrentViewers?.toLocaleString() || '0'}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2">
+                        <p className="text-[10px] text-slate-500">Views</p>
+                        <p className="text-lg font-bold text-blue-300">
+                          {stream.youtubeTotalViews?.toLocaleString() || '0'}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2">
+                        <p className="text-[10px] text-slate-500">Likes</p>
+                        <p className="text-lg font-bold text-green-300">
+                          {stream.youtubeLikes?.toLocaleString() || '0'}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2">
+                        <p className="text-[10px] text-slate-500">Chatbot</p>
+                        <p className="text-lg font-bold text-purple-300">
+                          {stream.chatbotStatus === 'active' ? '✓ Active' : 'Inactive'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stream Details */}
+                  <div className="flex flex-wrap gap-3 text-[11px] text-slate-400">
+                    {stream.startedAt && (
+                      <span>⏱ Started: {new Date(stream.startedAt).toLocaleTimeString('id-ID')}</span>
+                    )}
+                    {stream.pid && <span>PID: {stream.pid}</span>}
+                    {stream.youtubeWatchUrl && (
+                      <a
+                        href={stream.youtubeWatchUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-cyan-400 hover:underline"
+                      >
+                        🔗 Watch on YouTube
+                      </a>
+                    )}
+                    {stream.chatbotMessageCount > 0 && (
+                      <span>💬 {stream.chatbotMessageCount} messages sent</span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
