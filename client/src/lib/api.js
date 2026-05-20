@@ -113,6 +113,15 @@ export const api = {
   analytics: {
     get: (campaignId) => apiRequest(`/campaigns/${campaignId}/analytics`),
   },
+  settings: {
+    get: () => apiRequest('/settings'),
+    save: (payload) => apiRequest('/settings', { method: 'POST', body: JSON.stringify(payload) }),
+    testTelegram: (botToken, chatId) => apiRequest('/settings/telegram/test', { method: 'POST', body: JSON.stringify({ botToken, chatId }) }),
+    saveTelegram: (botToken, chatId) => apiRequest('/settings/telegram/save', { method: 'POST', body: JSON.stringify({ botToken, chatId }) }),
+    deleteTelegram: () => apiRequest('/settings/telegram', { method: 'DELETE' }),
+    getNotifPrefs: () => apiRequest('/settings/notifications/prefs'),
+    saveNotifPrefs: (prefs) => apiRequest('/settings/notifications', { method: 'POST', body: JSON.stringify(prefs) }),
+  },
   monitor: {
     metrics: () => apiRequest('/monitor/metrics'),
     logs: (params = {}) => {
