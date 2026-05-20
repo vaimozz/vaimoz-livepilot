@@ -85,6 +85,7 @@ export const api = {
     update: (id, payload) => apiRequest(`/campaigns/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
     remove: (id) => apiRequest(`/campaigns/${id}`, { method: 'DELETE' }),
     start:  (id, payload = {}) => apiRequest(`/campaigns/${id}/start`, { method: 'POST', body: JSON.stringify(payload) }),
+    startYoutubeLive: (id, payload = {}) => apiRequest(`/campaigns/${id}/start-youtube-live`, { method: 'POST', body: JSON.stringify(payload) }),
     stop:   (id) => apiRequest(`/campaigns/${id}/stop`, { method: 'POST' }),
   },
   streams: {

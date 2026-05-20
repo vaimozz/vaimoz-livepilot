@@ -83,6 +83,10 @@ export function serializeStream(row) {
     status: row.status,
     pid: row.pid,
     rtmpUrl: row.rtmp_url,
+    // YouTube broadcast info
+    youtubeBroadcastId: row.youtube_broadcast_id ?? null,
+    youtubeStreamId: row.youtube_stream_id ?? null,
+    youtubeWatchUrl: row.youtube_watch_url ?? null,
     startedAt: row.started_at,
     stoppedAt: row.stopped_at,
     // Aset yang dipilih acak saat stream dimulai

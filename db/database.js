@@ -69,6 +69,9 @@ export function initDatabase() {
       status TEXT NOT NULL DEFAULT 'Offline',
       pid INTEGER,
       rtmp_url TEXT,
+      youtube_broadcast_id TEXT,
+      youtube_stream_id TEXT,
+      youtube_watch_url TEXT,
       started_at TEXT,
       stopped_at TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -121,6 +124,15 @@ function runMigrations() {
   }
   if (!streamCols.includes('chosen_title')) {
     db.exec('ALTER TABLE streams ADD COLUMN chosen_title TEXT');
+  }
+  if (!streamCols.includes('youtube_broadcast_id')) {
+    db.exec('ALTER TABLE streams ADD COLUMN youtube_broadcast_id TEXT');
+  }
+  if (!streamCols.includes('youtube_stream_id')) {
+    db.exec('ALTER TABLE streams ADD COLUMN youtube_stream_id TEXT');
+  }
+  if (!streamCols.includes('youtube_watch_url')) {
+    db.exec('ALTER TABLE streams ADD COLUMN youtube_watch_url TEXT');
   }
 }
 
