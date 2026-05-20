@@ -113,6 +113,14 @@ export const api = {
   analytics: {
     get: (campaignId) => apiRequest(`/campaigns/${campaignId}/analytics`),
   },
+  monitor: {
+    metrics: () => apiRequest('/monitor/metrics'),
+    logs: (params = {}) => {
+      const search = new URLSearchParams(params).toString();
+      return apiRequest(`/monitor/logs${search ? `?${search}` : ''}`);
+    },
+    clearLogs: () => apiRequest('/monitor/logs', { method: 'DELETE' }),
+  },
   settings: {
     get: () => apiRequest('/settings'),
     save: (payload) => apiRequest('/settings', { method: 'POST', body: JSON.stringify(payload) }),
@@ -121,13 +129,5 @@ export const api = {
     deleteTelegram: () => apiRequest('/settings/telegram', { method: 'DELETE' }),
     getNotifPrefs: () => apiRequest('/settings/notifications/prefs'),
     saveNotifPrefs: (prefs) => apiRequest('/settings/notifications', { method: 'POST', body: JSON.stringify(prefs) }),
-  },
-  monitor: {
-    metrics: () => apiRequest('/monitor/metrics'),
-    logs: (params = {}) => {
-      const search = new URLSearchParams(params).toString();
-      return apiRequest(`/monitor/logs${search ? `?${search}` : ''}`);
-    },
-    clearLogs: () => apiRequest('/monitor/logs', { method: 'DELETE' }),
   },
 };

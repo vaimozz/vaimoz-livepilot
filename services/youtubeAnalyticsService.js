@@ -10,7 +10,6 @@
 
 import { db, logEvent } from '../db/database.js';
 import { youtubeWithTokens } from './youtubeService.js';
-import { notifySmartStopDelayed, notifyViewerMilestone } from './telegramService.js';
 
 /**
  * Get tokens from youtube_channels table
@@ -240,28 +239,6 @@ async function checkSmartStopCondition(streamId, currentViewers) {
       );
 
       logEvent('INFO', 'Smart Stop', `Stream #${streamId}: Stop delayed by ${delayMinutes} minutes (${currentViewers} viewers)`);
-
-      // Notifikasi Telegram
-      notifySmartStopDelayed({
-        campaignName: campaign.name,
-        viewers: currentViewers,
-        threshold,
-        delayMinutes,
-      }).catch(() => {});
-    }
-
-    // Cek viewer milestone (kelipatan threshold notifikasi)
-    const milestoneThreshold = parseInt(
-      db.prepare("SELECT value FROM settings WHERE key = 'viewer_milestone_threshold'").get()?.value || '100'
-    );
-    const prevViewers = parseInt(stream.youtube_concurrent_viewers || '0');
-    if (
-      milestoneThreshold > 0 &&
-      currentViewers >= milestoneThreshold &&
-      Math.floor(currentViewers / milestoneThreshold) > Math.floor(prevViewers / milestoneThreshold)
-    ) {
-      const watchUrl = stream.youtube_watch_url || '';
-      notifyViewerMilestone({ campaignName: campaign.name, viewers: currentViewers, watchUrl }).catch(() => {});
     }
   } catch (error) {
     logEvent('ERROR', 'Smart Stop', `Failed to check condition: ${error.message}`);

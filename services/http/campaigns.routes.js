@@ -23,12 +23,6 @@ import {
   stopStreamMonitoring,
   getLiveStreamStats,
 } from '../youtubeAnalyticsService.js';
-import {
-  notifyStreamStarted,
-  notifyStreamStopped,
-  notifyStreamError,
-  notifyBroadcastLive,
-} from '../telegramService.js';
 
 export const campaignsRouter = Router();
 campaignsRouter.use(requireAuth);
@@ -145,16 +139,6 @@ campaignsRouter.post('/:id/start', asyncHandler(async (req, res) => {
   } catch { /* kolom mungkin belum ada — migrasi berjalan di initDatabase */ }
 
   logEvent('INFO', 'Kampanye', `Campaign #${id} "${campaign.name}" dimulai. Video: ${chosenVideo.name}, Thumbnail: ${chosenThumbnail?.name || 'none'}, Judul: ${chosenTitle}`);
-
-  // Notifikasi Telegram
-  notifyStreamStarted({
-    campaignName: campaign.name,
-    platform,
-    chosenTitle,
-    chosenVideo: chosenVideo.name,
-    watchUrl: null,
-    pid: started.pid,
-  }).catch(() => {});
 
   res.status(201).json({
     ok: true,
@@ -349,15 +333,12 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
     try {
       await transitionBroadcastToLive(youtubeChannelId, broadcastId);
       logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} is now LIVE`);
-      notifyBroadcastLive({ campaignName: campaign.name, broadcastId, watchUrl, title: chosenTitle }).catch(() => {});
     } catch (error) {
       logEvent('ERROR', 'YouTube Live', `Failed to transition to live: ${error.message}`);
     }
   }, 30000); // Wait 30 seconds for FFmpeg to connect
 
   logEvent('INFO', 'Kampanye', `Campaign #${id} "${campaign.name}" started with YouTube Live. Video: ${chosenVideo.name}, Broadcast: ${broadcastId}`);
-
-  notifyStreamStarted({ campaignName: campaign.name, platform: 'YouTube API', chosenTitle, chosenVideo: chosenVideo.name, watchUrl, pid: started.pid }).catch(() => {});
 
   res.status(201).json({
     ok: true,
@@ -433,12 +414,6 @@ campaignsRouter.post('/:id/stop', asyncHandler(async (req, res) => {
   db.prepare('UPDATE campaigns SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run('Draft', id);
 
   logEvent('INFO', 'Kampanye', `Campaign #${id} "${campaign.name}" dihentikan. Stream #${activeStream.id}`);
-
-  notifyStreamStopped({
-    campaignName: campaign.name,
-    streamId: activeStream.id,
-    concurrentViewers: activeStream.youtube_concurrent_viewers || 0,
-  }).catch(() => {});
 
   res.json({ ok: true, stopped: result.stopped, streamId: activeStream.id });
 }));
