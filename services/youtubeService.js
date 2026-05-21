@@ -31,6 +31,8 @@ export function getYouTubeScopes() {
     'https://www.googleapis.com/auth/youtube',
     'https://www.googleapis.com/auth/youtube.force-ssl',
     'https://www.googleapis.com/auth/youtube.upload',
+    'https://www.googleapis.com/auth/yt-analytics.readonly',
+    'https://www.googleapis.com/auth/yt-analytics.monetary.readonly',
   ];
 }
 
@@ -122,4 +124,45 @@ export async function createBroadcastAndStream(tokens, payload) {
   });
 
   return { broadcast: broadcast.data, stream: stream.data };
+}
+
+export async function getChannelAnalytics(tokens, channelId) {
+  const client = getOAuthClient(tokens);
+  
+  // 1. YouTube Data API v3 (Subscribers & Total Views)
+  const youtube = google.youtube({ version: 'v3', auth: client });
+  const dataRes = await youtube.channels.list({ part: ['statistics'], mine: true });
+  const stats = dataRes.data.items?.[0]?.statistics || {};
+  
+  const result = {
+    subscribers: Number(stats.subscriberCount || 0),
+    totalViews: Number(stats.viewCount || 0),
+    estimatedRevenue: 0,
+    estimatedMinutesWatched: 0,
+  };
+
+  // 2. YouTube Analytics API v2 (Pendapatan & Jam Tayang 28 hari terakhir)
+  try {
+    const analytics = google.youtubeAnalytics({ version: 'v2', auth: client });
+    
+    const endDate = new Date().toISOString().split('T')[0];
+    const startDate = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    const reportRes = await analytics.reports.query({
+      ids: 'channel==MINE',
+      startDate,
+      endDate,
+      metrics: 'estimatedRevenue,estimatedMinutesWatched',
+    });
+    
+    const rows = reportRes.data.rows || [];
+    if (rows.length > 0 && rows[0].length >= 2) {
+      result.estimatedRevenue = Number(rows[0][0] || 0);
+      result.estimatedMinutesWatched = Number(rows[0][1] || 0);
+    }
+  } catch (error) {
+    console.warn(`[YouTube Analytics] Gagal mengambil data untuk ${channelId}. Mungkin channel belum dimonetisasi atau butuh re-otorisasi:`, error.message);
+  }
+
+  return result;
 }

@@ -3,7 +3,7 @@ import { db } from '../../db/database.js';
 import { requireAuth } from '../../middleware/auth.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { serializeYoutubeChannel } from '../../utils/serializers.js';
-import { createBroadcastAndStream, createPlaylist, exchangeCode, listPlaylists, makeAuthUrl } from '../youtubeService.js';
+import { createBroadcastAndStream, createPlaylist, exchangeCode, getChannelAnalytics, listPlaylists, makeAuthUrl } from '../youtubeService.js';
 
 export const youtubeRouter = Router();
 
@@ -101,4 +101,13 @@ youtubeRouter.post('/channels/:id/broadcasts', asyncHandler(async (req, res) => 
   if (!row.refresh_token && !row.access_token) return res.status(400).json({ error: 'Channel ini belum punya token OAuth YouTube asli.' });
   const result = await createBroadcastAndStream(tokenFromChannel(row), req.body);
   res.status(201).json(result);
+}));
+
+youtubeRouter.get('/channels/:id/analytics', asyncHandler(async (req, res) => {
+  const row = db.prepare('SELECT * FROM youtube_channels WHERE id = ?').get(Number(req.params.id));
+  if (!row) return res.status(404).json({ error: 'Channel YouTube tidak ditemukan.' });
+  if (!row.refresh_token && !row.access_token) return res.status(400).json({ error: 'Channel ini belum punya token OAuth YouTube asli.' });
+  
+  const analytics = await getChannelAnalytics(tokenFromChannel(row), String(row.id));
+  res.json(analytics);
 }));

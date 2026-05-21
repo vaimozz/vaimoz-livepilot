@@ -103,6 +103,7 @@ export const api = {
     playlists: (channelId) => apiRequest(`/youtube/channels/${channelId}/playlists`),
     createPlaylist: (channelId, payload) => apiRequest(`/youtube/channels/${channelId}/playlists`, { method: 'POST', body: JSON.stringify(payload) }),
     createBroadcast: (channelId, payload) => apiRequest(`/youtube/channels/${channelId}/broadcasts`, { method: 'POST', body: JSON.stringify(payload) }),
+    analytics: (channelId) => apiRequest(`/youtube/channels/${channelId}/analytics`),
   },
   chatbot: {
     start: (campaignId, payload) => apiRequest(`/campaigns/${campaignId}/chatbot/start`, { method: 'POST', body: JSON.stringify(payload) }),

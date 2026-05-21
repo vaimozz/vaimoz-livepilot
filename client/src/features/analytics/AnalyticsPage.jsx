@@ -12,7 +12,8 @@ import {
   ExternalLink,
   ChevronRight,
   TrendingUp,
-  Share2
+  Share2,
+  Users
 } from 'lucide-react';
 import { 
   Area, 
@@ -64,6 +65,11 @@ export function AnalyticsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  const [youtubeChannels, setYoutubeChannels] = useState([]);
+  const [selectedChannelId, setSelectedChannelId] = useState('');
+  const [channelAnalytics, setChannelAnalytics] = useState(null);
+  const [isLoadingChannelAnalytics, setIsLoadingChannelAnalytics] = useState(false);
+
   // 1. Fetch data analitik dari backend
   const fetchAnalytics = async () => {
     setIsLoading(true);
@@ -99,6 +105,33 @@ export function AnalyticsPage() {
   useEffect(() => {
     fetchAnalytics();
   }, [selectedCampaign, selectedPlatform, selectedPeriod]);
+
+  // Load YouTube Channels
+  useEffect(() => {
+    api.youtube.channels().then(result => {
+      setYoutubeChannels(result.channels || []);
+    }).catch(console.error);
+  }, []);
+
+  // Load Channel Analytics
+  useEffect(() => {
+    if (!selectedChannelId) {
+      setChannelAnalytics(null);
+      return;
+    }
+    const fetchChannelAnalytics = async () => {
+      setIsLoadingChannelAnalytics(true);
+      try {
+        const data = await api.youtube.analytics(selectedChannelId);
+        setChannelAnalytics(data);
+      } catch (err) {
+        console.error('Failed to fetch channel analytics', err);
+      } finally {
+        setIsLoadingChannelAnalytics(false);
+      }
+    };
+    fetchChannelAnalytics();
+  }, [selectedChannelId]);
 
   // Polling data untuk stream yang sedang aktif (setiap 10 detik)
   useEffect(() => {
@@ -265,6 +298,73 @@ export function AnalyticsPage() {
           </div>
           {errorMessage && (
             <p className="mt-3 text-sm font-semibold text-rose-400">{errorMessage}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Analitik Channel YouTube ── */}
+      <Card className="rounded-3xl border-[var(--border-primary)] bg-[var(--bg-secondary)]/80 shadow-xl shadow-black/10">
+        <CardContent className="p-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <span className="inline-block h-5 w-1.5 rounded-full bg-red-500" />
+              <h3 className="text-lg font-bold text-[var(--text-primary)]">Analitik Channel YouTube</h3>
+            </div>
+            <div className="w-full md:w-64">
+              <select 
+                value={selectedChannelId} 
+                onChange={(e) => setSelectedChannelId(e.target.value)} 
+                className="h-10 w-full rounded-xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-4 text-sm font-semibold text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] transition-all"
+              >
+                <option value="">Pilih Channel YouTube...</option>
+                {youtubeChannels.map((c) => (
+                  <option key={c.id} value={c.id}>{c.title}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          {selectedChannelId ? (
+            isLoadingChannelAnalytics ? (
+              <div className="flex justify-center p-8">
+                <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
+              </div>
+            ) : channelAnalytics ? (
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                <AnalyticsStatCard 
+                  title="Estimasi Pendapatan" 
+                  value={`$${channelAnalytics.estimatedRevenue.toFixed(2)}`} 
+                  note="28 Hari Terakhir" 
+                  icon={TrendingUp} 
+                  accentClass="text-emerald-400" 
+                />
+                <AnalyticsStatCard 
+                  title="Jam Tayang" 
+                  value={channelAnalytics.estimatedMinutesWatched.toLocaleString('id-ID')} 
+                  note="Menit (28 Hari Terakhir)" 
+                  icon={Clock3} 
+                  accentClass="text-purple-400" 
+                />
+                <AnalyticsStatCard 
+                  title="Total Subscribers" 
+                  value={channelAnalytics.subscribers.toLocaleString('id-ID')} 
+                  note="Keseluruhan" 
+                  icon={Users} 
+                  accentClass="text-sky-400" 
+                />
+                <AnalyticsStatCard 
+                  title="Total Views" 
+                  value={channelAnalytics.totalViews.toLocaleString('id-ID')} 
+                  note="Keseluruhan" 
+                  icon={Video} 
+                  accentClass="text-rose-400" 
+                />
+              </div>
+            ) : null
+          ) : (
+            <div className="text-center text-sm text-[var(--text-tertiary)] p-8 border-2 border-dashed border-[var(--border-primary)] rounded-2xl">
+              Pilih channel YouTube dari dropdown di atas untuk melihat analitik (Estimasi Pendapatan, Jam Tayang, Subscribers, dan Views).
+            </div>
           )}
         </CardContent>
       </Card>
