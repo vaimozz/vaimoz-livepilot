@@ -15,7 +15,6 @@ export function SettingsPage() {
   const [connectedChannels, setConnectedChannels] = useState([]);
   const [settingsMessage, setSettingsMessage] = useState('Memuat pengaturan...');
   const [isLoadingChannels, setIsLoadingChannels] = useState(false);
-  const [apiJsonFileName, setApiJsonFileName] = useState('');
 
   // Telegram
   const [telegramBotToken, setTelegramBotToken] = useState('');
@@ -23,6 +22,12 @@ export function SettingsPage() {
   const [telegramSaved, setTelegramSaved] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [isSavingTelegram, setIsSavingTelegram] = useState(false);
+
+  // Google API
+  const [googleClientId, setGoogleClientId] = useState('');
+  const [googleClientSecret, setGoogleClientSecret] = useState('');
+  const [isSavingGoogle, setIsSavingGoogle] = useState(false);
+  const [googleConfigured, setGoogleConfigured] = useState(false);
 
   // Notification prefs
   const [notifPrefs, setNotifPrefs] = useState({
@@ -45,6 +50,9 @@ export function SettingsPage() {
       const s = sr.settings || {};
       setTelegramSaved(s.telegram_bot_token?.set === true);
       if (typeof s.telegram_chat_id === 'string') setTelegramChatId(s.telegram_chat_id);
+      
+      setGoogleConfigured(s.google_client_id?.set === true || s._env?.hasGoogleClientId === true);
+      
       setNotifPrefs(pr);
     } catch { /* settings table mungkin kosong */ }
   };
@@ -85,6 +93,30 @@ export function SettingsPage() {
       await Promise.all(connectedChannels.map((ch) => api.youtube.removeChannel(ch.id)));
       await loadChannels(); setSettingsMessage('Semua channel diputuskan.');
     } catch (e) { setSettingsMessage(`Gagal: ${e instanceof Error ? e.message : 'Error.'}`); }
+  };
+
+  const saveGoogleApi = async () => {
+    setIsSavingGoogle(true);
+    try {
+      const payload = {};
+      if (googleClientId.trim()) payload.google_client_id = googleClientId.trim();
+      if (googleClientSecret.trim()) payload.google_client_secret = googleClientSecret.trim();
+      
+      // Auto-save frontend redirect URI to sync backend so OAuth URL points to correct domain
+      payload.google_redirect_uri = redirectUri;
+
+      if (Object.keys(payload).length > 0) {
+        await api.settings.save(payload);
+      }
+      setSettingsMessage('✅ Kredensial Google API disimpan.');
+      await loadSettings();
+      setGoogleClientId('');
+      setGoogleClientSecret('');
+    } catch (e) {
+      setSettingsMessage(`Gagal: ${e instanceof Error ? e.message : 'Error.'}`);
+    } finally {
+      setIsSavingGoogle(false);
+    }
   };
 
   const saveTelegram = async () => {
@@ -138,8 +170,8 @@ export function SettingsPage() {
     { label: 'OAuth Redirect URI',  value: redirectUri ? 'Tersedia' : 'Belum',               active: Boolean(redirectUri) },
     { label: 'Token Tersimpan',     value: connectedChannels.length > 0 ? 'Ada' : 'Kosong',  active: connectedChannels.length > 0 },
     { label: 'Notifikasi Telegram', value: telegramSaved ? 'Terkonfigurasi' : 'Belum',       active: telegramSaved },
-    { label: 'Google API Key',      value: apiJsonFileName ? 'JSON dipilih' : 'Belum',       active: Boolean(apiJsonFileName) },
-  ], [apiJsonFileName, connectedChannels.length, redirectUri, telegramSaved, youtubeStatus]);
+    { label: 'Kredensial OAuth Google', value: googleConfigured ? 'Terkonfigurasi' : 'Belum', active: googleConfigured },
+  ], [connectedChannels.length, redirectUri, telegramSaved, youtubeStatus, googleConfigured]);
 
   return (
     <div className="space-y-6 p-8">
@@ -200,8 +232,50 @@ export function SettingsPage() {
               </p>
             </div>
 
+            {/* Kredensial Google API */}
+            <div className="pt-4 border-t border-slate-800">
+              <label className="text-sm font-medium text-slate-300 mb-3 block">
+                Konfigurasi Google Cloud API
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Google Client ID"
+                    value={googleClientId}
+                    onChange={(e) => setGoogleClientId(e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-700 rounded-2xl bg-slate-800 text-slate-200 text-sm focus:border-cyan-500 focus:outline-none placeholder:text-slate-500"
+                  />
+                </div>
+                <div>
+                  <input
+                    type="password"
+                    placeholder="Google Client Secret"
+                    value={googleClientSecret}
+                    onChange={(e) => setGoogleClientSecret(e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-700 rounded-2xl bg-slate-800 text-slate-200 text-sm focus:border-cyan-500 focus:outline-none placeholder:text-slate-500"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-slate-400">
+                  {googleConfigured 
+                    ? '✅ Kredensial telah tersimpan. Isi ulang hanya jika ingin mengubahnya.' 
+                    : '⚠ Kredensial belum dikonfigurasi. OAuth YouTube tidak akan berfungsi.'}
+                </p>
+                <Button 
+                  onClick={saveGoogleApi} 
+                  disabled={isSavingGoogle || (!googleClientId.trim() && !googleClientSecret.trim())} 
+                  className="gap-2 bg-cyan-500 hover:bg-cyan-600 text-white"
+                >
+                  <Save className="h-4 w-4" />
+                  Simpan Kredensial
+                </Button>
+              </div>
+            </div>
+
             {/* Connected Channels */}
-            <div>
+            <div className="pt-4 border-t border-slate-800">
               <div className="flex items-center justify-between mb-3">
                 <label className="text-sm font-medium text-slate-300">
                   Channel Terhubung ({connectedChannels.length})
@@ -285,8 +359,64 @@ export function SettingsPage() {
             </div>
           </div>
           
-          <div className="text-center py-8 text-slate-500">
-            <p>Fitur notifikasi Telegram akan segera hadir</p>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Bot Token</label>
+                <input
+                  type="password"
+                  placeholder={telegramSaved ? "******** (Tersimpan)" : "Contoh: 123456789:ABCdefGHIjklMNO..."}
+                  value={telegramBotToken}
+                  onChange={(e) => setTelegramBotToken(e.target.value)}
+                  className="w-full px-4 py-3 border border-slate-700 rounded-2xl bg-slate-800 text-slate-200 text-sm focus:border-blue-500 focus:outline-none placeholder:text-slate-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Chat ID / Group ID</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: 123456789 atau -100123456789"
+                  value={telegramChatId}
+                  onChange={(e) => setTelegramChatId(e.target.value)}
+                  className="w-full px-4 py-3 border border-slate-700 rounded-2xl bg-slate-800 text-slate-200 text-sm focus:border-blue-500 focus:outline-none placeholder:text-slate-500"
+                />
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
+              <p className="text-xs text-slate-400">
+                {telegramSaved 
+                  ? '✅ Bot Token telah tersimpan. Isi ulang hanya jika ingin mengubahnya.' 
+                  : '⚠ Bot Token dan Chat ID wajib diisi untuk mengaktifkan notifikasi Telegram.'}
+              </p>
+              <div className="flex gap-2">
+                {telegramSaved && (
+                  <Button
+                    onClick={deleteTelegram}
+                    className="gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Hapus
+                  </Button>
+                )}
+                <Button
+                  onClick={testTelegram}
+                  disabled={isTesting || (!telegramBotToken && !telegramSaved) || !telegramChatId}
+                  className="gap-2 bg-slate-800 hover:bg-slate-700 text-white"
+                >
+                  <Send className={cx('h-4 w-4', isTesting && 'animate-pulse')} />
+                  Test
+                </Button>
+                <Button
+                  onClick={saveTelegram}
+                  disabled={isSavingTelegram || !telegramBotToken || !telegramChatId}
+                  className="gap-2 bg-blue-500 hover:bg-blue-600 text-white"
+                >
+                  <Save className="h-4 w-4" />
+                  Simpan
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

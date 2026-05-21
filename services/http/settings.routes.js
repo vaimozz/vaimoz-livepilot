@@ -87,10 +87,13 @@ settingsRouter.post('/telegram/test', asyncHandler(async (req, res) => {
 settingsRouter.post('/telegram/save', asyncHandler(async (req, res) => {
   const botToken = String(req.body.botToken || '').trim();
   const chatId   = String(req.body.chatId   || '').trim();
-  if (!botToken) return res.status(400).json({ error: 'Bot Token wajib diisi.' });
-  if (!chatId)   return res.status(400).json({ error: 'Chat ID wajib diisi.' });
+  
+  if (!botToken && !getSetting('telegram_bot_token')) {
+    return res.status(400).json({ error: 'Bot Token wajib diisi.' });
+  }
+  if (!chatId) return res.status(400).json({ error: 'Chat ID wajib diisi.' });
 
-  setSetting('telegram_bot_token', botToken);
+  if (botToken) setSetting('telegram_bot_token', botToken);
   setSetting('telegram_chat_id', chatId);
   logEvent('INFO', 'Settings', 'Telegram credentials disimpan ke database.');
   res.json({ ok: true, message: 'Telegram credentials berhasil disimpan.' });

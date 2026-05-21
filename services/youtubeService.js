@@ -1,13 +1,27 @@
 import { google } from 'googleapis';
 import { config } from '../utils/config.js';
+import { db } from '../db/database.js';
+
+function getSetting(key, fallback = '') {
+  try {
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+    return row?.value || fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
 
 export function getOAuthClient(tokens = null) {
-  if (!config.googleClientId || !config.googleClientSecret) {
-    const error = new Error('GOOGLE_CLIENT_ID dan GOOGLE_CLIENT_SECRET belum diisi di .env.');
+  const clientId = getSetting('google_client_id', config.googleClientId);
+  const clientSecret = getSetting('google_client_secret', config.googleClientSecret);
+  const redirectUri = getSetting('google_redirect_uri', config.googleRedirectUri);
+
+  if (!clientId || !clientSecret) {
+    const error = new Error('Google Client ID dan Client Secret belum dikonfigurasi. Silakan isi secara manual di halaman Pengaturan.');
     error.status = 400;
     throw error;
   }
-  const client = new google.auth.OAuth2(config.googleClientId, config.googleClientSecret, config.googleRedirectUri);
+  const client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
   if (tokens) client.setCredentials(tokens);
   return client;
 }
