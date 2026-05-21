@@ -1,9 +1,48 @@
 @import "tailwindcss";
 
+@theme {
+  /* Dynamic Theme Mapping for Tailwind v4 */
+  --color-slate-950: var(--bg-primary);
+  --color-slate-900: var(--bg-secondary);
+  --color-slate-800: var(--bg-tertiary);
+  
+  --color-slate-700: var(--border-primary);
+  --color-slate-600: var(--border-primary);
+  --color-gray-200: var(--border-primary);
+  --color-gray-300: var(--border-primary);
+  
+  --color-slate-500: var(--text-muted);
+  --color-gray-500: var(--text-muted);
+  
+  --color-slate-400: var(--text-secondary);
+  --color-slate-300: var(--text-secondary);
+  --color-slate-200: var(--text-secondary);
+  --color-gray-700: var(--text-secondary);
+  
+  --color-slate-100: var(--text-primary);
+  --color-gray-900: var(--text-primary);
+  
+  /* Accent Colors mapping to allow dynamic theme switching */
+  --color-cyan-500: var(--accent-primary);
+  --color-cyan-400: var(--accent-primary);
+  --color-cyan-300: var(--accent-primary);
+  
+  --color-emerald-500: var(--success);
+  --color-emerald-400: var(--success);
+  --color-emerald-300: var(--success);
+  
+  --color-amber-500: var(--warning);
+  --color-amber-400: var(--warning);
+  
+  --color-red-500: var(--error);
+  --color-red-400: var(--error);
+  --color-red-300: var(--error);
+}
+
 :root {
   color-scheme: dark;
   
-  /* Cyberpunk Neon Theme */
+  /* Cyberpunk Neon Theme (Default) */
   --bg-primary: #0a0e27;
   --bg-secondary: #0f1729;
   --bg-tertiary: #1a1f3a;
@@ -29,13 +68,14 @@
   box-sizing: border-box;
 }
 
-body {
+html, body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-tertiary) 100%);
-  background-attachment: fixed;
-  color: var(--text-primary);
+  background-color: var(--bg-primary) !important;
+  background-image: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-tertiary) 100%) !important;
+  background-attachment: fixed !important;
+  color: var(--text-primary) !important;
 }
 
 /* Scrollbar Styling */
@@ -66,6 +106,10 @@ body {
   box-shadow: 0 0 20px rgba(255, 0, 255, 0.3);
 }
 
+.shadow-glow-cyan {
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent-primary) 30%, transparent);
+}
+
 /* Animated Gradient Border */
 @keyframes gradient-border {
   0% { background-position: 0% 50%; }
@@ -82,3 +126,24 @@ body {
 button, input, textarea, select {
   font: inherit;
 }
+
+/* Form Inputs globally themed */
+input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="file"]),
+select,
+textarea {
+  background-color: var(--bg-tertiary) !important;
+  border: 1px solid var(--border-primary) !important;
+  color: var(--text-primary) !important;
+  border-radius: 12px !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="file"]):focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent-primary) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 25%, transparent) !important;
+  outline: none !important;
+}
+
+

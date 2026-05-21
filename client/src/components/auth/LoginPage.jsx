@@ -55,22 +55,135 @@ export function LoginPage({ onLogin, onRegister }) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-700 p-4 text-slate-950">
-      <motion.div initial={{ opacity: 0, y: 18, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.25 }} className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl shadow-black/20">
+    <div className="flex min-h-screen items-center justify-center p-4" style={{
+      background: 'radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.4) 100%)'
+    }}>
+      <motion.div 
+        initial={{ opacity: 0, y: 18, scale: 0.98 }} 
+        animate={{ opacity: 1, y: 0, scale: 1 }} 
+        transition={{ duration: 0.25 }} 
+        className="w-full max-w-md rounded-3xl border p-8 backdrop-blur-md shadow-2xl transition-all duration-300"
+        style={{
+          borderColor: 'var(--border-primary)',
+          backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 85%, transparent)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+        }}
+      >
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-5 flex items-center justify-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 shadow-lg shadow-blue-500/25"><Radio className="h-7 w-7 text-white" /></div><div className="text-left leading-none"><p className="text-2xl font-extrabold tracking-tight text-slate-900">Vaimoz</p><p className="text-xl font-bold italic text-red-500">LivePilot</p></div></div>
-          <h1 className="text-2xl font-extrabold text-slate-950">Vaimoz LivePilot</h1>
-          <p className="mt-1 text-sm text-slate-700">{isRegisterMode ? 'Register' : 'Login'}</p>
+          <div className="mx-auto mb-5 flex items-center justify-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl" style={{
+              background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+              boxShadow: '0 0 20px color-mix(in srgb, var(--accent-primary) 30%, transparent)'
+            }}>
+              <Radio className="h-7 w-7 text-white" />
+            </div>
+            <div className="text-left leading-none">
+              <p className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>Vaimoz</p>
+              <p className="text-xl font-bold italic" style={{ color: 'var(--accent-secondary)' }}>LivePilot</p>
+            </div>
+          </div>
+          <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Vaimoz LivePilot</h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>{isRegisterMode ? 'Register' : 'Login'}</p>
         </div>
         <form onSubmit={submitAuth} className="space-y-5">
-          <label className="block text-sm font-semibold text-slate-950">Username<input value={username} onChange={(event) => setUsername(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10" autoComplete="username" /></label>
-          <label className="block text-sm font-semibold text-slate-950">Password<div className="mt-2 flex h-12 items-center rounded-xl border border-slate-300 bg-white px-4 transition focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10"><input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? 'text' : 'password'} className="min-w-0 flex-1 bg-transparent text-sm text-slate-950 outline-none" autoComplete={isRegisterMode ? 'new-password' : 'current-password'} /><button type="button" onClick={() => setShowPassword((value) => !value)} className="ml-3 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900" aria-label="Tampilkan password"><Eye className="h-4 w-4" /></button></div></label>
-          {isRegisterMode ? <label className="block text-sm font-semibold text-slate-950">Confirm Password<input value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} type={showPassword ? 'text' : 'password'} className="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10" autoComplete="new-password" /></label> : null}
-          <Button type="submit" disabled={isSubmitting} className="h-12 w-full rounded-xl bg-blue-500 text-base font-bold text-white hover:bg-blue-600 disabled:opacity-60">{isSubmitting ? 'Memproses...' : isRegisterMode ? '↪ Register' : '↪ Login'}</Button>
+          <label className="block text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+            Username
+            <input 
+              value={username} 
+              onChange={(event) => setUsername(event.target.value)} 
+              className="mt-2 h-12 w-full rounded-xl px-4 text-sm outline-none" 
+              autoComplete="username" 
+            />
+          </label>
+          <label className="block text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+            Password
+            <div 
+              className="mt-2 flex h-12 items-center rounded-xl border px-4 transition-all duration-200 focus-within:ring-2 focus-within:ring-offset-2" 
+              style={{
+                borderColor: 'var(--border-primary)',
+                backgroundColor: 'var(--bg-tertiary)',
+                color: 'var(--text-primary)',
+                '--tw-ring-color': 'var(--accent-primary)',
+                '--tw-ring-offset-color': 'var(--bg-secondary)'
+              }}
+            >
+              <input 
+                value={password} 
+                onChange={(event) => setPassword(event.target.value)} 
+                type={showPassword ? 'text' : 'password'} 
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none" 
+                autoComplete={isRegisterMode ? 'new-password' : 'current-password'} 
+              />
+              <button 
+                type="button" 
+                onClick={() => setShowPassword((value) => !value)} 
+                className="ml-3 rounded-lg p-1.5 transition hover:scale-105" 
+                style={{ color: 'var(--text-muted)' }}
+                aria-label="Tampilkan password"
+              >
+                <Eye className="h-4 w-4" />
+              </button>
+            </div>
+          </label>
+          {isRegisterMode ? (
+            <label className="block text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+              Confirm Password
+              <input 
+                value={confirmPassword} 
+                onChange={(event) => setConfirmPassword(event.target.value)} 
+                type={showPassword ? 'text' : 'password'} 
+                className="mt-2 h-12 w-full rounded-xl px-4 text-sm outline-none" 
+                autoComplete="new-password" 
+              />
+            </label>
+          ) : null}
+          <Button 
+            type="submit" 
+            disabled={isSubmitting} 
+            className="h-12 w-full text-base font-bold"
+          >
+            {isSubmitting ? 'Memproses...' : isRegisterMode ? '↪ Register' : '↪ Login'}
+          </Button>
         </form>
-        <p className="mt-5 rounded-xl bg-slate-100 px-3 py-2 text-center text-xs text-slate-600">{loginMessage}</p>
-        <div className="mt-6 text-center text-sm text-slate-700">{isRegisterMode ? <><p>Already have an account?</p><button type="button" onClick={() => switchAuthMode('login')} className="mt-1 font-semibold text-blue-600 hover:text-blue-700">Login here</button></> : <><p>Don't have an account?</p><button type="button" onClick={() => switchAuthMode('register')} className="mt-1 font-semibold text-blue-600 hover:text-blue-700">Register here</button></>}</div>
+        <p 
+          className="mt-5 rounded-2xl px-4 py-3 text-center text-xs leading-relaxed"
+          style={{
+            backgroundColor: 'var(--bg-tertiary)',
+            border: '1px solid var(--border-primary)',
+            color: 'var(--text-secondary)'
+          }}
+        >
+          {loginMessage}
+        </p>
+        <div className="mt-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+          {isRegisterMode ? (
+            <>
+              <p>Already have an account?</p>
+              <button 
+                type="button" 
+                onClick={() => switchAuthMode('login')} 
+                className="mt-1 font-semibold transition hover:underline"
+                style={{ color: 'var(--accent-primary)' }}
+              >
+                Login here
+              </button>
+            </>
+          ) : (
+            <>
+              <p>Don't have an account?</p>
+              <button 
+                type="button" 
+                onClick={() => switchAuthMode('register')} 
+                className="mt-1 font-semibold transition hover:underline"
+                style={{ color: 'var(--accent-primary)' }}
+              >
+                Register here
+              </button>
+            </>
+          )}
+        </div>
       </motion.div>
     </div>
   );
 }
+

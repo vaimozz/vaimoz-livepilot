@@ -79,6 +79,7 @@ export function serializeStream(row) {
   return {
     id: row.id,
     campaignId: row.campaign_id,
+    campaignName: row.campaign_name ?? null,
     platform: row.platform,
     status: row.status,
     pid: row.pid,

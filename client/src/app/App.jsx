@@ -62,7 +62,7 @@ export default function VaimozLivePilotApp() {
 
   return (
     <ThemeProvider>
-      <div className="min-h-screen bg-white dark:bg-slate-950 text-gray-900 dark:text-slate-100 transition-colors duration-300">
+      <div className="min-h-screen text-[var(--text-primary)] transition-all duration-300" style={{ backgroundColor: 'transparent' }}>
         <AppTopBar now={now} />
         <div className="flex min-h-[calc(100vh-4rem)]">
           <Sidebar activePage={activePage} setActivePage={setActivePage} />
@@ -71,7 +71,16 @@ export default function VaimozLivePilotApp() {
               <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-500"><Radio className="h-5 w-5 text-white dark:text-slate-950" /></div><div><p className="font-bold">Vaimoz LivePilot</p><p className="text-xs text-gray-500 dark:text-slate-500">Pratinjau mobile</p></div></div>
             </div>
             {renderPage(activePage, selectedPlatform, setSelectedPlatform)}
-            <div className="mt-5 rounded-3xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/40 p-5 text-xs text-gray-500 dark:text-slate-500">Vaimoz LivePilot • Backend Node.js + SQLite + FFmpeg + YouTube API • Data aset dan campaign dibaca dari database lokal.</div>
+            <div 
+              className="mt-5 rounded-3xl border p-5 text-xs transition-all duration-300"
+              style={{
+                borderColor: 'var(--border-primary)',
+                backgroundColor: 'var(--bg-secondary)',
+                color: 'var(--text-muted)'
+              }}
+            >
+              Vaimoz LivePilot • Backend Node.js + SQLite + FFmpeg + YouTube API • Data aset dan campaign dibaca dari database lokal.
+            </div>
           </main>
         </div>
       </div>

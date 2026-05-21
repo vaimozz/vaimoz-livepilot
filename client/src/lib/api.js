@@ -112,6 +112,10 @@ export const api = {
   },
   analytics: {
     get: (campaignId) => apiRequest(`/campaigns/${campaignId}/analytics`),
+    getGlobal: (params = {}) => {
+      const search = new URLSearchParams(params).toString();
+      return apiRequest(`/analytics${search ? `?${search}` : ''}`);
+    },
   },
   monitor: {
     metrics: () => apiRequest('/monitor/metrics'),

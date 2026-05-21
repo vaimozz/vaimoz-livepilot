@@ -13,6 +13,7 @@ import { youtubeRouter } from './services/http/youtube.routes.js';
 import { monitorRouter } from './services/http/monitor.routes.js';
 import { schedulerRouter } from './services/http/scheduler.routes.js';
 import { settingsRouter } from './services/http/settings.routes.js';
+import { analyticsRouter } from './services/http/analytics.routes.js';
 import { loadScheduledCampaigns } from './services/scheduler.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
@@ -40,6 +41,7 @@ app.use('/api/youtube', youtubeRouter);
 app.use('/api/monitor', monitorRouter);
 app.use('/api/scheduler', schedulerRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/analytics', analyticsRouter);
 
 const frontendDir = path.resolve(process.cwd(), 'public/frontend');
 if (fs.existsSync(path.join(frontendDir, 'index.html'))) {
