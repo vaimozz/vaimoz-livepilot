@@ -7,6 +7,8 @@ import { defaultActivePage } from '@/data/navigation.jsx';
 import { api, getToken, setToken } from '@/lib/api.js';
 import { renderPage } from './AppRouter.jsx';
 import { initializeTheme } from '@/lib/themeManager.js';
+import { ThemeProvider } from '@/contexts/ThemeContext.jsx';
+
 
 export default function VaimozLivePilotApp() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(getToken()));
