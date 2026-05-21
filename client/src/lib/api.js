@@ -130,4 +130,20 @@ export const api = {
     getNotifPrefs: () => apiRequest('/settings/notifications/prefs'),
     saveNotifPrefs: (prefs) => apiRequest('/settings/notifications', { method: 'POST', body: JSON.stringify(prefs) }),
   },
+  // Helper methods to match Axios-like requests used by some scheduler components
+  get: (path, options = {}) => {
+    const cleanedPath = path.startsWith('/api') ? path.substring(4) : path;
+    return apiRequest(cleanedPath, { method: 'GET', ...options }).then((data) => ({ data }));
+  },
+  post: (path, body, options = {}) => {
+    const cleanedPath = path.startsWith('/api') ? path.substring(4) : path;
+    return apiRequest(cleanedPath, {
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+      ...options,
+    }).then((data) => ({ data }));
+  },
 };
+
+export default api;
+
