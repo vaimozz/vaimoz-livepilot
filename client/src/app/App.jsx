@@ -6,13 +6,18 @@ import { LoginPage } from '@/components/auth/LoginPage.jsx';
 import { defaultActivePage } from '@/data/navigation.jsx';
 import { api, getToken, setToken } from '@/lib/api.js';
 import { renderPage } from './AppRouter.jsx';
-import { ThemeProvider } from '@/contexts/ThemeContext.jsx';
+import { initializeTheme } from '@/lib/themeManager.js';
 
 export default function VaimozLivePilotApp() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(getToken()));
   const [activePage, setActivePage] = useState(defaultActivePage);
   const [selectedPlatform, setSelectedPlatform] = useState('Semua');
   const [now, setNow] = useState(() => new Date());
+
+  // Initialize theme on mount
+  useEffect(() => {
+    initializeTheme();
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Radio } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card.jsx';
 import { SectionTitle } from '@/components/shared/SectionTitle.jsx';
+import { RecurringScheduleSettings } from '@/components/shared/RecurringScheduleSettings.jsx';
+import { RecurringHistory } from '@/components/shared/RecurringHistory.jsx';
 import { cx } from '@/lib/cn.js';
 import { api } from '@/lib/api.js';
 import { normalizeAssetFromApi } from '@/lib/assetUtils.js';
@@ -127,6 +129,22 @@ export function CampaignPage() {
   const [youtubeDescription, setYoutubeDescription] = useState('');
   const [youtubePrivacy, setYoutubePrivacy] = useState('Publik');
   const [youtubeThumbnailMode, setYoutubeThumbnailMode] = useState('Rotasi otomatis');
+  
+  // Recurring Schedule Settings
+  const [recurringSettings, setRecurringSettings] = useState({
+    recurringEnabled: false,
+    recurringType: 'once',
+    recurringDays: [],
+    recurringTime: '09:00',
+    recurringDurationMode: 'fixed',
+    recurringDurationMinutes: 60,
+    recurringDurationMin: 30,
+    recurringDurationMax: 120,
+    recurringEndDate: '',
+    recurringTimezone: 'Asia/Jakarta'
+  });
+  const [showRecurringSettings, setShowRecurringSettings] = useState(false);
+  const [showRecurringHistory, setShowRecurringHistory] = useState(false);
 
   const isManualMode = campaignMode === 'Manual (RTMP)';
   const showAssetRunner = shouldShowCampaignAssetRunner(campaignMode);
@@ -394,7 +412,7 @@ export function CampaignPage() {
     try {
       if (isManualMode) {
         const summary = `Draft kampanye ${campaignMode} berhasil disiapkan. ${formatManualCampaignSchedule(manualStartDate, manualStartTime, manualStopDate, manualStopTime, autoStopEnabled)}. ${formatSmartStopRule(smartStopEnabled, smartStopViewerThreshold, smartStopDelayMinutes)}. ${formatManualEncoderSettings(manualEncoderMode, manualBitrate, manualFps, manualResolution)}.`;
-        await api.campaigns.create({
+        const result = await api.campaigns.create({
           name: `Manual RTMP ${new Date().toLocaleString('id-ID')}`,
           mode: campaignMode,
           status: 'Draft',
@@ -412,12 +430,19 @@ export function CampaignPage() {
             encoder: { mode: manualEncoderMode, resolution: manualResolution, bitrate: manualBitrate, fps: manualFps },
           },
         });
+        
+        // Save recurring settings if enabled
+        if (recurringSettings.recurringEnabled && result.campaign?.id) {
+          await api.post(`/api/scheduler/campaigns/${result.campaign.id}/recurring`, recurringSettings);
+        }
+        
+        lastCampaignIdRef.current = result.campaign?.id || null;
         setCampaignMessage(`${summary} Data tersimpan ke SQLite.`);
-        return;
+        return result.campaign;
       }
 
       const summary = `Draft kampanye ${campaignMode} berhasil disiapkan. ${formatYoutubeScheduleMode(youtubeScheduleType, youtubeDurationMode)}. ${formatYoutubePlaylistSelection(selectedYoutubePlaylist)}. ${formatAssetRotation('Video', selectedVideos.length)}. ${formatAssetRotation('Thumbnail', selectedThumbnails.length)}. ${formatManualCampaignSchedule(youtubeStartDate, youtubeStartTime, youtubeStopDate, youtubeStopTime, youtubeAutoStopEnabled)}. ${formatSmartStopRule(youtubeSmartStopEnabled, youtubeSmartStopViewerThreshold, youtubeSmartStopDelayMinutes)}. ${formatManualEncoderSettings(youtubeEncoderMode, youtubeBitrate, youtubeFps, youtubeResolution)}. ${formatReplayPrivacy(youtubeReplayPrivacy)}. ${formatAutoChatbotSettings(youtubeChatbotEnabled, youtubeChatbotMode, youtubeChatbotInterval, youtubeChatbotMessages)}. ${formatYouTubeCampaignSettings(youtubeMonetizationEnabled, youtubeAiContentAnswer, youtubeTags)}.`;
-      await api.campaigns.create({
+      const result = await api.campaigns.create({
         name: `YouTube API ${new Date().toLocaleString('id-ID')}`,
         mode: campaignMode,
         status: 'Draft',
@@ -470,10 +495,19 @@ export function CampaignPage() {
           aiContentAnswer: youtubeAiContentAnswer,
         },
       });
+      
+      // Save recurring settings if enabled
+      if (recurringSettings.recurringEnabled && result.campaign?.id) {
+        await api.post(`/api/scheduler/campaigns/${result.campaign.id}/recurring`, recurringSettings);
+      }
+      
+      lastCampaignIdRef.current = result.campaign?.id || null;
       setCampaignMessage(`${summary} Data tersimpan ke SQLite.`);
+      return result.campaign;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Terjadi kesalahan tidak dikenal.';
       setCampaignMessage(`Gagal menyimpan campaign ke SQLite: ${message}`);
+      return null;
     }
   };
 
@@ -511,6 +545,46 @@ export function CampaignPage() {
          <Card className={cx('rounded-3xl border-slate-800 bg-slate-900/70', showAssetRunner ? 'xl:col-span-2' : 'xl:col-span-1')}><CardContent className="p-5"><div className="mb-6 flex flex-col justify-between gap-3 md:flex-row md:items-center"><div><h3 className="text-lg font-bold text-white">{isManualMode ? 'Manual RTMP Stream' : 'YouTube API Broadcast'}</h3><p className="mt-1 text-sm text-slate-400">{isManualMode ? 'Masukkan data RTMP dari platform tujuan.' : 'Buat live otomatis menggunakan channel YouTube yang sudah terhubung.'}</p></div><span className={cx('w-fit rounded-full px-3 py-1 text-xs font-bold', isManualMode ? 'bg-amber-500/10 text-amber-300' : 'bg-emerald-500/10 text-emerald-300')}>{isManualMode ? 'RTMP Manual' : 'YouTube API v3'}</span></div>{isManualMode ? <ManualRtmpForm state={manualState} setters={setters} onSaveDraft={saveManualDraft} onStartLive={startManualLive} onStopLive={stopManualLive} isSaving={isSavingDraft} isStarting={isStartingLive} isLive={!!activeStreamId} streamInfo={streamInfo} /> : <YoutubeApiForm state={youtubeState} setters={setters} youtubeChannels={youtubeChannels} availableYoutubePlaylists={availableYoutubePlaylists} selectedYoutubePlaylist={selectedYoutubePlaylist} changeYoutubeChannel={changeYoutubeChannel} />}</CardContent></Card>
         {showAssetRunner ? <Card className="rounded-3xl border-slate-800 bg-slate-900/70"><CardContent className="p-5"><h3 className="mb-1 text-lg font-bold text-white">Aset &amp; Runner</h3><p className="mb-5 text-sm text-slate-400">Pilih sumber video dan pengaturan proses FFmpeg.</p><AssetRunnerPanel state={youtubeState} setters={setters} campaignVideoAssets={campaignVideoAssets} campaignThumbnailAssets={campaignThumbnailAssets} saveCampaignDraft={saveCampaignDraft} isLoadingAssets={isLoadingCampaignAssets} onRefreshAssets={() => loadCampaignAssets('Aset kampanye dimuat ulang dari SQLite.')} /></CardContent></Card> : null}
       </section>
+      
+      {/* Recurring Schedule Section */}
+      <section className="mt-6">
+        <div className="mb-4 flex items-center justify-between">
+          <button
+            onClick={() => setShowRecurringSettings(!showRecurringSettings)}
+            className="text-lg font-bold text-white hover:text-cyan-400 transition"
+          >
+            {showRecurringSettings ? '▼' : '▶'} Recurring Schedule (Opsional)
+          </button>
+          {lastCampaignIdRef.current && (
+            <button
+              onClick={() => setShowRecurringHistory(!showRecurringHistory)}
+              className="text-sm text-cyan-400 hover:text-cyan-300 transition"
+            >
+              {showRecurringHistory ? 'Sembunyikan' : 'Lihat'} Riwayat
+            </button>
+          )}
+        </div>
+        
+        {showRecurringSettings && (
+          <RecurringScheduleSettings
+            settings={recurringSettings}
+            onChange={(newSettings, isValid) => {
+              setRecurringSettings(newSettings);
+              if (isValid) {
+                setCampaignMessage('Recurring schedule siap disimpan bersama campaign');
+              }
+            }}
+            disabled={isSavingDraft || isStartingLive || isStartingYoutubeLive}
+          />
+        )}
+        
+        {showRecurringHistory && lastCampaignIdRef.current && (
+          <div className="mt-4">
+            <RecurringHistory campaignId={lastCampaignIdRef.current} />
+          </div>
+        )}
+      </section>
+      
       <YoutubePlaylistModal open={isYoutubePlaylistModalOpen} onClose={() => setIsYoutubePlaylistModalOpen(false)} value={newYoutubePlaylistName} setValue={setNewYoutubePlaylistName} onCreate={createYoutubePlaylist} channelName={youtubeChannels.find((channel) => String(channel.id) === String(youtubeChannelId))?.name || 'Channel YouTube'} />
     </>
   );

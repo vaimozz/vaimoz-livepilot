@@ -179,6 +179,63 @@ function runMigrations() {
   if (!streamCols.includes('smart_stop_reason')) {
     db.exec('ALTER TABLE streams ADD COLUMN smart_stop_reason TEXT');
   }
+
+  // Recurring schedule columns for campaigns
+  const campaignCols = db.prepare("PRAGMA table_info(campaigns)").all().map((c) => c.name);
+  
+  if (!campaignCols.includes('recurring_enabled')) {
+    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_enabled INTEGER DEFAULT 0');
+  }
+  if (!campaignCols.includes('recurring_type')) {
+    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_type TEXT DEFAULT "once"');
+  }
+  if (!campaignCols.includes('recurring_days_json')) {
+    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_days_json TEXT DEFAULT "[]"');
+  }
+  if (!campaignCols.includes('recurring_time')) {
+    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_time TEXT');
+  }
+  if (!campaignCols.includes('recurring_duration_mode')) {
+    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_duration_mode TEXT DEFAULT "fixed"');
+  }
+  if (!campaignCols.includes('recurring_duration_minutes')) {
+    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_duration_minutes INTEGER');
+  }
+  if (!campaignCols.includes('recurring_duration_min')) {
+    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_duration_min INTEGER');
+  }
+  if (!campaignCols.includes('recurring_duration_max')) {
+    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_duration_max INTEGER');
+  }
+  if (!campaignCols.includes('recurring_end_date')) {
+    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_end_date TEXT');
+  }
+  if (!campaignCols.includes('recurring_timezone')) {
+    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_timezone TEXT DEFAULT "Asia/Jakarta"');
+  }
+  if (!campaignCols.includes('last_executed_at')) {
+    db.exec('ALTER TABLE campaigns ADD COLUMN last_executed_at TEXT');
+  }
+  if (!campaignCols.includes('next_execution_at')) {
+    db.exec('ALTER TABLE campaigns ADD COLUMN next_execution_at TEXT');
+  }
+  if (!campaignCols.includes('execution_count')) {
+    db.exec('ALTER TABLE campaigns ADD COLUMN execution_count INTEGER DEFAULT 0');
+  }
+
+  // Create recurring_history table if not exists
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS recurring_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      campaign_id INTEGER NOT NULL,
+      executed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      status TEXT NOT NULL DEFAULT 'success',
+      duration_minutes INTEGER,
+      error_message TEXT,
+      stream_id INTEGER,
+      FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
+    );
+  `);
 }
 
 function seedAdmin() {

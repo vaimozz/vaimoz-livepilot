@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Bell, Radio, Moon, Sun } from 'lucide-react';
+import { Bell, Radio, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
+import { ThemeSwitcher } from '@/components/shared/ThemeSwitcher.jsx';
 import { formatTopbarDate, formatTopbarTime } from '@/lib/formatters.js';
 import { canUpdateAccount } from '@/lib/validation.js';
 import { api } from '@/lib/api.js';
-import { useTheme } from '@/contexts/ThemeContext.jsx';
 
 export function AppTopBar({ now }) {
-  const { theme, toggleTheme } = useTheme();
+  const [isThemeSwitcherOpen, setIsThemeSwitcherOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [accountName, setAccountName] = useState('Akun');
   const [draftAccountName, setDraftAccountName] = useState('');
@@ -63,31 +63,74 @@ export function AppTopBar({ now }) {
 
   return (
     <>
-      <div className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-gray-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 px-5 backdrop-blur lg:px-8 transition-colors duration-300">
+      <ThemeSwitcher isOpen={isThemeSwitcherOpen} onClose={() => setIsThemeSwitcherOpen(false)} />
+      
+      <div className="sticky top-0 z-50 flex h-16 items-center justify-between border-b px-5 backdrop-blur lg:px-8 transition-all duration-300" style={{
+        borderColor: 'var(--border-primary)',
+        backgroundColor: 'var(--bg-secondary)95'
+      }}>
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 shadow-lg shadow-cyan-500/20"><Radio className="h-5 w-5 text-white" /></div>
-          <div><h1 className="text-sm font-bold tracking-tight text-gray-900 dark:text-white sm:text-base">Vaimoz LivePilot</h1><p className="text-[10px] text-gray-500 dark:text-slate-400 sm:text-xs">Pusat Kontrol Live Otomatis</p></div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl shadow-glow-cyan" style={{
+            background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+          }}>
+            <Radio className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-sm font-bold tracking-tight sm:text-base" style={{ color: 'var(--text-primary)' }}>
+              Vaimoz LivePilot
+            </h1>
+            <p className="text-[10px] sm:text-xs" style={{ color: 'var(--text-muted)' }}>
+              Pusat Kontrol Live Otomatis
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-slate-400">
-          <span>{formatTopbarDate(now)}</span><span className="text-gray-300 dark:text-slate-600">•</span><span className="tabular-nums">{formatTopbarTime(now)}</span>
-          <span className="h-5 w-px bg-gray-300 dark:bg-slate-600" />
+        <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+          <span>{formatTopbarDate(now)}</span>
+          <span style={{ color: 'var(--border-primary)' }}>•</span>
+          <span className="tabular-nums">{formatTopbarTime(now)}</span>
+          <span className="h-5 w-px" style={{ backgroundColor: 'var(--border-primary)' }} />
           
-          {/* Theme Toggle Button */}
+          {/* Theme Switcher Button */}
           <button 
             type="button" 
-            onClick={toggleTheme}
-            className="rounded-lg p-1.5 text-gray-600 dark:text-slate-400 transition hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white" 
-            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            onClick={() => setIsThemeSwitcherOpen(true)}
+            className="rounded-lg p-1.5 transition hover:scale-110" 
+            style={{
+              color: 'var(--accent-primary)',
+            }}
+            aria-label="Change theme"
+            title="Ganti Tema"
           >
-            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            <Palette className="h-4 w-4" />
           </button>
           
-          <button type="button" onClick={openAccountModal} className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-gray-700 dark:text-slate-300 transition hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white" aria-label="Profil akun">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500 text-xs font-bold text-white dark:text-slate-950">{accountName.slice(0, 1).toUpperCase()}</span>
-            <span className="hidden max-w-32 truncate text-xs font-semibold md:inline">{accountName}</span>
+          <button 
+            type="button" 
+            onClick={openAccountModal} 
+            className="flex items-center gap-2 rounded-xl px-2 py-1.5 transition" 
+            style={{
+              color: 'var(--text-secondary)',
+            }}
+            aria-label="Profil akun"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white" style={{
+              backgroundColor: 'var(--accent-primary)'
+            }}>
+              {accountName.slice(0, 1).toUpperCase()}
+            </span>
+            <span className="hidden max-w-32 truncate text-xs font-semibold md:inline">
+              {accountName}
+            </span>
           </button>
-          <button type="button" className="rounded-lg p-1.5 text-gray-600 dark:text-slate-400 transition hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white" aria-label="Notifikasi"><Bell className="h-4 w-4" /></button>
+          
+          <button 
+            type="button" 
+            className="rounded-lg p-1.5 transition" 
+            style={{ color: 'var(--text-muted)' }}
+            aria-label="Notifikasi"
+          >
+            <Bell className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
