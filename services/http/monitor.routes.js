@@ -13,9 +13,15 @@ monitorRouter.use(requireAuth);
 function getDiskUsage() {
   try {
     const stat = fs.statSync(config.uploadDir);
-    return { uploadDir: config.uploadDir, available: true, inode: stat.ino };
+    const row = db.prepare('SELECT SUM(size_bytes) as totalSize FROM assets').get();
+    return { 
+      uploadDir: config.uploadDir, 
+      available: true, 
+      inode: stat.ino,
+      usedBytes: Number(row?.totalSize || 0)
+    };
   } catch {
-    return { uploadDir: config.uploadDir, available: false };
+    return { uploadDir: config.uploadDir, available: false, usedBytes: 0 };
   }
 }
 
@@ -24,12 +30,18 @@ monitorRouter.get('/metrics', asyncHandler(async (req, res) => {
   const memoryFree = os.freemem();
   const memoryUsed = memoryTotal - memoryFree;
   const load = os.loadavg();
+  const hasYoutube = db.prepare('SELECT COUNT(id) as count FROM youtube_channels WHERE refresh_token IS NOT NULL AND refresh_token != ""').get().count > 0;
+  
   res.json({
     cpu: { cores: os.cpus().length, load1: load[0], load5: load[1], load15: load[2] },
     memory: { total: memoryTotal, free: memoryFree, used: memoryUsed, percent: Math.round((memoryUsed / memoryTotal) * 100) },
     disk: getDiskUsage(),
     streams: listRunningStreams(),
     uptime: process.uptime(),
+    apiStatus: {
+      youtube: hasYoutube,
+      facebook: false
+    }
   });
 }));
 
