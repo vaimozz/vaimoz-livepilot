@@ -6,7 +6,7 @@ import { SectionLabel } from '@/components/shared/SectionTitle.jsx';
 import { StatCard, SystemStatCard, InternetSpeedCard } from '@/components/shared/StatCards.jsx';
 import { CampaignTable } from './CampaignTable.jsx';
 import { SchedulerPanel } from './SchedulerPanel.jsx';
-import { getVisibleCampaigns, normalizeDashboardCampaign } from '@/lib/dashboardUtils.js';
+import { getVisibleCampaigns, normalizeDashboardCampaign, getStreamingRows } from '@/lib/dashboardUtils.js';
 import { cx } from '@/lib/cn.js';
 import { api } from '@/lib/api.js';
 
