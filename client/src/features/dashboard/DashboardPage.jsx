@@ -194,7 +194,7 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
                 ))}
               </div>
             </div>
-            <CampaignTable visibleCampaigns={visibleCampaigns} selectedPlatform={selectedPlatform} onRefresh={loadDashboardData} onEdit={(campaign) => { setEditCampaign(campaign); setActivePage('Kampanye Live'); }} />
+            <CampaignTable streamingRows={streamingRows} onRefresh={loadDashboardData} onEdit={(campaign) => { setEditCampaign(campaign); setActivePage('Kampanye Live'); }} />
           </CardContent>
         </Card>
       </section>

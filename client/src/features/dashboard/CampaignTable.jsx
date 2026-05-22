@@ -5,8 +5,7 @@ import { getStreamingRows } from '@/lib/dashboardUtils.js';
 import { StreamPreview } from '@/components/shared/Previews.jsx';
 import { api } from '@/lib/api.js';
 
-export function CampaignTable({ visibleCampaigns, selectedPlatform, onRefresh, onEdit }) {
-  const streamingRows = getStreamingRows(visibleCampaigns, selectedPlatform);
+export function CampaignTable({ streamingRows, onRefresh, onEdit }) {
   const [actionLoading, setActionLoading] = useState({}); // { [rowId]: true }
   const [actionMsg, setActionMsg] = useState('');
 
