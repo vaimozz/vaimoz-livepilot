@@ -310,7 +310,7 @@ export function SettingsPage() {
                       className="flex items-center justify-between p-4 border border-slate-700 rounded-2xl bg-slate-800/50 hover:border-slate-600 transition"
                     >
                       <div className="flex items-center gap-3">
-                        {ch.avatar ? (
+                        {ch.avatar && ch.avatar.startsWith('http') ? (
                           <img src={ch.avatar} alt={ch.title} className="w-10 h-10 rounded-full" />
                         ) : (
                           <div className="w-10 h-10 rounded-full bg-red-500 text-white flex items-center justify-center text-sm font-bold">

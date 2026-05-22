@@ -26,7 +26,7 @@ youtubeRouter.get('/callback', asyncHandler(async (req, res) => {
   const snippet = channel?.snippet || {};
   const youtubeChannelId = channel?.id || '';
   const title = snippet.title || 'YouTube Channel';
-  const avatar = title.split(/\s+/).slice(0, 2).map((item) => item[0]).join('').toUpperCase() || 'YT';
+  const avatar = snippet.thumbnails?.default?.url || snippet.thumbnails?.medium?.url || snippet.thumbnails?.high?.url || title.split(/\s+/).slice(0, 2).map((item) => item[0]).join('').toUpperCase() || 'YT';
   const expiresAt = tokens.expiry_date || Date.now() + 3600 * 1000;
 
   const exists = db.prepare('SELECT id FROM youtube_channels WHERE youtube_channel_id = ?').get(youtubeChannelId);
