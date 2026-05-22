@@ -42,7 +42,7 @@ youtubeRouter.get('/callback', asyncHandler(async (req, res) => {
     `).run(youtubeChannelId, title, tokens.access_token || '', tokens.refresh_token || '', expiresAt, avatar, 0);
   }
 
-  res.send('<h2>YouTube channel tersambung.</h2><p>Silakan kembali ke Vaimoz LivePilot.</p>');
+  res.redirect('/settings?youtube_connected=1');
 }));
 
 youtubeRouter.use(requireAuth);
