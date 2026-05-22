@@ -109,10 +109,22 @@ function getExecutionDuration(campaign) {
 function shouldExecute(campaign) {
   if (!campaign.recurring_end_date) return true;
   
-  const endDate = new Date(campaign.recurring_end_date);
-  const now = new Date();
-  
-  return now <= endDate;
+  const tz = campaign.recurring_timezone || 'Asia/Jakarta';
+  try {
+    // Get current YYYY-MM-DD in the target timezone (en-CA outputs YYYY-MM-DD)
+    const formatter = new Intl.DateTimeFormat('en-CA', { 
+      timeZone: tz,
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    });
+    const currentTzDateStr = formatter.format(new Date());
+    
+    // Compare YYYY-MM-DD strings directly
+    return currentTzDateStr <= campaign.recurring_end_date;
+  } catch (e) {
+    // Fallback if timezone is invalid
+    const endDate = new Date(campaign.recurring_end_date);
+    return new Date() <= endDate;
+  }
 }
 
 /**
