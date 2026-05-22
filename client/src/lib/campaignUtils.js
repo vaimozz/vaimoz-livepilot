@@ -1,5 +1,5 @@
 export const youtubeScheduleTypes = ['Sekali Jalan', 'Harian', 'Mingguan', 'Bulanan'];
-export const youtubeDurationModes = ['Tetap (Sesuai Jam Stop)', 'Acak (Random Range)', 'Pola (Berulang)'];
+export const youtubeDurationModes = ['Tetap (Pilih Durasi Jam)', 'Acak (Random Range)', 'Pola (Berulang)'];
 export const youtubeWeekdayOptions = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 export const recurringTypes = [
   { value: 'once', label: 'Sekali Jalan' },

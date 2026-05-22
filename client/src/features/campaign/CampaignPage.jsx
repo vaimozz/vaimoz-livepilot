@@ -99,7 +99,7 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
   const [youtubeReplayPrivacy, setYoutubeReplayPrivacy] = useState('Unlisted');
   const [youtubeCategoryId, setYoutubeCategoryId] = useState('10');
   const [youtubeScheduleType, setYoutubeScheduleType] = useState('Harian');
-  const [youtubeDurationMode, setYoutubeDurationMode] = useState('Tetap (Sesuai Jam Stop)');
+  const [youtubeDurationMode, setYoutubeDurationMode] = useState('Tetap (Pilih Durasi Jam)');
   const [youtubeRandomStopMin, setYoutubeRandomStopMin] = useState('19:00');
   const [youtubeRandomStopMax, setYoutubeRandomStopMax] = useState('22:00');
   const [youtubeRepeatLiveDuration, setYoutubeRepeatLiveDuration] = useState('60');
@@ -109,7 +109,7 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
   const [youtubeStartDate, setYoutubeStartDate] = useState(todayString());
   const [youtubeStartTime, setYoutubeStartTime] = useState(timeString(10));
   const [youtubeStopDate, setYoutubeStopDate] = useState(todayString());
-  const [youtubeStopTime, setYoutubeStopTime] = useState(timeString(130));
+  const [youtubeStopTime, setYoutubeStopTime] = useState('1');
   const [youtubeAutoStopEnabled, setYoutubeAutoStopEnabled] = useState(true);
   const [youtubeSmartStopEnabled, setYoutubeSmartStopEnabled] = useState(true);
   const [youtubeSmartStopViewerThreshold, setYoutubeSmartStopViewerThreshold] = useState('25');
@@ -261,9 +261,9 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
       setYoutubeStartDate(config.startDate || todayString());
       setYoutubeStartTime(config.startTime || timeString(10));
       setYoutubeStopDate(config.stopDate || todayString());
-      setYoutubeStopTime(config.stopTime || timeString(130));
+      setYoutubeStopTime(config.stopTime || '1');
       
-      setYoutubeDurationMode(config.durationMode || 'Tetap (Sesuai Jam Stop)');
+      setYoutubeDurationMode(config.durationMode === 'Tetap (Sesuai Jam Stop)' ? 'Tetap (Pilih Durasi Jam)' : (config.durationMode || 'Tetap (Pilih Durasi Jam)'));
       setYoutubeAutoStopEnabled(config.autoStopEnabled ?? true);
       setYoutubeRandomStopMin(config.randomStopMin || '19:00');
       setYoutubeRandomStopMax(config.randomStopMax || '22:00');
@@ -632,9 +632,9 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
                        youtubeScheduleType === 'Bulanan' ? 'monthly' : 'once',
         recurringDays: youtubeWeeklyDays || [],
         recurringTime: youtubeStartTime || '00:00',
-        recurringDurationMode: youtubeDurationMode === 'Tetap (Sesuai Jam Stop)' ? 'fixed' :
+        recurringDurationMode: youtubeDurationMode === 'Tetap (Pilih Durasi Jam)' ? 'fixed' :
                                youtubeDurationMode === 'Acak' ? 'random' : 'pattern',
-        recurringDurationMinutes: 60,
+        recurringDurationMinutes: youtubeDurationMode === 'Tetap (Pilih Durasi Jam)' ? (parseInt(youtubeStopTime) || 1) * 60 : 60,
         recurringDurationMin: 30,
         recurringDurationMax: 120,
         recurringEndDate: youtubeStopDate || '',

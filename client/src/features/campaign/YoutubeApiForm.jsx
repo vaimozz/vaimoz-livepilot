@@ -167,10 +167,17 @@ export function YoutubeApiForm({ state, setters, youtubeChannels = [], available
               {youtubeDurationModes.map((mode) => <option key={mode}>{mode}</option>)}
             </select>
             <div className={cx('mt-4', !state.youtubeAutoStopEnabled && 'opacity-40')}>
-              {state.youtubeDurationMode === 'Tetap (Sesuai Jam Stop)' && (
+              {state.youtubeDurationMode === 'Tetap (Pilih Durasi Jam)' && (
                 <>
-                  <input type="time" value={state.youtubeStopTime} onChange={(e) => setters.setYoutubeStopTime(e.target.value)} disabled={!state.youtubeAutoStopEnabled} className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white outline-none" />
-                  <p className="mt-2 text-right text-[11px] italic text-slate-400">Live berhenti tepat jam ini.</p>
+                  <select value={state.youtubeStopTime} onChange={(e) => setters.setYoutubeStopTime(e.target.value)} disabled={!state.youtubeAutoStopEnabled} className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white outline-none">
+                    <option value="1">1 Jam</option>
+                    <option value="3">3 Jam</option>
+                    <option value="6">6 Jam</option>
+                    <option value="8">8 Jam</option>
+                    <option value="10">10 Jam</option>
+                    <option value="12">12 Jam</option>
+                  </select>
+                  <p className="mt-2 text-right text-[11px] italic text-slate-400">Live berhenti setelah durasi jam ini tercapai.</p>
                 </>
               )}
               {state.youtubeDurationMode === 'Acak (Random Range)' && (
