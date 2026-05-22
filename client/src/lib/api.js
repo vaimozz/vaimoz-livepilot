@@ -20,7 +20,12 @@ export async function apiRequest(path, options = {}) {
   const contentType = response.headers.get('content-type') || '';
   const data = contentType.includes('application/json') ? await response.json() : await response.text();
   if (!response.ok) {
-    const message = typeof data === 'string' ? data : data.error || 'Request gagal.';
+    let message = typeof data === 'string' ? data : data.error || 'Request gagal.';
+    if (response.status === 413) {
+      message = 'File terlalu besar. Server menolak permintaan (413 Request Entity Too Large). Silakan periksa konfigurasi server Nginx (client_max_body_size).';
+    } else if (typeof message === 'string' && message.includes('<html')) {
+      message = `Server Error HTTP ${response.status}`;
+    }
     // Jika server membalas 401, token sudah expired — paksa logout
     if (response.status === 401) {
       setToken(null);
@@ -58,7 +63,12 @@ export const api = {
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve(JSON.parse(xhr.responseText));
         } else {
-          const msg = (() => { try { return JSON.parse(xhr.responseText).error; } catch { return 'Upload gagal.'; } })();
+          let msg = (() => { try { return JSON.parse(xhr.responseText).error; } catch { return 'Upload gagal.'; } })();
+          if (xhr.status === 413) {
+            msg = 'File terlalu besar. Server menolak permintaan (413 Request Entity Too Large). Silakan periksa konfigurasi server Nginx (client_max_body_size).';
+          } else if (typeof xhr.responseText === 'string' && xhr.responseText.includes('<html')) {
+            msg = `Server Error HTTP ${xhr.status}`;
+          }
           if (xhr.status === 401) { setToken(null); window.dispatchEvent(new CustomEvent('vaimoz:unauthorized')); }
           reject(new Error(msg));
         }

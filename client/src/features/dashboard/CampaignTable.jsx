@@ -11,16 +11,25 @@ export function CampaignTable({ visibleCampaigns, selectedPlatform, onRefresh })
   const [actionMsg, setActionMsg] = useState('');
 
   const handleStart = async (row) => {
-    const rtmpUrl = row.rtmpUrl || row.config?.rtmpUrl || '';
-    const streamKey = row.config?.streamKey || '';
-    if (!rtmpUrl) {
-      setActionMsg(`⚠ ${row.name}: RTMP URL tidak ditemukan di config kampanye.`);
-      return;
-    }
     setActionLoading((prev) => ({ ...prev, [row.rowId]: true }));
     setActionMsg(`Memulai stream untuk ${row.name}...`);
     try {
-      const result = await api.streams.startCampaign(row.id, { rtmpUrl, streamKey });
+      const mode = row.niche; // mode is mapped to niche in dashboardUtils.js
+      let result;
+      
+      if (mode === 'YouTube API') {
+        result = await api.campaigns.startYoutubeLive(row.id);
+      } else {
+        const rtmpUrl = row.rtmpUrl || row.config?.rtmpUrl || '';
+        const streamKey = row.config?.streamKey || '';
+        if (!rtmpUrl) {
+          setActionMsg(`⚠ ${row.name}: RTMP URL tidak ditemukan di config kampanye.`);
+          setActionLoading((prev) => ({ ...prev, [row.rowId]: false }));
+          return;
+        }
+        result = await api.campaigns.start(row.id, { rtmpUrl, streamKey });
+      }
+      
       setActionMsg(`🔴 ${row.name} dimulai! Video: ${result.chosenVideo?.name || '-'} (PID ${result.pid || '-'})`);
       onRefresh?.();
     } catch (err) {
