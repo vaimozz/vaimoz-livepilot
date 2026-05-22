@@ -167,7 +167,7 @@ function AssetEmptyState({ label }) {
   );
 }
 
-export function AssetRunnerPanel({
+export function AssetSelectorPanel({
   state,
   setters,
   campaignVideoAssets,
@@ -420,6 +420,35 @@ export function AssetRunnerPanel({
         </p>
       </div>
 
+          </div>
+  );
+}
+
+export function EncoderPanel({ state, setters }) {
+  const updateEncoder = (nextMode) => {
+    setters.setYoutubeEncoderMode(nextMode);
+    if (nextMode === 'Stream Copy (CPU ringan)') {
+      setters.setYoutubeResolution('Ikuti sumber');
+      setters.setYoutubeBitrate('Ikuti sumber');
+      setters.setYoutubeFps('Ikuti sumber');
+      return;
+    }
+    const defaultResolution = state.youtubeResolution === 'Ikuti sumber' ? '1080p Full HD' : state.youtubeResolution;
+    const preset = getEncoderPresetByResolution(defaultResolution);
+    setters.setYoutubeResolution(defaultResolution);
+    setters.setYoutubeBitrate(preset.bitrate);
+    setters.setYoutubeFps(preset.fps);
+  };
+
+  const updateResolution = (nextResolution) => {
+    const preset = getEncoderPresetByResolution(nextResolution);
+    setters.setYoutubeResolution(nextResolution);
+    setters.setYoutubeBitrate(preset.bitrate);
+    setters.setYoutubeFps(preset.fps);
+  };
+
+  return (
+    <div className="space-y-4">
       {/* ── Encoder YouTube ───────────────────────────────── */}
       <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
         <button

@@ -23,7 +23,7 @@ import {
 import { CampaignModeSelector } from './CampaignModeSelector.jsx';
 import { ManualRtmpForm } from './ManualRtmpForm.jsx';
 import { YoutubeApiForm } from './YoutubeApiForm.jsx';
-import { AssetRunnerPanel } from './AssetRunnerPanel.jsx';
+import { AssetSelectorPanel, EncoderPanel } from './AssetRunnerPanel.jsx';
 import { YoutubePlaylistModal } from './YoutubePlaylistModal.jsx';
 import { YoutubeLiveControls } from './YoutubeLiveControls.jsx';
 import { YoutubeLiveStats } from './YoutubeLiveStats.jsx';
@@ -693,8 +693,26 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
       )}
 
       <section className={cx('grid gap-5', showAssetRunner ? 'xl:grid-cols-3' : 'xl:grid-cols-1')}>
-         <Card className={cx('rounded-3xl border-slate-800 bg-slate-900/70', showAssetRunner ? 'xl:col-span-2' : 'xl:col-span-1')}><CardContent className="p-5"><div className="mb-6 flex flex-col justify-between gap-3 md:flex-row md:items-center"><div><h3 className="text-lg font-bold text-white">{isManualMode ? 'Manual RTMP Stream' : 'YouTube API Broadcast'}</h3><p className="mt-1 text-sm text-slate-400">{isManualMode ? 'Masukkan data RTMP dari platform tujuan.' : 'Buat live otomatis menggunakan channel YouTube yang sudah terhubung.'}</p></div><span className={cx('w-fit rounded-full px-3 py-1 text-xs font-bold', isManualMode ? 'bg-amber-500/10 text-amber-300' : 'bg-emerald-500/10 text-emerald-300')}>{isManualMode ? 'RTMP Manual' : 'YouTube API v3'}</span></div>{isManualMode ? <ManualRtmpForm state={manualState} setters={setters} onSaveDraft={saveManualDraft} onStartLive={startManualLive} onStopLive={stopManualLive} isSaving={isSavingDraft} isStarting={isStartingLive} isLive={!!activeStreamId} streamInfo={streamInfo} /> : <YoutubeApiForm state={youtubeState} setters={setters} youtubeChannels={youtubeChannels} availableYoutubePlaylists={availableYoutubePlaylists} selectedYoutubePlaylist={selectedYoutubePlaylist} changeYoutubeChannel={changeYoutubeChannel} />}</CardContent></Card>
-        {showAssetRunner ? <Card className="rounded-3xl border-slate-800 bg-slate-900/70"><CardContent className="p-5"><h3 className="mb-1 text-lg font-bold text-white">Aset &amp; Runner</h3><p className="mb-5 text-sm text-slate-400">Pilih sumber video dan pengaturan proses FFmpeg.</p><AssetRunnerPanel state={youtubeState} setters={setters} campaignVideoAssets={campaignVideoAssets} campaignThumbnailAssets={campaignThumbnailAssets} saveCampaignDraft={saveCampaignDraft} isLoadingAssets={isLoadingCampaignAssets} onRefreshAssets={() => loadCampaignAssets('Aset kampanye dimuat ulang dari SQLite.')} /></CardContent></Card> : null}
+         <Card className={cx('rounded-3xl border-slate-800 bg-slate-900/70', showAssetRunner ? 'xl:col-span-2' : 'xl:col-span-1')}>
+           <CardContent className="p-5">
+             <div className="mb-6 flex flex-col justify-between gap-3 md:flex-row md:items-center">
+               <div>
+                 <h3 className="text-lg font-bold text-white">{isManualMode ? 'Manual RTMP Stream' : 'YouTube API Broadcast'}</h3>
+                 <p className="mt-1 text-sm text-slate-400">{isManualMode ? 'Masukkan data RTMP dari platform tujuan.' : 'Buat live otomatis menggunakan channel YouTube yang sudah terhubung.'}</p>
+               </div>
+               <span className={cx('w-fit rounded-full px-3 py-1 text-xs font-bold', isManualMode ? 'bg-amber-500/10 text-amber-300' : 'bg-emerald-500/10 text-emerald-300')}>{isManualMode ? 'RTMP Manual' : 'YouTube API v3'}</span>
+             </div>
+             {isManualMode ? <ManualRtmpForm state={manualState} setters={setters} onSaveDraft={saveManualDraft} onStartLive={startManualLive} onStopLive={stopManualLive} isSaving={isSavingDraft} isStarting={isStartingLive} isLive={!!activeStreamId} streamInfo={streamInfo} /> : <YoutubeApiForm state={youtubeState} setters={setters} youtubeChannels={youtubeChannels} availableYoutubePlaylists={availableYoutubePlaylists} selectedYoutubePlaylist={selectedYoutubePlaylist} changeYoutubeChannel={changeYoutubeChannel} />}
+             {showAssetRunner && (
+               <div className="mt-8 border-t border-slate-800 pt-8">
+                 <h3 className="mb-1 text-lg font-bold text-white">Aset Visual</h3>
+                 <p className="mb-5 text-sm text-slate-400">Pilih sumber video dan thumbnail untuk kampanye ini.</p>
+                 <AssetSelectorPanel state={youtubeState} setters={setters} campaignVideoAssets={campaignVideoAssets} campaignThumbnailAssets={campaignThumbnailAssets} saveCampaignDraft={saveCampaignDraft} isLoadingAssets={isLoadingCampaignAssets} onRefreshAssets={() => loadCampaignAssets('Aset kampanye dimuat ulang dari SQLite.')} />
+               </div>
+             )}
+           </CardContent>
+         </Card>
+        {showAssetRunner ? <Card className="rounded-3xl border-slate-800 bg-slate-900/70"><CardContent className="p-5"><h3 className="mb-1 text-lg font-bold text-white">FFmpeg Runner</h3><p className="mb-5 text-sm text-slate-400">Pengaturan proses encoding.</p><EncoderPanel state={youtubeState} setters={setters} /></CardContent></Card> : null}
       </section>
       
       {showRecurringHistory && lastCampaignIdRef.current && (
