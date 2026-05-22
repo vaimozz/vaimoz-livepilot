@@ -5,7 +5,7 @@ import { SectionTitle } from '@/components/shared/SectionTitle.jsx';
 import { RecurringScheduleSettings } from '@/components/shared/RecurringScheduleSettings.jsx';
 import { RecurringHistory } from '@/components/shared/RecurringHistory.jsx';
 import { cx } from '@/lib/cn.js';
-import { api } from '@/lib/api.js';
+import { api, apiRequest } from '@/lib/api.js';
 import { normalizeAssetFromApi } from '@/lib/assetUtils.js';
 import {
   defaultYoutubeChatbotMessages,
@@ -269,8 +269,20 @@ export function CampaignPage() {
           encoder: { mode: manualEncoderMode, resolution: manualResolution, bitrate: manualBitrate, fps: manualFps },
         },
       });
+      
+      // Save recurring settings if enabled and auto-schedule
+      if (recurringSettings.recurringEnabled && result.campaign?.id) {
+        await apiRequest(`/scheduler/campaigns/${result.campaign.id}/recurring`, { 
+          method: 'PUT', 
+          body: JSON.stringify(recurringSettings) 
+        });
+        await apiRequest(`/scheduler/campaigns/${result.campaign.id}/schedule`, { method: 'POST' });
+        setCampaignMessage(`Kampanye berhasil disimpan dan dijadwalkan: ${result.campaign?.name}.`);
+      } else {
+        setCampaignMessage(`Draft disimpan ke SQLite: ${result.campaign?.name}.`);
+      }
+      
       lastCampaignIdRef.current = result.campaign?.id || null;
-      setCampaignMessage(`Draft disimpan ke SQLite: ${result.campaign?.name}.`);
       return result.campaign;
     } catch (error) {
       setCampaignMessage(`Gagal menyimpan draft: ${error instanceof Error ? error.message : 'Kesalahan tidak dikenal.'}`);
@@ -431,13 +443,19 @@ export function CampaignPage() {
           },
         });
         
-        // Save recurring settings if enabled
+        // Save recurring settings if enabled and auto-schedule
         if (recurringSettings.recurringEnabled && result.campaign?.id) {
-          await api.post(`/api/scheduler/campaigns/${result.campaign.id}/recurring`, recurringSettings);
+          await apiRequest(`/scheduler/campaigns/${result.campaign.id}/recurring`, { 
+            method: 'PUT', 
+            body: JSON.stringify(recurringSettings) 
+          });
+          await apiRequest(`/scheduler/campaigns/${result.campaign.id}/schedule`, { method: 'POST' });
+          setCampaignMessage(`${summary} Data tersimpan dan kampanye dijadwalkan otomatis.`);
+        } else {
+          setCampaignMessage(`${summary} Data tersimpan ke SQLite.`);
         }
         
         lastCampaignIdRef.current = result.campaign?.id || null;
-        setCampaignMessage(`${summary} Data tersimpan ke SQLite.`);
         return result.campaign;
       }
 
@@ -496,13 +514,19 @@ export function CampaignPage() {
         },
       });
       
-      // Save recurring settings if enabled
+      // Save recurring settings if enabled and auto-schedule
       if (recurringSettings.recurringEnabled && result.campaign?.id) {
-        await api.post(`/api/scheduler/campaigns/${result.campaign.id}/recurring`, recurringSettings);
+        await apiRequest(`/scheduler/campaigns/${result.campaign.id}/recurring`, { 
+          method: 'PUT', 
+          body: JSON.stringify(recurringSettings) 
+        });
+        await apiRequest(`/scheduler/campaigns/${result.campaign.id}/schedule`, { method: 'POST' });
+        setCampaignMessage(`${summary} Data tersimpan dan kampanye dijadwalkan otomatis.`);
+      } else {
+        setCampaignMessage(`${summary} Data tersimpan ke SQLite.`);
       }
       
       lastCampaignIdRef.current = result.campaign?.id || null;
-      setCampaignMessage(`${summary} Data tersimpan ke SQLite.`);
       return result.campaign;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Terjadi kesalahan tidak dikenal.';
