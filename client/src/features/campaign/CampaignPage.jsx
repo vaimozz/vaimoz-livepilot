@@ -692,8 +692,8 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
         </div>
       )}
 
-      <section className={cx('grid gap-5', showAssetRunner ? 'xl:grid-cols-3' : 'xl:grid-cols-1')}>
-         <Card className={cx('rounded-3xl border-slate-800 bg-slate-900/70', showAssetRunner ? 'xl:col-span-2' : 'xl:col-span-1')}>
+      <section className="flex flex-col gap-5">
+         <Card className="rounded-3xl border-slate-800 bg-slate-900/70">
            <CardContent className="p-5">
              <div className="mb-6 flex flex-col justify-between gap-3 md:flex-row md:items-center">
                <div>
