@@ -712,7 +712,7 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
              )}
            </CardContent>
          </Card>
-        {showAssetRunner ? <Card className="rounded-3xl border-slate-800 bg-slate-900/70"><CardContent className="p-5"><h3 className="mb-1 text-lg font-bold text-white">FFmpeg Runner</h3><p className="mb-5 text-sm text-slate-400">Pengaturan proses encoding.</p><EncoderPanel state={youtubeState} setters={setters} /></CardContent></Card> : null}
+        {showAssetRunner ? <Card className="rounded-3xl border-slate-800 bg-slate-900/70"><CardContent className="p-5"><h3 className="mb-1 text-lg font-bold text-white">FFmpeg Runner</h3><p className="mb-5 text-sm text-slate-400">Pengaturan proses encoding.</p><EncoderPanel state={youtubeState} setters={setters} saveCampaignDraft={saveCampaignDraft} /></CardContent></Card> : null}
       </section>
       
       {showRecurringHistory && lastCampaignIdRef.current && (

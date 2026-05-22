@@ -424,7 +424,7 @@ export function AssetSelectorPanel({
   );
 }
 
-export function EncoderPanel({ state, setters }) {
+export function EncoderPanel({ state, setters, saveCampaignDraft }) {
   const updateEncoder = (nextMode) => {
     setters.setYoutubeEncoderMode(nextMode);
     if (nextMode === 'Stream Copy (CPU ringan)') {
