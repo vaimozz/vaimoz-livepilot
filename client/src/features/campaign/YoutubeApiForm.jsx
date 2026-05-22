@@ -168,17 +168,40 @@ export function YoutubeApiForm({ state, setters, youtubeChannels = [], available
             </select>
             <div className={cx('mt-4', !state.youtubeAutoStopEnabled && 'opacity-40')}>
               {state.youtubeDurationMode === 'Tetap (Pilih Durasi Jam)' && (
-                <>
-                  <select value={state.youtubeStopTime} onChange={(e) => setters.setYoutubeStopTime(e.target.value)} disabled={!state.youtubeAutoStopEnabled} className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white outline-none">
-                    <option value="1">1 Jam</option>
-                    <option value="3">3 Jam</option>
-                    <option value="6">6 Jam</option>
-                    <option value="8">8 Jam</option>
-                    <option value="10">10 Jam</option>
-                    <option value="12">12 Jam</option>
-                  </select>
-                  <p className="mt-2 text-right text-[11px] italic text-slate-400">Live berhenti setelah durasi jam ini tercapai.</p>
-                </>
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    {[1, 3, 6, 8, 10, 12].map(h => (
+                      <button 
+                        key={h} 
+                        type="button" 
+                        disabled={!state.youtubeAutoStopEnabled}
+                        onClick={() => setters.setYoutubeStopTime(String(h))}
+                        className={cx(
+                          "rounded-lg px-3 py-1.5 text-xs font-bold transition", 
+                          state.youtubeStopTime === String(h) 
+                            ? "bg-cyan-500 text-slate-900" 
+                            : "bg-slate-800 text-slate-300 hover:bg-slate-700",
+                          !state.youtubeAutoStopEnabled && "cursor-not-allowed opacity-50"
+                        )}
+                      >
+                        {h} Jam
+                      </button>
+                    ))}
+                  </div>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      min="1" 
+                      value={state.youtubeStopTime} 
+                      onChange={(e) => setters.setYoutubeStopTime(e.target.value)} 
+                      disabled={!state.youtubeAutoStopEnabled} 
+                      className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500" 
+                      placeholder="Atau ketik durasi kustom..." 
+                    />
+                    <span className="absolute right-4 top-3 text-sm font-bold text-slate-500">Jam</span>
+                  </div>
+                  <p className="mt-1 text-right text-[11px] italic text-slate-400">Live berhenti setelah durasi jam ini tercapai.</p>
+                </div>
               )}
               {state.youtubeDurationMode === 'Acak (Random Range)' && (
                 <div className="grid gap-3">
