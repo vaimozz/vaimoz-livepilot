@@ -80,8 +80,7 @@ export function CampaignTable({ visibleCampaigns, selectedPlatform, onRefresh, o
           <div className="min-w-[1080px]">
             <div className="grid grid-cols-12 border-b border-slate-800 bg-slate-900 px-7 py-4 text-[12px] font-semibold uppercase tracking-wide text-slate-300">
               <div className="col-span-4">Stream Name</div>
-              <div className="col-span-1">Dashboard</div>
-              <div className="col-span-1">Platform</div>
+              <div className="col-span-2">Platform</div>
               <div className="col-span-2">Schedule</div>
               <div className="col-span-2">Status</div>
               <div className="col-span-2 text-right">Actions</div>
@@ -119,29 +118,24 @@ export function CampaignTable({ visibleCampaigns, selectedPlatform, onRefresh, o
                         </div>
                       </div>
                     </div>
-                    <div className="col-span-1">
-                      {isYouTube ? (
-                        <a href="https://studio.youtube.com" target="_blank" rel="noreferrer" className="flex items-center gap-2 font-semibold text-white transition hover:text-red-400">
-                          <span className={cx('flex h-5 w-5 items-center justify-center rounded-full border text-[10px]', platformIconClass)}>
-                            ◎
-                          </span>
-                          <span className="truncate">{row.dashboard}</span>
-                        </a>
-                      ) : (
+                    <div className="col-span-2">
+                      <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-2 font-semibold text-white">
-                          <span className={cx('flex h-5 w-5 items-center justify-center rounded-full border text-[10px]', platformIconClass)}>
-                            f
+                          <span className={cx('flex h-4 w-4 items-center justify-center rounded border text-[9px]', platformIconClass)}>
+                            {isYouTube ? '▶' : 'f'}
                           </span>
-                          <span className="truncate">{row.dashboard}</span>
+                          <span>{row.platform}</span>
                         </div>
-                      )}
-                    </div>
-                    <div className="col-span-1">
-                      <div className="flex items-center gap-2 font-semibold text-white">
-                        <span className={cx('flex h-4 w-4 items-center justify-center rounded border text-[9px]', platformIconClass)}>
-                          {isYouTube ? '▶' : 'f'}
-                        </span>
-                        <span>{row.platform}</span>
+                        {isYouTube ? (
+                          <a href="https://studio.youtube.com" target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[11px] font-medium text-slate-400 transition hover:text-red-400">
+                            <span>Buka {row.dashboard}</span>
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                          </a>
+                        ) : (
+                          <div className="flex items-center gap-2 text-[11px] font-medium text-slate-400">
+                            <span>Buka {row.dashboard}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="col-span-2">
