@@ -5,6 +5,18 @@ import { countYoutubeTags, youtubeDurationModes, youtubeScheduleTypes, youtubeWe
 export function YoutubeApiForm({ state, setters, youtubeChannels = [], availableYoutubePlaylists, selectedYoutubePlaylist, changeYoutubeChannel }) {
   return (
     <div className="space-y-5">
+      {/* Nama Kampanye */}
+      <label className="block text-xs font-semibold text-slate-400">
+        Nama Kampanye / Tugas
+        <input
+          type="text"
+          value={state.youtubeCampaignName}
+          onChange={(e) => setters.setYoutubeCampaignName(e.target.value)}
+          className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500"
+          placeholder="Misal: Live Musik Channel 1 (Biar tidak tercampur saat dilihat di tabel tugas)"
+        />
+      </label>
+
       {/* Channel, Privasi, Playlist */}
       <div className="grid gap-4 xl:grid-cols-3">
         <label className="block text-xs font-semibold text-slate-400">
