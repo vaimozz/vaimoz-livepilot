@@ -40,9 +40,20 @@ export function getStreamingRows(items, selectedPlatform, youtubeChannels = [], 
     .flatMap((campaign) =>
       (campaign.platforms || []).map((platform) => {
         let channelName = platform === 'YouTube' ? 'YouTube Channel' : platform === 'Facebook' ? 'Facebook Page' : 'Custom RTMP';
-        if (platform === 'YouTube' && campaign.config?.youtubeChannelId) {
-          const ch = Array.isArray(youtubeChannels) ? youtubeChannels.find(c => String(c.id) === String(campaign.config.youtubeChannelId) || c.youtubeChannelId === campaign.config.youtubeChannelId) : null;
-          if (ch) channelName = ch.name || ch.title || channelName;
+        if (platform === 'YouTube') {
+          // First: use pre-resolved title from backend (most reliable)
+          if (campaign.config?.youtubeChannelTitle) {
+            channelName = campaign.config.youtubeChannelTitle;
+          } else if (campaign.config?.youtubeChannelId) {
+            // Fallback: find from ytChannels list by SQLite id or YouTube channel id string
+            const ch = Array.isArray(youtubeChannels)
+              ? youtubeChannels.find(c =>
+                  String(c.id) === String(campaign.config.youtubeChannelId) ||
+                  c.youtubeChannelId === campaign.config.youtubeChannelId
+                )
+              : null;
+            if (ch) channelName = ch.title || channelName;
+          }
         }
 
         const isOnline = campaign.status === 'Sedang Live' || campaign.status === 'Online' || campaign.status === 'Aktif' || campaign.status === 'Reconnecting';

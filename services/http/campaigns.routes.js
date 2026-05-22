@@ -31,7 +31,19 @@ campaignsRouter.use(requireAuth);
 // ── GET /campaigns ────────────────────────────────────────────────────────────
 campaignsRouter.get('/', asyncHandler(async (req, res) => {
   const rows = db.prepare('SELECT * FROM campaigns ORDER BY created_at DESC').all();
-  res.json({ campaigns: rows.map(serializeCampaign) });
+  // Enrich each campaign with the connected YouTube channel title
+  const campaigns = rows.map(row => {
+    const c = serializeCampaign(row);
+    if (c.config?.youtubeChannelId) {
+      // youtubeChannelId in config may be the SQLite row id (number) or YT channel id (string)
+      const chRow = db.prepare(
+        `SELECT title FROM youtube_channels WHERE id = ? OR youtube_channel_id = ? LIMIT 1`
+      ).get(Number(c.config.youtubeChannelId) || 0, String(c.config.youtubeChannelId));
+      if (chRow) c.config.youtubeChannelTitle = chRow.title;
+    }
+    return c;
+  });
+  res.json({ campaigns });
 }));
 
 // ── POST /campaigns ───────────────────────────────────────────────────────────
