@@ -270,14 +270,28 @@ export function CampaignPage() {
         },
       });
       
+      const isScheduled = !!manualStartTime;
+      const autoRecurringSettings = {
+        recurringEnabled: isScheduled,
+        recurringType: 'once',
+        recurringDays: [],
+        recurringTime: manualStartTime || '00:00',
+        recurringDurationMode: 'fixed',
+        recurringDurationMinutes: 60,
+        recurringDurationMin: 30,
+        recurringDurationMax: 120,
+        recurringEndDate: manualStopDate || '',
+        recurringTimezone: 'Asia/Jakarta'
+      };
+
       // Save recurring settings if enabled and auto-schedule
-      if (recurringSettings.recurringEnabled && result.campaign?.id) {
+      if (autoRecurringSettings.recurringEnabled && result.campaign?.id) {
         await apiRequest(`/scheduler/campaigns/${result.campaign.id}/recurring`, { 
           method: 'PUT', 
-          body: JSON.stringify(recurringSettings) 
+          body: JSON.stringify(autoRecurringSettings) 
         });
         await apiRequest(`/scheduler/campaigns/${result.campaign.id}/schedule`, { method: 'POST' });
-        setCampaignMessage(`Kampanye berhasil disimpan dan dijadwalkan: ${result.campaign?.name}.`);
+        setCampaignMessage(`Kampanye berhasil disimpan dan otomatis dijadwalkan: ${result.campaign?.name}.`);
       } else {
         setCampaignMessage(`Draft disimpan ke SQLite: ${result.campaign?.name}.`);
       }
@@ -513,17 +527,34 @@ export function CampaignPage() {
           aiContentAnswer: youtubeAiContentAnswer,
         },
       });
-      
+      const isScheduled = youtubeScheduleType !== 'Segera';
+      const autoRecurringSettings = {
+        recurringEnabled: isScheduled,
+        recurringType: youtubeScheduleType === 'Sekali Main' ? 'once' :
+                       youtubeScheduleType === 'Harian' ? 'daily' :
+                       youtubeScheduleType === 'Mingguan' ? 'weekly' :
+                       youtubeScheduleType === 'Bulanan' ? 'monthly' : 'once',
+        recurringDays: youtubeWeeklyDays || [],
+        recurringTime: youtubeStartTime || '00:00',
+        recurringDurationMode: youtubeDurationMode === 'Tetap (Sesuai Jam Stop)' ? 'fixed' :
+                               youtubeDurationMode === 'Acak' ? 'random' : 'pattern',
+        recurringDurationMinutes: 60,
+        recurringDurationMin: 30,
+        recurringDurationMax: 120,
+        recurringEndDate: youtubeStopDate || '',
+        recurringTimezone: 'Asia/Jakarta'
+      };
+
       // Save recurring settings if enabled and auto-schedule
-      if (recurringSettings.recurringEnabled && result.campaign?.id) {
+      if (autoRecurringSettings.recurringEnabled && result.campaign?.id) {
         await apiRequest(`/scheduler/campaigns/${result.campaign.id}/recurring`, { 
           method: 'PUT', 
-          body: JSON.stringify(recurringSettings) 
+          body: JSON.stringify(autoRecurringSettings) 
         });
         await apiRequest(`/scheduler/campaigns/${result.campaign.id}/schedule`, { method: 'POST' });
-        setCampaignMessage(`${summary} Data tersimpan dan kampanye dijadwalkan otomatis.`);
+        setCampaignMessage(`${summary} Data tersimpan dan kampanye otomatis dijadwalkan.`);
       } else {
-        setCampaignMessage(`${summary} Data tersimpan ke SQLite.`);
+        setCampaignMessage(`${summary} Data tersimpan sebagai Draft.`);
       }
       
       lastCampaignIdRef.current = result.campaign?.id || null;
@@ -570,44 +601,11 @@ export function CampaignPage() {
         {showAssetRunner ? <Card className="rounded-3xl border-slate-800 bg-slate-900/70"><CardContent className="p-5"><h3 className="mb-1 text-lg font-bold text-white">Aset &amp; Runner</h3><p className="mb-5 text-sm text-slate-400">Pilih sumber video dan pengaturan proses FFmpeg.</p><AssetRunnerPanel state={youtubeState} setters={setters} campaignVideoAssets={campaignVideoAssets} campaignThumbnailAssets={campaignThumbnailAssets} saveCampaignDraft={saveCampaignDraft} isLoadingAssets={isLoadingCampaignAssets} onRefreshAssets={() => loadCampaignAssets('Aset kampanye dimuat ulang dari SQLite.')} /></CardContent></Card> : null}
       </section>
       
-      {/* Recurring Schedule Section */}
-      <section className="mt-6">
-        <div className="mb-4 flex items-center justify-between">
-          <button
-            onClick={() => setShowRecurringSettings(!showRecurringSettings)}
-            className="text-lg font-bold text-white hover:text-cyan-400 transition"
-          >
-            {showRecurringSettings ? '▼' : '▶'} Recurring Schedule (Opsional)
-          </button>
-          {lastCampaignIdRef.current && (
-            <button
-              onClick={() => setShowRecurringHistory(!showRecurringHistory)}
-              className="text-sm text-cyan-400 hover:text-cyan-300 transition"
-            >
-              {showRecurringHistory ? 'Sembunyikan' : 'Lihat'} Riwayat
-            </button>
-          )}
+      {showRecurringHistory && lastCampaignIdRef.current && (
+        <div className="mt-4">
+          <RecurringHistory campaignId={lastCampaignIdRef.current} />
         </div>
-        
-        {showRecurringSettings && (
-          <RecurringScheduleSettings
-            settings={recurringSettings}
-            onChange={(newSettings, isValid) => {
-              setRecurringSettings(newSettings);
-              if (isValid) {
-                setCampaignMessage('Recurring schedule siap disimpan bersama campaign');
-              }
-            }}
-            disabled={isSavingDraft || isStartingLive || isStartingYoutubeLive}
-          />
-        )}
-        
-        {showRecurringHistory && lastCampaignIdRef.current && (
-          <div className="mt-4">
-            <RecurringHistory campaignId={lastCampaignIdRef.current} />
-          </div>
-        )}
-      </section>
+      )}
       
       <YoutubePlaylistModal open={isYoutubePlaylistModalOpen} onClose={() => setIsYoutubePlaylistModalOpen(false)} value={newYoutubePlaylistName} setValue={setNewYoutubePlaylistName} onCreate={createYoutubePlaylist} channelName={youtubeChannels.find((channel) => String(channel.id) === String(youtubeChannelId))?.name || 'Channel YouTube'} />
     </>
