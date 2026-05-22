@@ -111,11 +111,11 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{dashboardStats.map((stat, index) => <StatCard key={stat.title} {...stat} index={index} />)}</div>
       </section>
 
-      {streams.length > 0 && (
+      {streams.filter(s => ['Online', 'Starting'].includes(s.status)).length > 0 && (
         <section className="mb-6">
           <SectionLabel title="Live Stream Aktif" description="Stream yang sedang diproses oleh backend." />
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {streams.map((stream) => (
+            {streams.filter(s => ['Online', 'Starting'].includes(s.status)).map((stream) => (
               <Card key={stream.id} className="overflow-hidden rounded-2xl border-slate-700 bg-slate-800/80 shadow-lg">
                 <CardContent className="p-4">
                   <div className="mb-3 flex items-center gap-3">

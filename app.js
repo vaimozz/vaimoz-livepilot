@@ -18,6 +18,15 @@ import { loadScheduledCampaigns } from './services/scheduler.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 initDatabase();
+import { db } from './db/database.js';
+try {
+  const result = db.prepare(`UPDATE streams SET status = 'Error', stopped_at = CURRENT_TIMESTAMP WHERE status IN ('Online', 'Starting')`).run();
+  if (result.changes > 0) {
+    logEvent('INFO', 'Server', `Memperbaiki ${result.changes} stream yatim (orphan) menjadi Error saat startup.`);
+  }
+} catch (e) {
+  console.error("Gagal membersihkan orphan streams:", e);
+}
 fs.mkdirSync(config.uploadDir, { recursive: true });
 
 const app = express();
