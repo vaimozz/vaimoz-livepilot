@@ -35,7 +35,7 @@ export function getScheduleInfo(schedule = '') {
   return { label: text, time: '--', timezone: 'Asia/Jakarta' };
 }
 
-export function getStreamingRows(items, selectedPlatform, youtubeChannels = []) {
+export function getStreamingRows(items, selectedPlatform, youtubeChannels = [], streams = []) {
   return items
     .flatMap((campaign) =>
       (campaign.platforms || []).map((platform) => {
@@ -45,7 +45,8 @@ export function getStreamingRows(items, selectedPlatform, youtubeChannels = []) 
           if (ch) channelName = ch.name || ch.title || channelName;
         }
 
-        const isOnline = campaign.status === 'Sedang Live' || campaign.status === 'Online' || campaign.status === 'Aktif';
+        const isOnline = campaign.status === 'Sedang Live' || campaign.status === 'Online' || campaign.status === 'Aktif' || campaign.status === 'Reconnecting';
+        const activeStream = streams.find(s => s.campaignId === campaign.id && ['Online', 'Starting', 'Reconnecting'].includes(s.status));
 
         return {
           ...campaign,
@@ -54,9 +55,10 @@ export function getStreamingRows(items, selectedPlatform, youtubeChannels = []) 
           dashboard: platform === 'YouTube' ? 'YT Studio' : platform === 'Facebook' ? 'FB Live' : 'RTMP',
           channel: channelName,
           channelInitial: platform === 'YouTube' ? 'YT' : platform === 'Facebook' ? 'FB' : 'RT',
-          startedAt: isOnline ? 'Berjalan' : '--',
+          startedAt: activeStream?.startedAt ? new Date(activeStream.startedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : (isOnline ? 'Berjalan' : '--'),
+          stopAt: activeStream?.smartStopDelayedUntil ? new Date(activeStream.smartStopDelayedUntil).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '--',
           serverCondition: isOnline ? 'Server stabil' : 'Menunggu',
-          viewers: '0',
+          viewers: activeStream?.youtubeConcurrentViewers || '0',
           scheduleInfo: getScheduleInfo(campaign.schedule),
         };
       })

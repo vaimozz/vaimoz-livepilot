@@ -77,7 +77,7 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
     loadDashboardData();
   }, []);
 
-  const streamingRows = useMemo(() => getStreamingRows(campaigns, selectedPlatform, window.__ytChannels || []), [campaigns, selectedPlatform]);
+  const streamingRows = useMemo(() => getStreamingRows(campaigns, selectedPlatform, window.__ytChannels || [], streams), [campaigns, selectedPlatform, streams]);
 
   const liveStats = useMemo(() => {
     const liveCount = streamingRows.filter(r => r.status === 'Sedang Live' || r.status === 'Online' || r.status === 'Aktif').length;
