@@ -640,7 +640,7 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
         recurringDurationMinutes: youtubeDurationMode === 'Tetap (Pilih Durasi Jam)' ? (parseInt(youtubeStopTime) || 1) * 60 : 60,
         recurringDurationMin: 30,
         recurringDurationMax: 120,
-        recurringEndDate: youtubeStopDate || '',
+        recurringEndDate: '', // Force empty so it repeats forever without expiring
         recurringTimezone: 'Asia/Jakarta'
       };
 
