@@ -259,7 +259,17 @@ export function scheduleCampaign(campaign) {
 
 export function loadScheduledCampaigns() {
   const rows = db.prepare("SELECT * FROM campaigns WHERE status = 'Scheduled'").all();
-  return rows.map(scheduleCampaign);
+  const results = [];
+  for (const row of rows) {
+    try {
+      const result = scheduleCampaign(row);
+      logEvent('INFO', 'Scheduler', `Loaded: Campaign #${row.id} "${row.name}" → cron: ${result.expression}`);
+      results.push(result);
+    } catch (e) {
+      logEvent('ERROR', 'Scheduler', `Failed to load campaign #${row.id}: ${e.message}`);
+    }
+  }
+  return results;
 }
 
 export function stopScheduledCampaign(id) {
