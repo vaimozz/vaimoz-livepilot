@@ -30,7 +30,7 @@ monitorRouter.get('/metrics', asyncHandler(async (req, res) => {
   const memoryFree = os.freemem();
   const memoryUsed = memoryTotal - memoryFree;
   const load = os.loadavg();
-  const hasYoutube = db.prepare('SELECT COUNT(id) as count FROM youtube_channels WHERE refresh_token IS NOT NULL AND refresh_token != ""').get().count > 0;
+  const hasYoutube = db.prepare('SELECT COUNT(id) as count FROM youtube_channels').get().count > 0;
   
   res.json({
     cpu: { cores: os.cpus().length, load1: load[0], load5: load[1], load15: load[2] },
