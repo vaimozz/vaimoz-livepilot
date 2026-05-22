@@ -212,6 +212,7 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
     title: chosenTitle,
     description: cfg.youtubeDescription || cfg.description || '',
     categoryId: cfg.youtubeCategoryId || cfg.categoryId || '10',
+    tags: cfg.youtubeTags || cfg.tags || '',
     privacyStatus: privacySetting.toLowerCase() === 'publik' ? 'public' : 
                    privacySetting.toLowerCase() === 'tidak publik' ? 'unlisted' : 'private',
     scheduledStartTime: req.body.scheduledStartTime || null,

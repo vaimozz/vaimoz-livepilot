@@ -67,7 +67,6 @@ export async function createYoutubeLiveBroadcast(options) {
         title,
         description,
         scheduledStartTime: startTime,
-        categoryId,
       },
       status: {
         privacyStatus,
@@ -87,6 +86,32 @@ export async function createYoutubeLiveBroadcast(options) {
 
   const broadcast = broadcastResponse.data;
   logEvent('INFO', 'YouTube Live', `Broadcast created: ${broadcast.id}`);
+
+  // Update video metadata to set categoryId and tags
+  try {
+    const videoResponse = await youtube.videos.list({
+      part: ['snippet'],
+      id: [broadcast.id]
+    });
+    
+    if (videoResponse.data.items && videoResponse.data.items.length > 0) {
+      const videoSnippet = videoResponse.data.items[0].snippet;
+      await youtube.videos.update({
+        part: ['snippet'],
+        requestBody: {
+          id: broadcast.id,
+          snippet: {
+            ...videoSnippet,
+            categoryId: categoryId,
+            tags: Array.isArray(tags) ? tags : String(tags || '').split(',').map(t => t.trim()).filter(Boolean),
+          }
+        }
+      });
+      logEvent('INFO', 'YouTube Live', `Updated categoryId and tags for video ${broadcast.id}`);
+    }
+  } catch (error) {
+    logEvent('WARN', 'YouTube Live', `Failed to update video category and tags: ${error.message}`);
+  }
 
   // 2. Create stream
   const streamResponse = await youtube.liveStreams.insert({
