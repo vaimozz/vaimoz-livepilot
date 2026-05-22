@@ -45,6 +45,7 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
   const [assets, setAssets] = useState([]);
   const [streams, setStreams] = useState([]);
   const [metrics, setMetrics] = useState(null);
+  const [ytChannels, setYtChannels] = useState([]);
   const [dashboardMessage, setDashboardMessage] = useState('Dashboard membaca data asli dari SQLite dan backend.');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -62,8 +63,8 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
       setAssets(assetResult.assets || []);
       setStreams(streamResult.streams || []);
       setMetrics(metricResult || null);
-      const ytChannels = Array.isArray(ytChannelsResult?.channels) ? ytChannelsResult.channels : (Array.isArray(ytChannelsResult) ? ytChannelsResult : []);
-      window.__ytChannels = ytChannels; // Cache for memo
+      const ytChannelsData = Array.isArray(ytChannelsResult?.channels) ? ytChannelsResult.channels : (Array.isArray(ytChannelsResult) ? ytChannelsResult : []);
+      setYtChannels(ytChannelsData);
 
       setDashboardMessage('Dashboard berhasil dimuat dari SQLite dan backend.');
     } catch (error) {
@@ -77,7 +78,7 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
     loadDashboardData();
   }, []);
 
-  const streamingRows = useMemo(() => getStreamingRows(campaigns, selectedPlatform, window.__ytChannels || [], streams), [campaigns, selectedPlatform, streams]);
+  const streamingRows = useMemo(() => getStreamingRows(campaigns, selectedPlatform, ytChannels, streams), [campaigns, selectedPlatform, streams, ytChannels]);
 
   const liveStats = useMemo(() => {
     const liveCount = streamingRows.filter(r => r.status === 'Sedang Live' || r.status === 'Online' || r.status === 'Aktif').length;
