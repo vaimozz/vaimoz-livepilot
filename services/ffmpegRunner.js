@@ -47,7 +47,7 @@ function buildFfmpegArgs({ inputPath, outputUrl, encoder = {} }) {
   return args;
 }
 
-import { notifyStreamStarted, notifyStreamStopped, notifyStreamError } from './telegramService.js';
+import { notifyStreamStarted, notifyStreamStopped, notifyStreamError, notifyStreamReconnecting } from './telegramService.js';
 
 export function listRunningStreams() {
   return [...runningProcesses.entries()].map(([streamId, item]) => ({ streamId, pid: item.process.pid, startedAt: item.startedAt }));
@@ -70,47 +70,77 @@ export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP',
   `).run(campaignId, platform, 'Starting', outputUrl.replace(streamKey || '', '***'), startedAt);
 
   const streamId = Number(insert.lastInsertRowid);
-  const child = spawn(config.ffmpegPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-
-  runningProcesses.set(streamId, { process: child, startedAt, args, campaignName });
-  db.prepare('UPDATE streams SET status = ?, pid = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run('Online', child.pid, streamId);
-  logEvent('FFMPEG', 'FFmpeg Server', `Stream #${streamId} dimulai dengan PID ${child.pid}`);
-
-  notifyStreamStarted({
-    campaignName,
-    platform,
-    chosenVideo: inputPath.split(/[\/\\]/).pop(),
-    pid: child.pid
-  }).catch(e => logEvent('ERROR', 'Telegram', e.message));
-
-  child.stdout.on('data', (buffer) => logEvent('FFMPEG', 'FFmpeg Server', buffer.toString().slice(0, 500)));
-  child.stderr.on('data', (buffer) => {
-    const line = buffer.toString().trim();
-    if (line) logEvent('FFMPEG', 'FFmpeg Server', line.slice(0, 500));
-  });
   
-  child.on('exit', (code, signal) => {
-    runningProcesses.delete(streamId);
-    const isError = code !== 0 && signal !== 'SIGTERM' && signal !== 'SIGKILL';
-    const status = isError ? 'Error' : 'Stopped';
-    db.prepare('UPDATE streams SET status = ?, stopped_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-      .run(status, new Date().toISOString(), streamId);
-    logEvent(isError ? 'ERROR' : 'INFO', 'FFmpeg Server', `Stream #${streamId} berhenti (kode: ${code}, signal: ${signal})`);
+  let attempt = 1;
+  const maxRetries = 3;
+  const delaySeconds = 10;
 
-    if (isError) {
-      notifyStreamError({
+  function spawnProcess() {
+    const child = spawn(config.ffmpegPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    runningProcesses.set(streamId, { process: child, startedAt, args, campaignName });
+    db.prepare('UPDATE streams SET status = ?, pid = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run('Online', child.pid, streamId);
+    logEvent('FFMPEG', 'FFmpeg Server', `Stream #${streamId} dimulai dengan PID ${child.pid} (Attempt ${attempt})`);
+
+    if (attempt === 1) {
+      notifyStreamStarted({
         campaignName,
-        error: `FFmpeg terhenti (kode: ${code}, signal: ${signal})`
-      }).catch(e => logEvent('ERROR', 'Telegram', e.message));
-    } else {
-      notifyStreamStopped({
-        campaignName,
-        streamId
+        platform,
+        chosenVideo: inputPath.split(/[\/\\]/).pop(),
+        pid: child.pid
       }).catch(e => logEvent('ERROR', 'Telegram', e.message));
     }
-  });
 
-  return { streamId, pid: child.pid, args };
+    child.stdout.on('data', (buffer) => logEvent('FFMPEG', 'FFmpeg Server', buffer.toString().slice(0, 500)));
+    child.stderr.on('data', (buffer) => {
+      const line = buffer.toString().trim();
+      if (line) logEvent('FFMPEG', 'FFmpeg Server', line.slice(0, 500));
+    });
+    
+    child.on('exit', (code, signal) => {
+      runningProcesses.delete(streamId);
+      const isError = code !== 0 && signal !== 'SIGTERM' && signal !== 'SIGKILL';
+      
+      if (!isError) {
+        db.prepare('UPDATE streams SET status = ?, stopped_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+          .run('Stopped', new Date().toISOString(), streamId);
+        logEvent('INFO', 'FFmpeg Server', `Stream #${streamId} berhenti normal (kode: ${code}, signal: ${signal})`);
+        notifyStreamStopped({ campaignName, streamId }).catch(e => logEvent('ERROR', 'Telegram', e.message));
+        return;
+      }
+
+      if (attempt <= maxRetries) {
+        db.prepare('UPDATE streams SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+          .run('Reconnecting', streamId);
+        logEvent('WARN', 'FFmpeg Server', `Stream #${streamId} terputus. Mencoba reconnect ${attempt}/${maxRetries} dalam ${delaySeconds} detik...`);
+        
+        notifyStreamReconnecting({ campaignName, attempt, maxRetries, delaySeconds })
+          .catch(e => logEvent('ERROR', 'Telegram', e.message));
+        
+        setTimeout(() => {
+           const currentStatus = db.prepare('SELECT status FROM streams WHERE id = ?').get(streamId);
+           if (!currentStatus || currentStatus.status === 'Stopped' || currentStatus.status === 'Stopping') {
+               return; // aborted by user
+           }
+           attempt++;
+           spawnProcess();
+        }, delaySeconds * 1000);
+      } else {
+        db.prepare('UPDATE streams SET status = ?, stopped_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+          .run('Error', new Date().toISOString(), streamId);
+        logEvent('ERROR', 'FFmpeg Server', `Stream #${streamId} gagal reconnect setelah ${maxRetries} kali percobaan.`);
+        
+        notifyStreamError({
+          campaignName,
+          error: `FFmpeg gagal reconnect setelah ${maxRetries} percobaan. (kode: ${code}, signal: ${signal})`
+        }).catch(e => logEvent('ERROR', 'Telegram', e.message));
+      }
+    });
+
+    return child.pid;
+  }
+
+  const initialPid = spawnProcess();
+  return { streamId, pid: initialPid, args };
 }
 
 export function stopFfmpegStream(streamId) {

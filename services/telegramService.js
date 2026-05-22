@@ -99,6 +99,20 @@ export async function notifyStreamError({ campaignName, error }) {
   ].join('\n'));
 }
 
+export async function notifyStreamReconnecting({ campaignName, attempt, maxRetries, delaySeconds }) {
+  if (!isPrefEnabled('notify_stream_error')) return; // Re-use error preference
+  return sendTelegram([
+    `🔄 <b>RECONNECTING STREAM</b>`,
+    ``,
+    `📌 <b>Kampanye:</b> ${campaignName}`,
+    `⚠️ <b>Status:</b> Koneksi terputus. Mencoba menyambung ulang...`,
+    `🔄 <b>Percobaan:</b> ${attempt} dari ${maxRetries}`,
+    `⏳ <b>Jeda:</b> ${delaySeconds} detik`,
+    ``,
+    `🕐 ${new Date().toLocaleString('id-ID')}`,
+  ].join('\n'));
+}
+
 export async function notifyBroadcastLive({ campaignName, broadcastId, watchUrl, title }) {
   if (!isPrefEnabled('notify_broadcast_live')) return;
   const lines = [

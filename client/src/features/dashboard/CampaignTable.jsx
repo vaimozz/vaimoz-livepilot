@@ -94,6 +94,8 @@ export function CampaignTable({ visibleCampaigns, selectedPlatform, onRefresh, o
               ) : null}
               {streamingRows.map((row) => {
                 const isOnline = row.status === 'Sedang Live' || row.status === 'Online' || row.status === 'Aktif';
+                const isReconnecting = row.status === 'Reconnecting';
+                const isError = row.status === 'Error';
                 const isLoading = actionLoading[row.rowId];
                 const streamTitle = row.name;
                 const streamMeta = `${row.niche} • ${row.video}`;
@@ -151,8 +153,20 @@ export function CampaignTable({ visibleCampaigns, selectedPlatform, onRefresh, o
                     </div>
                     <div className="col-span-2">
                       <div className="space-y-2">
-                        <span className={cx('inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs', isOnline ? 'bg-emerald-400/10 text-emerald-300 ring-1 ring-emerald-400/20' : 'bg-slate-800 text-slate-300 ring-1 ring-white/5')}>
-                          <span className={cx('h-2 w-2 rounded-full', isOnline ? 'bg-emerald-400' : 'bg-slate-400')} />
+                        <span className={cx(
+                          'inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs',
+                          isOnline ? 'bg-emerald-400/10 text-emerald-300 ring-1 ring-emerald-400/20'
+                          : isReconnecting ? 'bg-amber-400/10 text-amber-300 ring-1 ring-amber-400/20 animate-pulse'
+                          : isError ? 'bg-red-500/10 text-red-400 ring-1 ring-red-500/20'
+                          : 'bg-slate-800 text-slate-300 ring-1 ring-white/5'
+                        )}>
+                          <span className={cx(
+                            'h-2 w-2 rounded-full',
+                            isOnline ? 'bg-emerald-400'
+                            : isReconnecting ? 'bg-amber-400'
+                            : isError ? 'bg-red-500'
+                            : 'bg-slate-400'
+                          )} />
                           {isOnline ? 'Online' : row.status || 'Draft'}
                         </span>
                         {isOnline ? (
@@ -160,6 +174,10 @@ export function CampaignTable({ visibleCampaigns, selectedPlatform, onRefresh, o
                             <div className="flex justify-between"><span>Mulai</span><span className="font-semibold text-slate-200">{row.startedAt}</span></div>
                             <div className="flex justify-between"><span>Server</span><span className="font-semibold text-emerald-300">{row.serverCondition}</span></div>
                           </div>
+                        ) : isReconnecting ? (
+                          <div className="text-[11px] text-amber-500/70">Mencoba kembali...</div>
+                        ) : isError ? (
+                          <div className="text-[11px] text-red-500/70">Terjadi kesalahan</div>
                         ) : (
                           <div className="text-[11px] text-slate-500">Belum berjalan</div>
                         )}
