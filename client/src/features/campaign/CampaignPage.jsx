@@ -579,8 +579,9 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
           categoryId: youtubeCategoryId,
           replayPrivacy: youtubeReplayPrivacy,
           // Playlist & channel
-          channelId: youtubeChannelId,
-          playlist: selectedYoutubePlaylist,
+          youtubeChannelId: youtubeChannelId,
+          youtubePlaylist: selectedYoutubePlaylist,
+          youtubePlaylistId: selectedYoutubePlaylist?.id || '',
           // Asset IDs + paths
           videoAssetIds: selectedVideos.map((a) => a.id),
           videoNames: selectedVideos.map((a) => a.name),
