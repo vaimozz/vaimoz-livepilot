@@ -51,16 +51,21 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
-      const [campaignResult, assetResult, streamResult, metricResult] = await Promise.all([
+      const [campaignResult, assetResult, streamResult, metricResult, ytChannelsResult] = await Promise.all([
         api.campaigns.list(),
         api.assets.list(),
         api.streams.list(),
         api.monitor.metrics(),
+        api.youtube.channels().catch(() => ({ channels: [] }))
       ]);
       setCampaigns((campaignResult.campaigns || []).map(normalizeDashboardCampaign));
       setAssets(assetResult.assets || []);
       setStreams(streamResult.streams || []);
       setMetrics(metricResult || null);
+      
+      const ytChannels = ytChannelsResult?.channels || ytChannelsResult || [];
+      window.__ytChannels = ytChannels; // Cache for memo
+      
       setDashboardMessage('Dashboard berhasil dimuat dari SQLite dan backend.');
     } catch (error) {
       setDashboardMessage(`Gagal memuat dashboard: ${getErrorMessage(error)}`);
@@ -72,6 +77,14 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  const streamingRows = useMemo(() => getStreamingRows(campaigns, selectedPlatform, window.__ytChannels || []), [campaigns, selectedPlatform]);
+
+  const liveStats = useMemo(() => {
+    const liveCount = streamingRows.filter(r => r.status === 'Sedang Live' || r.status === 'Online' || r.status === 'Aktif').length;
+    const errorCount = streamingRows.filter(r => r.status === 'Error').length;
+    return { live: liveCount, errors: errorCount };
+  }, [streamingRows]);
 
   const visibleCampaigns = useMemo(() => getVisibleCampaigns(campaigns, selectedPlatform), [campaigns, selectedPlatform]);
   const liveCount = streams.filter((stream) => ['Online', 'Starting'].includes(stream.status)).length;

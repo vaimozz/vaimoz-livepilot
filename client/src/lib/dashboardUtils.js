@@ -35,21 +35,31 @@ export function getScheduleInfo(schedule = '') {
   return { label: text, time: '--', timezone: 'Asia/Jakarta' };
 }
 
-export function getStreamingRows(items, selectedPlatform) {
+export function getStreamingRows(items, selectedPlatform, youtubeChannels = []) {
   return items
     .flatMap((campaign) =>
-      (campaign.platforms || []).map((platform) => ({
-        ...campaign,
-        rowId: `${campaign.id}-${platform}`,
-        platform,
-        dashboard: platform === 'YouTube' ? 'YT Studio' : platform === 'Facebook' ? 'FB Live' : 'RTMP',
-        channel: platform === 'YouTube' ? 'YouTube Channel' : platform === 'Facebook' ? 'Facebook Page' : 'Custom RTMP',
-        channelInitial: platform === 'YouTube' ? 'YT' : platform === 'Facebook' ? 'FB' : 'RT',
-        startedAt: campaign.status === 'Sedang Live' || campaign.status === 'Online' ? 'Berjalan' : '--',
-        serverCondition: campaign.status === 'Sedang Live' || campaign.status === 'Online' ? 'Server stabil' : 'Menunggu',
-        viewers: '0',
-        scheduleInfo: getScheduleInfo(campaign.schedule),
-      }))
+      (campaign.platforms || []).map((platform) => {
+        let channelName = platform === 'YouTube' ? 'YouTube Channel' : platform === 'Facebook' ? 'Facebook Page' : 'Custom RTMP';
+        if (platform === 'YouTube' && campaign.config?.channelId) {
+          const ch = youtubeChannels.find(c => String(c.id) === String(campaign.config.channelId));
+          if (ch) channelName = ch.name || ch.title || channelName;
+        }
+
+        const isOnline = campaign.status === 'Sedang Live' || campaign.status === 'Online' || campaign.status === 'Aktif';
+
+        return {
+          ...campaign,
+          rowId: `${campaign.id}-${platform}`,
+          platform,
+          dashboard: platform === 'YouTube' ? 'YT Studio' : platform === 'Facebook' ? 'FB Live' : 'RTMP',
+          channel: channelName,
+          channelInitial: platform === 'YouTube' ? 'YT' : platform === 'Facebook' ? 'FB' : 'RT',
+          startedAt: isOnline ? 'Berjalan' : '--',
+          serverCondition: isOnline ? 'Server stabil' : 'Menunggu',
+          viewers: '0',
+          scheduleInfo: getScheduleInfo(campaign.schedule),
+        };
+      })
     )
     .filter((row) => selectedPlatform === 'Semua' || row.platform === selectedPlatform);
 }

@@ -93,7 +93,7 @@ export function CampaignTable({ visibleCampaigns, selectedPlatform, onRefresh, o
                 </div>
               ) : null}
               {streamingRows.map((row) => {
-                const isOnline = row.status === 'Sedang Live' || row.status === 'Online';
+                const isOnline = row.status === 'Sedang Live' || row.status === 'Online' || row.status === 'Aktif';
                 const isLoading = actionLoading[row.rowId];
                 const streamTitle = row.name;
                 const streamMeta = `${row.niche} • ${row.video}`;
@@ -118,12 +118,21 @@ export function CampaignTable({ visibleCampaigns, selectedPlatform, onRefresh, o
                       </div>
                     </div>
                     <div className="col-span-1">
-                      <div className="flex items-center gap-2 font-semibold text-white">
-                        <span className={cx('flex h-5 w-5 items-center justify-center rounded-full border text-[10px]', platformIconClass)}>
-                          {isYouTube ? '◎' : 'f'}
-                        </span>
-                        <span className="truncate">{row.dashboard}</span>
-                      </div>
+                      {isYouTube ? (
+                        <a href="https://studio.youtube.com" target="_blank" rel="noreferrer" className="flex items-center gap-2 font-semibold text-white transition hover:text-red-400">
+                          <span className={cx('flex h-5 w-5 items-center justify-center rounded-full border text-[10px]', platformIconClass)}>
+                            ◎
+                          </span>
+                          <span className="truncate">{row.dashboard}</span>
+                        </a>
+                      ) : (
+                        <div className="flex items-center gap-2 font-semibold text-white">
+                          <span className={cx('flex h-5 w-5 items-center justify-center rounded-full border text-[10px]', platformIconClass)}>
+                            f
+                          </span>
+                          <span className="truncate">{row.dashboard}</span>
+                        </div>
+                      )}
                     </div>
                     <div className="col-span-1">
                       <div className="flex items-center gap-2 font-semibold text-white">
