@@ -15,6 +15,7 @@ export default function VaimozLivePilotApp() {
   const [activePage, setActivePage] = useState(defaultActivePage);
   const [selectedPlatform, setSelectedPlatform] = useState('Semua');
   const [now, setNow] = useState(() => new Date());
+  const [editCampaign, setEditCampaign] = useState(null);
 
   // Initialize theme on mount
   useEffect(() => {
@@ -70,7 +71,7 @@ export default function VaimozLivePilotApp() {
             <div className="mb-5 flex items-center justify-between lg:hidden">
               <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-500"><Radio className="h-5 w-5 text-white dark:text-slate-950" /></div><div><p className="font-bold">Vaimoz LivePilot</p><p className="text-xs text-gray-500 dark:text-slate-500">Pratinjau mobile</p></div></div>
             </div>
-            {renderPage(activePage, selectedPlatform, setSelectedPlatform)}
+            {renderPage(activePage, selectedPlatform, setSelectedPlatform, setActivePage, editCampaign, setEditCampaign)}
             <div 
               className="mt-5 rounded-3xl border p-5 text-xs transition-all duration-300"
               style={{

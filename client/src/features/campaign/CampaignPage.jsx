@@ -57,7 +57,7 @@ function normalizeYoutubePlaylist(playlist, channelId) {
   };
 }
 
-export function CampaignPage() {
+export function CampaignPage({ editCampaign, setEditCampaign }) {
   const [campaignMode, setCampaignMode] = useState('YouTube API');
   const [campaignMessage, setCampaignMessage] = useState('Pilih mode kampanye live terlebih dahulu.');
   const [manualStartDate, setManualStartDate] = useState(todayString());
@@ -218,6 +218,85 @@ export function CampaignPage() {
     loadCampaignAssets();
     loadYoutubeChannels();
   }, []);
+
+  useEffect(() => {
+    if (!editCampaign) return;
+    const { mode, config } = editCampaign;
+    setCampaignMode(mode);
+    if (mode === 'Manual (RTMP)') {
+      setManualCampaignName(editCampaign.name || '');
+      setManualPlatform(config.platform || 'YouTube Manual RTMP');
+      setManualRtmpUrl(config.rtmpUrl || '');
+      setManualStreamKey(config.streamKey || '');
+      setManualStartDate(config.startDate || todayString());
+      setManualStartTime(config.startTime || timeString(10));
+      setManualStopDate(config.stopDate || todayString());
+      setManualStopTime(config.stopTime || timeString(130));
+      setAutoStopEnabled(config.autoStopEnabled ?? true);
+      setSmartStopEnabled(config.smartStopEnabled ?? true);
+      setSmartStopViewerThreshold(config.smartStopViewerThreshold || '25');
+      setSmartStopDelayMinutes(config.smartStopDelayMinutes || '15');
+      if (config.encoder) {
+        setManualEncoderMode(config.encoder.mode || 'Stream Copy (CPU ringan)');
+        setManualResolution(config.encoder.resolution || 'Ikuti sumber');
+        setManualBitrate(config.encoder.bitrate || 'Ikuti sumber');
+        setManualFps(config.encoder.fps || 'Ikuti sumber');
+      }
+    } else {
+      setYoutubeLiveTitles(config.liveTitles || '');
+      setYoutubeDescription(config.description || '');
+      setYoutubePrivacy(config.privacy || 'Publik');
+      setYoutubeThumbnailMode(config.thumbnailMode || 'Rotasi otomatis');
+      setYoutubeTags(config.tags || '');
+      setYoutubeCategoryId(config.categoryId || '10');
+      setYoutubeReplayPrivacy(config.replayPrivacy || 'Unlisted');
+      if (config.channelId) setYoutubeChannelId(config.channelId);
+      if (config.playlist?.id) setYoutubePlaylistId(config.playlist.id);
+      
+      setYoutubeSelectedVideoNames(config.videoNames || []);
+      setYoutubeSelectedThumbnailNames(config.thumbnailNames || []);
+      
+      setYoutubeScheduleType(config.scheduleType || 'Harian');
+      setYoutubeWeeklyDays(config.weeklyDays || ['Senin']);
+      setYoutubeStartDate(config.startDate || todayString());
+      setYoutubeStartTime(config.startTime || timeString(10));
+      setYoutubeStopDate(config.stopDate || todayString());
+      setYoutubeStopTime(config.stopTime || timeString(130));
+      
+      setYoutubeDurationMode(config.durationMode || 'Tetap (Sesuai Jam Stop)');
+      setYoutubeAutoStopEnabled(config.autoStopEnabled ?? true);
+      setYoutubeRandomStopMin(config.randomStopMin || '19:00');
+      setYoutubeRandomStopMax(config.randomStopMax || '22:00');
+      setYoutubeRepeatLiveDuration(config.repeatLiveDuration || '60');
+      setYoutubeRepeatBreakDuration(config.repeatBreakDuration || '10');
+      setYoutubeRepeatCount(config.repeatCount || '3');
+      
+      setYoutubeSmartStopEnabled(config.smartStopEnabled ?? true);
+      setYoutubeSmartStopViewerThreshold(config.smartStopViewerThreshold || '25');
+      setYoutubeSmartStopDelayMinutes(config.smartStopDelayMinutes || '15');
+      
+      if (config.encoder) {
+        setYoutubeEncoderMode(config.encoder.mode || 'Stream Copy (CPU ringan)');
+        setYoutubeResolution(config.encoder.resolution || 'Ikuti sumber');
+        setYoutubeBitrate(config.encoder.bitrate || 'Ikuti sumber');
+        setYoutubeFps(config.encoder.fps || 'Ikuti sumber');
+      }
+      if (config.chatbot) {
+        setYoutubeChatbotEnabled(config.chatbot.enabled ?? false);
+        setYoutubeChatbotMode(config.chatbot.mode || 'Pesan berkala');
+        setYoutubeChatbotInterval(config.chatbot.interval || '10');
+        setYoutubeChatbotMessages(config.chatbot.messages || defaultYoutubeChatbotMessages);
+      }
+      setYoutubeMonetizationEnabled(config.monetizationEnabled ?? false);
+      setYoutubeAiContentAnswer(config.aiContentAnswer || '');
+    }
+    
+    lastCampaignIdRef.current = editCampaign.id;
+    setCampaignMessage(`Mode Edit Aktif: Mengedit kampanye "${editCampaign.name}". Anda bisa "Simpan Draft Kampanye" untuk memperbarui.`);
+    
+    // Clear edit campaign so it doesn't get reloaded infinitely
+    if (setEditCampaign) setEditCampaign(null);
+  }, [editCampaign, setEditCampaign]);
 
   const manualState = { manualCampaignName, manualPlatform, manualRtmpUrl, manualStreamKey, manualStartDate, manualStartTime, manualStopDate, manualStopTime, autoStopEnabled, smartStopEnabled, smartStopViewerThreshold, smartStopDelayMinutes, manualEncoderMode, manualResolution, manualBitrate, manualFps };
   const youtubeState = { youtubeChannels, youtubeMonetizationEnabled, youtubeAiContentAnswer, youtubeChannelId, youtubeTags, youtubeReplayPrivacy, youtubeCategoryId, youtubeScheduleType, youtubeDurationMode, youtubeRandomStopMin, youtubeRandomStopMax, youtubeRepeatLiveDuration, youtubeRepeatBreakDuration, youtubeRepeatCount, youtubeWeeklyDays, youtubeStartDate, youtubeStartTime, youtubeStopDate, youtubeStopTime, youtubeAutoStopEnabled, youtubeSmartStopEnabled, youtubeSmartStopViewerThreshold, youtubeSmartStopDelayMinutes, youtubeEncoderMode, youtubeResolution, youtubeBitrate, youtubeFps, isYoutubeEncoderOpen, isYoutubeChatbotOpen, youtubeChatbotEnabled, youtubeChatbotMode, youtubeChatbotInterval, youtubeChatbotMessages, youtubeSelectedVideoNames, youtubeSelectedThumbnailNames, youtubeLiveTitles, youtubeDescription, youtubePrivacy, youtubeThumbnailMode };
@@ -438,8 +517,9 @@ export function CampaignPage() {
     try {
       if (isManualMode) {
         const summary = `Draft kampanye ${campaignMode} berhasil disiapkan. ${formatManualCampaignSchedule(manualStartDate, manualStartTime, manualStopDate, manualStopTime, autoStopEnabled)}. ${formatSmartStopRule(smartStopEnabled, smartStopViewerThreshold, smartStopDelayMinutes)}. ${formatManualEncoderSettings(manualEncoderMode, manualBitrate, manualFps, manualResolution)}.`;
-        const result = await api.campaigns.create({
-          name: `Manual RTMP ${new Date().toLocaleString('id-ID')}`,
+        
+        const payload = {
+          name: manualCampaignName.trim() || (editCampaign?.name) || `Manual RTMP ${new Date().toLocaleString('id-ID')}`,
           mode: campaignMode,
           status: 'Draft',
           config: {
@@ -455,7 +535,14 @@ export function CampaignPage() {
             smartStopDelayMinutes,
             encoder: { mode: manualEncoderMode, resolution: manualResolution, bitrate: manualBitrate, fps: manualFps },
           },
-        });
+        };
+        
+        let result;
+        if (lastCampaignIdRef.current) {
+          result = await api.campaigns.update(lastCampaignIdRef.current, payload);
+        } else {
+          result = await api.campaigns.create(payload);
+        }
         
         // Save recurring settings if enabled and auto-schedule
         if (recurringSettings.recurringEnabled && result.campaign?.id) {
@@ -474,8 +561,9 @@ export function CampaignPage() {
       }
 
       const summary = `Draft kampanye ${campaignMode} berhasil disiapkan. ${formatYoutubeScheduleMode(youtubeScheduleType, youtubeDurationMode)}. ${formatYoutubePlaylistSelection(selectedYoutubePlaylist)}. ${formatAssetRotation('Video', selectedVideos.length)}. ${formatAssetRotation('Thumbnail', selectedThumbnails.length)}. ${formatManualCampaignSchedule(youtubeStartDate, youtubeStartTime, youtubeStopDate, youtubeStopTime, youtubeAutoStopEnabled)}. ${formatSmartStopRule(youtubeSmartStopEnabled, youtubeSmartStopViewerThreshold, youtubeSmartStopDelayMinutes)}. ${formatManualEncoderSettings(youtubeEncoderMode, youtubeBitrate, youtubeFps, youtubeResolution)}. ${formatReplayPrivacy(youtubeReplayPrivacy)}. ${formatAutoChatbotSettings(youtubeChatbotEnabled, youtubeChatbotMode, youtubeChatbotInterval, youtubeChatbotMessages)}. ${formatYouTubeCampaignSettings(youtubeMonetizationEnabled, youtubeAiContentAnswer, youtubeTags)}.`;
-      const result = await api.campaigns.create({
-        name: `YouTube API ${new Date().toLocaleString('id-ID')}`,
+      
+      const payload = {
+        name: (editCampaign?.name) || `YouTube API ${new Date().toLocaleString('id-ID')}`,
         mode: campaignMode,
         status: 'Draft',
         config: {
@@ -526,7 +614,15 @@ export function CampaignPage() {
           monetizationEnabled: youtubeMonetizationEnabled,
           aiContentAnswer: youtubeAiContentAnswer,
         },
-      });
+      };
+
+      let result;
+      if (lastCampaignIdRef.current) {
+        result = await api.campaigns.update(lastCampaignIdRef.current, payload);
+      } else {
+        result = await api.campaigns.create(payload);
+      }
+      
       const isScheduled = youtubeScheduleType !== 'Segera';
       const autoRecurringSettings = {
         recurringEnabled: isScheduled,

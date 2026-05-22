@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Trash2, Edit } from 'lucide-react';
 import { cx } from '@/lib/cn.js';
 import { getStreamingRows } from '@/lib/dashboardUtils.js';
 import { StreamPreview } from '@/components/shared/Previews.jsx';
 import { api } from '@/lib/api.js';
 
-export function CampaignTable({ visibleCampaigns, selectedPlatform, onRefresh }) {
+export function CampaignTable({ visibleCampaigns, selectedPlatform, onRefresh, onEdit }) {
   const streamingRows = getStreamingRows(visibleCampaigns, selectedPlatform);
   const [actionLoading, setActionLoading] = useState({}); // { [rowId]: true }
   const [actionMsg, setActionMsg] = useState('');
@@ -171,7 +171,16 @@ export function CampaignTable({ visibleCampaigns, selectedPlatform, onRefresh })
                       </button>
                       <button
                         type="button"
+                        onClick={() => onEdit && onEdit(row)}
+                        title="Edit Kampanye"
+                        className="text-slate-400 transition hover:text-cyan-400"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleDelete(row)}
+                        title="Hapus Kampanye"
                         className="text-slate-400 transition hover:text-red-300"
                       >
                         <Trash2 className="h-4 w-4" />
