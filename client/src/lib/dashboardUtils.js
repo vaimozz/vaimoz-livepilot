@@ -5,6 +5,7 @@ export function normalizeDashboardCampaign(campaign) {
   return {
     id: campaign.id,
     name: campaign.name || 'Kampanye Tanpa Nama',
+    mode: campaign.mode,
     niche: campaign.mode || 'Live',
     platforms: platform === 'YouTube + Facebook' ? ['YouTube', 'Facebook'] : [platform === 'Manual RTMP' ? 'Custom RTMP' : platform],
     schedule,
