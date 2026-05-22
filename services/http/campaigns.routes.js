@@ -4,6 +4,7 @@ import { requireAuth } from '../../middleware/auth.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { serializeCampaign, serializeStream } from '../../utils/serializers.js';
 import { startFfmpegStream, stopFfmpegStream } from '../ffmpegRunner.js';
+import { notifyBroadcastLive } from '../telegramService.js';
 import {
   createYoutubeLiveBroadcast,
   transitionBroadcastToLive,
@@ -356,6 +357,11 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
     try {
       await transitionBroadcastToLive(youtubeChannelId, broadcastId);
       logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} is now LIVE`);
+      
+      const watchUrl = `https://youtube.com/watch?v=${broadcastId}`;
+      notifyBroadcastLive({ campaignName: campaign.name, broadcastId, watchUrl, title: chosenTitle })
+        .catch(e => logEvent('ERROR', 'Telegram', e.message));
+        
     } catch (error) {
       logEvent('ERROR', 'YouTube Live', `Failed to transition to live: ${error.message}`);
     }
