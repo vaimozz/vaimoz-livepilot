@@ -62,6 +62,7 @@ export function getStreamingRows(items, selectedPlatform, youtubeChannels = [], 
 
         return {
           ...campaign,
+          streamId: activeStream?.id || campaign.streamId || null,
           rowId: `${campaign.id}-${platform}`,
           platform,
           dashboard: platform === 'YouTube' ? 'YT Studio' : platform === 'Facebook' ? 'FB Live' : 'RTMP',
