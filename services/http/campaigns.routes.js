@@ -163,7 +163,7 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
   try { cfg = JSON.parse(campaign.config_json || '{}'); } catch { cfg = {}; }
 
   // Validate YouTube channel
-  const youtubeChannelId = cfg.youtubeChannelId || req.body.youtubeChannelId;
+  const youtubeChannelId = cfg.youtubeChannelId || cfg.channelId || req.body.youtubeChannelId;
   if (!youtubeChannelId) {
     return res.status(400).json({ error: 'YouTube channel belum dipilih. Pilih channel di form kampanye.' });
   }
@@ -192,7 +192,8 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
     const thumbs = db.prepare(`SELECT * FROM assets WHERE id IN (${pl})`).all(...thumbIds);
     if (thumbs.length > 0) chosenThumbnail = thumbs[Math.floor(Math.random() * thumbs.length)];
   }
-  if (!chosenThumbnail && cfg.thumbnailMode !== 'Tanpa thumbnail') {
+  const thumbnailMode = cfg.thumbnailMode || cfg.youtubeThumbnailMode || 'Rotasi otomatis';
+  if (!chosenThumbnail && thumbnailMode !== 'Tanpa thumbnail') {
     chosenThumbnail = db.prepare("SELECT * FROM assets WHERE type IN ('Images','Thumbnail') ORDER BY RANDOM() LIMIT 1").get() || null;
   }
 
@@ -203,18 +204,21 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
   // ── Create YouTube broadcast & stream ────────────────────────────────────
   logEvent('INFO', 'YouTube Live', `Creating YouTube broadcast for campaign #${id}: ${chosenTitle}`);
 
+  const privacySetting = cfg.youtubePrivacy || cfg.privacy || 'Publik';
+  const autoStopSetting = cfg.youtubeAutoStopEnabled ?? cfg.autoStopEnabled ?? true;
+
   const broadcastData = await createYoutubeLiveBroadcast({
     channelId: youtubeChannelId,
     title: chosenTitle,
-    description: cfg.youtubeDescription || '',
-    categoryId: cfg.youtubeCategoryId || '10',
-    privacyStatus: (cfg.youtubePrivacy || 'Publik').toLowerCase() === 'publik' ? 'public' : 
-                   (cfg.youtubePrivacy || 'Publik').toLowerCase() === 'tidak publik' ? 'unlisted' : 'private',
+    description: cfg.youtubeDescription || cfg.description || '',
+    categoryId: cfg.youtubeCategoryId || cfg.categoryId || '10',
+    privacyStatus: privacySetting.toLowerCase() === 'publik' ? 'public' : 
+                   privacySetting.toLowerCase() === 'tidak publik' ? 'unlisted' : 'private',
     scheduledStartTime: req.body.scheduledStartTime || null,
     enableAutoStart: true,
-    enableAutoStop: cfg.youtubeAutoStopEnabled !== false,
+    enableAutoStop: autoStopSetting !== false,
     recordFromStart: true,
-    frameRate: cfg.encoder?.frameRate || '30fps',
+    frameRate: cfg.encoder?.frameRate || cfg.encoder?.fps || '30fps',
     resolution: cfg.encoder?.resolution || '1080p',
   });
 
@@ -232,9 +236,10 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
   }
 
   // ── Add to playlist (if configured) ──────────────────────────────────────
-  if (cfg.youtubePlaylistId) {
+  const playlistId = cfg.youtubePlaylistId || cfg.playlist?.id;
+  if (playlistId) {
     try {
-      await addBroadcastToPlaylist(youtubeChannelId, broadcastId, cfg.youtubePlaylistId);
+      await addBroadcastToPlaylist(youtubeChannelId, broadcastId, playlistId);
     } catch (error) {
       logEvent('WARN', 'YouTube Live', `Failed to add to playlist: ${error.message}`);
     }
