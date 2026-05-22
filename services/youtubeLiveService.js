@@ -337,3 +337,137 @@ export async function updateBroadcastMetadata(channelId, broadcastId, updates) {
     throw error;
   }
 }
+
+/**
+ * Start a YouTube Live campaign programmatically (used by Scheduler)
+ * Mirrors the logic of POST /campaigns/:id/start-youtube-live
+ */
+export async function startYoutubeLiveCampaign(campaignId, options = {}) {
+  // Import these here to avoid circular deps at module load time
+  const { startFfmpegStream } = await import('./ffmpegRunner.js');
+  const { notifyBroadcastLive } = await import('./telegramService.js');
+  const { getLiveChatId, startChatbot } = await import('./youtubeChatService.js');
+  const { startStreamMonitoring } = await import('./youtubeAnalyticsService.js');
+
+  const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(Number(campaignId));
+  if (!campaign) throw new Error(`Kampanye #${campaignId} tidak ditemukan.`);
+
+  let cfg = {};
+  try { cfg = JSON.parse(campaign.config_json || '{}'); } catch { cfg = {}; }
+
+  const youtubeChannelId = cfg.youtubeChannelId || cfg.channelId;
+  if (!youtubeChannelId) throw new Error('YouTube channel belum dipilih di config kampanye.');
+
+  // ── Pilih VIDEO ────────────────────────────────────────────────────────────
+  const videoIds = Array.isArray(cfg.videoAssetIds) ? cfg.videoAssetIds.map(Number).filter(Boolean) : [];
+  let chosenVideo = null;
+  if (videoIds.length > 0) {
+    const pl = videoIds.map(() => '?').join(', ');
+    const candidates = db.prepare(`SELECT * FROM assets WHERE id IN (${pl}) AND type = 'Video'`).all(...videoIds);
+    if (candidates.length > 0) chosenVideo = candidates[Math.floor(Math.random() * candidates.length)];
+  }
+  if (!chosenVideo) chosenVideo = db.prepare("SELECT * FROM assets WHERE type = 'Video' ORDER BY RANDOM() LIMIT 1").get();
+  if (!chosenVideo) throw new Error('Tidak ada video di Pustaka Aset.');
+
+  // ── Pilih THUMBNAIL ────────────────────────────────────────────────────────
+  const thumbIds = Array.isArray(cfg.thumbnailAssetIds) ? cfg.thumbnailAssetIds.map(Number).filter(Boolean) : [];
+  let chosenThumbnail = null;
+  if (thumbIds.length > 0) {
+    const pl = thumbIds.map(() => '?').join(', ');
+    const thumbs = db.prepare(`SELECT * FROM assets WHERE id IN (${pl})`).all(...thumbIds);
+    if (thumbs.length > 0) chosenThumbnail = thumbs[Math.floor(Math.random() * thumbs.length)];
+  }
+  if (!chosenThumbnail) chosenThumbnail = db.prepare("SELECT * FROM assets WHERE type IN ('Images','Thumbnail') ORDER BY RANDOM() LIMIT 1").get() || null;
+
+  // ── Pilih JUDUL ────────────────────────────────────────────────────────────
+  const titles = String(cfg.youtubeLiveTitles || cfg.liveTitles || '').split('\n').map(t => t.trim()).filter(Boolean);
+  const chosenTitle = titles.length > 0 ? titles[Math.floor(Math.random() * titles.length)] : campaign.name;
+
+  // ── Buat broadcast YouTube ─────────────────────────────────────────────────
+  logEvent('INFO', 'Scheduler', `Scheduler memulai YouTube Live untuk kampanye #${campaignId}: ${chosenTitle}`);
+
+  const privacySetting = cfg.youtubePrivacy || cfg.privacy || 'Publik';
+  const broadcastData = await createYoutubeLiveBroadcast({
+    channelId: youtubeChannelId,
+    title: chosenTitle,
+    description: cfg.youtubeDescription || cfg.description || '',
+    categoryId: cfg.youtubeCategoryId || cfg.categoryId || '10',
+    tags: cfg.youtubeTags || cfg.tags || '',
+    privacyStatus: privacySetting.toLowerCase() === 'publik' ? 'public'
+                  : privacySetting.toLowerCase() === 'tidak publik' ? 'unlisted' : 'private',
+    enableAutoStart: true,
+    enableAutoStop: cfg.youtubeAutoStopEnabled !== false,
+    recordFromStart: true,
+  });
+
+  const { rtmpUrl, streamKey, broadcastId, streamId, watchUrl } = broadcastData;
+
+  // ── Upload thumbnail ───────────────────────────────────────────────────────
+  if (chosenThumbnail?.path) {
+    try { await uploadBroadcastThumbnail(youtubeChannelId, broadcastId, chosenThumbnail.path); }
+    catch (e) { logEvent('WARN', 'Scheduler', `Thumbnail upload gagal: ${e.message}`); }
+  }
+
+  // ── Add ke playlist ────────────────────────────────────────────────────────
+  const playlistId = cfg.youtubePlaylistId || cfg.playlist?.id;
+  if (playlistId) {
+    try { await addBroadcastToPlaylist(youtubeChannelId, broadcastId, playlistId); }
+    catch (e) { logEvent('WARN', 'Scheduler', `Add to playlist gagal: ${e.message}`); }
+  }
+
+  // ── Update status kampanye → Aktif ────────────────────────────────────────
+  db.prepare("UPDATE campaigns SET status = 'Aktif', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(campaignId);
+
+  // ── Start FFmpeg ───────────────────────────────────────────────────────────
+  const started = startFfmpegStream({
+    campaignId,
+    platform: 'YouTube API',
+    inputPath: chosenVideo.path,
+    rtmpUrl,
+    streamKey,
+    encoder: cfg.encoder || {},
+  });
+
+  // ── Simpan data stream ─────────────────────────────────────────────────────
+  try {
+    db.prepare(`UPDATE streams SET chosen_video_id=?, chosen_thumbnail_id=?, chosen_title=?, youtube_broadcast_id=?, youtube_stream_id=?, youtube_watch_url=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+      .run(chosenVideo.id ?? null, chosenThumbnail?.id ?? null, chosenTitle, broadcastId, streamId, watchUrl, started.streamId);
+  } catch (e) { logEvent('WARN', 'Scheduler', `Simpan stream info gagal: ${e.message}`); }
+
+  // ── Live chat & monitoring ─────────────────────────────────────────────────
+  let liveChatId = null;
+  try {
+    liveChatId = await getLiveChatId(youtubeChannelId, broadcastId);
+    if (liveChatId) db.prepare('UPDATE streams SET youtube_live_chat_id=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(liveChatId, started.streamId);
+  } catch (e) { logEvent('WARN', 'Scheduler', `Get live chat ID gagal: ${e.message}`); }
+
+  try {
+    startStreamMonitoring(started.streamId, { channelId: youtubeChannelId, broadcastId, youtubeStreamId: streamId, intervalSeconds: 30 });
+  } catch (e) { logEvent('WARN', 'Scheduler', `Start monitoring gagal: ${e.message}`); }
+
+  if (cfg.chatbot?.enabled && liveChatId) {
+    try {
+      startChatbot(started.streamId, {
+        channelId: youtubeChannelId, liveChatId,
+        messages: cfg.chatbot.messages || [],
+        intervalMinutes: parseInt(cfg.chatbot.interval || '10'),
+        mode: cfg.chatbot.mode === 'Pesan berkala' ? 'sequential' : 'random',
+      });
+    } catch (e) { logEvent('WARN', 'Scheduler', `Start chatbot gagal: ${e.message}`); }
+  }
+
+  // ── Transisi ke LIVE setelah 30 detik ─────────────────────────────────────
+  setTimeout(async () => {
+    try {
+      await transitionBroadcastToLive(youtubeChannelId, broadcastId);
+      logEvent('INFO', 'Scheduler', `Broadcast ${broadcastId} sekarang LIVE`);
+      notifyBroadcastLive({ campaignName: campaign.name, broadcastId, watchUrl, title: chosenTitle })
+        .catch(e => logEvent('ERROR', 'Telegram', e.message));
+    } catch (e) {
+      logEvent('ERROR', 'Scheduler', `Transisi ke LIVE gagal: ${e.message}`);
+    }
+  }, 30000);
+
+  logEvent('INFO', 'Scheduler', `Kampanye #${campaignId} berhasil dimulai oleh scheduler. Broadcast: ${broadcastId}`);
+  return { streamId: started.streamId, broadcastId, watchUrl };
+}

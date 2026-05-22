@@ -153,7 +153,9 @@ function calculateNextExecution(campaign) {
 /**
  * Execute campaign with recurring logic
  */
-async function executeCampaign(campaign) {
+async function executeCampaign(campaignData) {
+  // Always fetch fresh data from DB to get latest config
+  const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(campaignData.id) || campaignData;
   const config = readJson(campaign.config_json, {});
   
   logEvent('INFO', 'Scheduler', `Menjalankan kampanye #${campaign.id}: ${campaign.name}`);
@@ -166,41 +168,54 @@ async function executeCampaign(campaign) {
     return;
   }
   
-  // Validate configuration
-  if (!config.rtmpUrl || !config.inputPath) {
-    const errorMsg = `Kampanye #${campaign.id} belum punya inputPath atau RTMP URL.`;
-    logEvent('WARN', 'Scheduler', errorMsg);
-    recordExecution(campaign.id, 'failed', 0, errorMsg);
-    return;
-  }
-  
   // Get duration for this execution
   const durationMinutes = getExecutionDuration(campaign);
   
   try {
-    // Start the stream
-    const streamResult = await startFfmpegStream({
-      campaignId: campaign.id,
-      platform: campaign.mode,
-      inputPath: config.inputPath,
-      rtmpUrl: config.rtmpUrl,
-      streamKey: config.streamKey,
-      encoder: config.encoder,
-      durationMinutes: durationMinutes
-    });
+    const isYouTubeAPI = campaign.mode === 'YouTube API' || config.mode === 'YouTube API';
     
-    // Record successful execution
-    recordExecution(campaign.id, 'success', durationMinutes, null, streamResult?.streamId);
+    if (isYouTubeAPI) {
+      // ── YouTube API mode: call the full start-youtube-live logic ─────────────
+      if (!config.youtubeChannelId) {
+        const errorMsg = `Kampanye #${campaign.id} belum punya youtubeChannelId di config.`;
+        logEvent('WARN', 'Scheduler', errorMsg);
+        recordExecution(campaign.id, 'failed', 0, errorMsg);
+        return;
+      }
+      
+      // Import startYoutubeLive dynamically to avoid circular deps
+      const { startYoutubeLiveCampaign } = await import('./youtubeLiveService.js');
+      const streamResult = await startYoutubeLiveCampaign(campaign.id, { durationMinutes });
+      
+      recordExecution(campaign.id, 'success', durationMinutes, null, streamResult?.streamId);
+      logEvent('INFO', 'Scheduler', `Kampanye YouTube #${campaign.id} berhasil dimulai oleh scheduler.`);
+    } else {
+      // ── Manual RTMP mode ──────────────────────────────────────────────────────
+      if (!config.rtmpUrl || !config.inputPath) {
+        const errorMsg = `Kampanye #${campaign.id} belum punya inputPath atau RTMP URL.`;
+        logEvent('WARN', 'Scheduler', errorMsg);
+        recordExecution(campaign.id, 'failed', 0, errorMsg);
+        return;
+      }
+      
+      const streamResult = await startFfmpegStream({
+        campaignId: campaign.id,
+        platform: campaign.mode,
+        inputPath: config.inputPath,
+        rtmpUrl: config.rtmpUrl,
+        streamKey: config.streamKey,
+        encoder: config.encoder,
+        durationMinutes: durationMinutes
+      });
+      
+      recordExecution(campaign.id, 'success', durationMinutes, null, streamResult?.streamId);
+      logEvent('INFO', 'Scheduler', `Kampanye RTMP #${campaign.id} berhasil dimulai. Durasi: ${durationMinutes} menit.`);
+    }
     
     // Update next execution time
     const nextExecution = calculateNextExecution(campaign);
-    db.prepare(`
-      UPDATE campaigns 
-      SET next_execution_at = ?
-      WHERE id = ?
-    `).run(nextExecution, campaign.id);
+    db.prepare('UPDATE campaigns SET next_execution_at = ? WHERE id = ?').run(nextExecution, campaign.id);
     
-    logEvent('INFO', 'Scheduler', `Kampanye #${campaign.id} berhasil dijalankan. Durasi: ${durationMinutes} menit. Next: ${nextExecution}`);
   } catch (error) {
     logEvent('ERROR', 'Scheduler', `Gagal menjalankan kampanye #${campaign.id}: ${error.message}`);
     recordExecution(campaign.id, 'failed', 0, error.message);
