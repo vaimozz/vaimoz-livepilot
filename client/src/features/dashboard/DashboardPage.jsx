@@ -62,10 +62,9 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
       setAssets(assetResult.assets || []);
       setStreams(streamResult.streams || []);
       setMetrics(metricResult || null);
-      
-      const ytChannels = ytChannelsResult?.channels || ytChannelsResult || [];
+      const ytChannels = Array.isArray(ytChannelsResult?.channels) ? ytChannelsResult.channels : (Array.isArray(ytChannelsResult) ? ytChannelsResult : []);
       window.__ytChannels = ytChannels; // Cache for memo
-      
+
       setDashboardMessage('Dashboard berhasil dimuat dari SQLite dan backend.');
     } catch (error) {
       setDashboardMessage(`Gagal memuat dashboard: ${getErrorMessage(error)}`);

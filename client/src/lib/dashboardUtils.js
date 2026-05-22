@@ -41,7 +41,7 @@ export function getStreamingRows(items, selectedPlatform, youtubeChannels = []) 
       (campaign.platforms || []).map((platform) => {
         let channelName = platform === 'YouTube' ? 'YouTube Channel' : platform === 'Facebook' ? 'Facebook Page' : 'Custom RTMP';
         if (platform === 'YouTube' && campaign.config?.channelId) {
-          const ch = youtubeChannels.find(c => String(c.id) === String(campaign.config.channelId));
+          const ch = Array.isArray(youtubeChannels) ? youtubeChannels.find(c => String(c.id) === String(campaign.config.channelId)) : null;
           if (ch) channelName = ch.name || ch.title || channelName;
         }
 
