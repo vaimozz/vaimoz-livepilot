@@ -66,6 +66,7 @@ export function getStreamingRows(items, selectedPlatform, youtubeChannels = [], 
 
         return {
           ...campaign,
+          name: activeStream?.chosenTitle || campaign.name,
           streamId: activeStream?.id || campaign.streamId || null,
           rowId: `${campaign.id}-${platform}`,
           platform,
