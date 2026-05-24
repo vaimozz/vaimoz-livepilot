@@ -5,88 +5,25 @@
 
 export const themes = {
   cyberpunk: {
-    name: 'Cyberpunk Neon',
+    name: 'Set And Forget Dark',
     colors: {
-      '--bg-primary': '#0a0e27',
-      '--bg-secondary': '#0f1729',
-      '--bg-tertiary': '#1a1f3a',
-      '--accent-primary': '#00d9ff',
-      '--accent-secondary': '#ff00ff',
-      '--accent-tertiary': '#7000ff',
+      '--bg-primary': '#0b0e14',
+      '--bg-secondary': '#161a23',
+      '--bg-tertiary': '#1e222e',
+      '--accent-primary': '#f213a4',
+      '--accent-secondary': '#7000ff',
+      '--accent-tertiary': '#00d9ff',
       '--text-primary': '#ffffff',
-      '--text-secondary': '#b4c6fc',
-      '--text-muted': '#6b7ba8',
-      '--border-primary': '#1e2a4a',
-      '--border-accent': '#00d9ff33',
-      '--success': '#00ff88',
+      '--text-secondary': '#8b92a5',
+      '--text-muted': '#5e6473',
+      '--border-primary': '#222736',
+      '--border-accent': '#f213a433',
+      '--success': '#00c853',
       '--warning': '#ffaa00',
       '--error': '#ff0055',
       '--info': '#00d9ff',
     },
-    gradient: 'linear-gradient(135deg, #0a0e27 0%, #0f1729 50%, #1a1f3a 100%)',
-  },
-  purple: {
-    name: 'Modern Purple',
-    colors: {
-      '--bg-primary': '#0f0520',
-      '--bg-secondary': '#1a0b2e',
-      '--bg-tertiary': '#2d1b4e',
-      '--accent-primary': '#a855f7',
-      '--accent-secondary': '#ec4899',
-      '--accent-tertiary': '#8b5cf6',
-      '--text-primary': '#ffffff',
-      '--text-secondary': '#e9d5ff',
-      '--text-muted': '#a78bfa',
-      '--border-primary': '#4c1d95',
-      '--border-accent': '#a855f733',
-      '--success': '#10b981',
-      '--warning': '#f59e0b',
-      '--error': '#ef4444',
-      '--info': '#a855f7',
-    },
-    gradient: 'linear-gradient(135deg, #0f0520 0%, #1a0b2e 50%, #2d1b4e 100%)',
-  },
-  ocean: {
-    name: 'Ocean Blue',
-    colors: {
-      '--bg-primary': '#020420',
-      '--bg-secondary': '#0a1628',
-      '--bg-tertiary': '#0f2744',
-      '--accent-primary': '#0ea5e9',
-      '--accent-secondary': '#06b6d4',
-      '--accent-tertiary': '#3b82f6',
-      '--text-primary': '#ffffff',
-      '--text-secondary': '#bae6fd',
-      '--text-muted': '#7dd3fc',
-      '--border-primary': '#1e3a5f',
-      '--border-accent': '#0ea5e933',
-      '--success': '#10b981',
-      '--warning': '#f59e0b',
-      '--error': '#ef4444',
-      '--info': '#0ea5e9',
-    },
-    gradient: 'linear-gradient(135deg, #020420 0%, #0a1628 50%, #0f2744 100%)',
-  },
-  warm: {
-    name: 'Warm Dark',
-    colors: {
-      '--bg-primary': '#1a0f0a',
-      '--bg-secondary': '#2d1810',
-      '--bg-tertiary': '#3d2415',
-      '--accent-primary': '#f97316',
-      '--accent-secondary': '#fb923c',
-      '--accent-tertiary': '#ea580c',
-      '--text-primary': '#ffffff',
-      '--text-secondary': '#fed7aa',
-      '--text-muted': '#fdba74',
-      '--border-primary': '#57341a',
-      '--border-accent': '#f9731633',
-      '--success': '#10b981',
-      '--warning': '#fbbf24',
-      '--error': '#ef4444',
-      '--info': '#f97316',
-    },
-    gradient: 'linear-gradient(135deg, #1a0f0a 0%, #2d1810 50%, #3d2415 100%)',
+    gradient: 'none',
   },
   slate: {
     name: 'Classic Slate',
@@ -109,6 +46,27 @@ export const themes = {
     },
     gradient: 'linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e293b 100%)',
   },
+  light: {
+    name: 'Clean White',
+    colors: {
+      '--bg-primary': '#ffffff',
+      '--bg-secondary': '#f8fafc',
+      '--bg-tertiary': '#f1f5f9',
+      '--accent-primary': '#3b82f6',
+      '--accent-secondary': '#8b5cf6',
+      '--accent-tertiary': '#ec4899',
+      '--text-primary': '#0f172a',
+      '--text-secondary': '#475569',
+      '--text-muted': '#64748b',
+      '--border-primary': '#e2e8f0',
+      '--border-accent': '#3b82f633',
+      '--success': '#10b981',
+      '--warning': '#f59e0b',
+      '--error': '#ef4444',
+      '--info': '#0ea5e9',
+    },
+    gradient: 'none',
+  },
 };
 
 /**
@@ -129,8 +87,17 @@ export function applyTheme(themeKey) {
   });
   
   // Apply gradient background
-  document.body.style.background = theme.gradient;
+  document.body.style.background = theme.gradient !== 'none' ? theme.gradient : theme.colors['--bg-primary'];
   document.body.style.backgroundAttachment = 'fixed';
+  
+  // Set color scheme for native elements (scrollbars, inputs)
+  if (themeKey === 'light') {
+    document.documentElement.style.colorScheme = 'light';
+    root.classList.remove('dark');
+  } else {
+    document.documentElement.style.colorScheme = 'dark';
+    root.classList.add('dark');
+  }
   
   // Save to localStorage
   localStorage.setItem('theme', themeKey);
