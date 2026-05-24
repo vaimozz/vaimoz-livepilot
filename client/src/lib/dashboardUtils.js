@@ -40,7 +40,7 @@ export function getScheduleInfo(schedule = '') {
   return { label: text, time: '--', timezone: 'Asia/Jakarta' };
 }
 
-export function getStreamingRows(items, selectedPlatform, youtubeChannels = [], streams = []) {
+export function getStreamingRows(items, selectedPlatform, youtubeChannels = [], streams = [], assets = []) {
   return items
     .flatMap((campaign) =>
       (campaign.platforms || []).map((platform) => {
@@ -63,10 +63,13 @@ export function getStreamingRows(items, selectedPlatform, youtubeChannels = [], 
 
         const isOnline = campaign.status === 'Sedang Live' || campaign.status === 'Online' || campaign.status === 'Aktif' || campaign.status === 'Reconnecting';
         const activeStream = streams.find(s => s.campaignId === campaign.id && ['Online', 'Starting', 'Reconnecting'].includes(s.status));
+        const activeThumbnailId = activeStream?.chosenThumbnailId;
+        const activeThumbnailUrl = activeThumbnailId ? assets.find(a => String(a.id) === String(activeThumbnailId))?.url : null;
 
         return {
           ...campaign,
           name: activeStream?.chosenTitle || campaign.name,
+          thumbnailUrl: activeThumbnailUrl,
           streamId: activeStream?.id || campaign.streamId || null,
           rowId: `${campaign.id}-${platform}`,
           platform,

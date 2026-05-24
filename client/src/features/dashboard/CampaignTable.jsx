@@ -104,7 +104,7 @@ export function CampaignTable({ streamingRows, onRefresh, onEdit }) {
                   <div key={row.rowId} className="grid grid-cols-12 items-center px-7 py-5 text-sm transition hover:bg-slate-800/70">
                     <div className="col-span-4">
                       <div className="flex items-center gap-4">
-                        <StreamPreview title={streamTitle} platform={row.platform} isOnline={isOnline} />
+                        <StreamPreview title={streamTitle} platform={row.platform} isOnline={isOnline} thumbnailUrl={row.thumbnailUrl} />
                         <div className="min-w-0">
                           <p className="truncate font-bold text-white">{streamTitle}</p>
                           <div className="mt-1 flex min-w-0 items-center gap-2">
