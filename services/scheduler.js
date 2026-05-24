@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { db, logEvent, readJson, writeJson } from '../db/database.js';
 import { startFfmpegStream } from './ffmpegRunner.js';
+import { stopActiveCampaignStream } from './streamManager.js';
 
 const jobs = new Map();
 
@@ -227,6 +228,20 @@ async function executeCampaign(campaignData) {
     // Update next execution time
     const nextExecution = calculateNextExecution(campaign);
     db.prepare('UPDATE campaigns SET next_execution_at = ? WHERE id = ?').run(nextExecution, campaign.id);
+    
+    // Schedule auto stop
+    if (durationMinutes > 0) {
+      const ms = durationMinutes * 60 * 1000;
+      setTimeout(async () => {
+        logEvent('INFO', 'Scheduler', `Durasi kampanye #${campaign.id} (${durationMinutes} menit) telah habis. Menghentikan stream secara otomatis.`);
+        try {
+          await stopActiveCampaignStream(campaign.id);
+        } catch (e) {
+          logEvent('ERROR', 'Scheduler', `Gagal menghentikan stream kampanye #${campaign.id}: ${e.message}`);
+        }
+      }, ms);
+      logEvent('INFO', 'Scheduler', `Auto-stop dijadwalkan dalam ${durationMinutes} menit untuk kampanye #${campaign.id}`);
+    }
     
   } catch (error) {
     logEvent('ERROR', 'Scheduler', `Gagal menjalankan kampanye #${campaign.id}: ${error.message}`);

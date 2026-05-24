@@ -112,65 +112,7 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{dashboardStats.map((stat, index) => <StatCard key={stat.title} {...stat} index={index} />)}</div>
       </section>
 
-      {streams.filter(s => ['Online', 'Starting'].includes(s.status)).length > 0 && (
-        <section className="mb-6">
-          <SectionLabel title="Live Stream Aktif" description="Stream yang sedang diproses oleh backend." />
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {streams.filter(s => ['Online', 'Starting'].includes(s.status)).map((stream) => (
-              <Card key={stream.id} className="overflow-hidden rounded-2xl border-slate-700 bg-slate-800/80 shadow-lg">
-                <CardContent className="p-4">
-                  <div className="mb-3 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-900/50 text-cyan-400">
-                      <Radio className="h-5 w-5 animate-pulse" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-white line-clamp-1">{stream.campaignName || `Stream #${stream.id}`}</h4>
-                      <p className="text-xs text-slate-400">Target: {stream.platform}</p>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5 text-xs text-slate-300">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Status</span>
-                      <span className={cx("font-medium", stream.status === 'Online' ? 'text-emerald-400' : 'text-amber-400')}>
-                        {stream.status}
-                      </span>
-                    </div>
-                    {stream.pid && (
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">PID / Mem</span>
-                        <span className="font-mono text-cyan-400">
-                          {stream.pid} / {formatBytes(stream.memoryUsed)}
-                        </span>
-                      </div>
-                    )}
-                    {stream.durationFormatted && (
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Durasi</span>
-                        <span>{stream.durationFormatted}</span>
-                      </div>
-                    )}
-                    {stream.isChatbotRunning && (
-                      <p className="text-green-400">
-                        🤖 Chatbot Active • {stream.chatbotMessageCount || 0} messages
-                      </p>
-                    )}
-                    {stream.youtubeWatchUrl && (
-                      <a
-                        href={stream.youtubeWatchUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block truncate text-cyan-400 hover:underline"
-                      >
-                        🔗 Watch on YouTube
-                      </a>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-      )}
+
 
       <section className="mb-6">
         <SectionLabel title="Statistik Server" description="Pantau resource server berdasarkan endpoint monitor backend." />
@@ -199,7 +141,43 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
         </Card>
       </section>
 
-      <section><SchedulerPanel campaigns={campaigns} /></section>
+      <section className="mb-6"><SchedulerPanel campaigns={campaigns} /></section>
+
+      {streams.filter(s => ['Online', 'Starting'].includes(s.status)).length > 0 && (
+        <section className="mb-6">
+          <SectionLabel title="Live Stream Aktif" description="Stream yang sedang diproses oleh backend." />
+          <div className="max-h-[400px] overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900/40 p-2 shadow-inner pr-2">
+            <div className="flex flex-col gap-1.5">
+              {streams.filter(s => ['Online', 'Starting'].includes(s.status)).map((stream) => (
+                <div key={stream.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-slate-800/50 bg-slate-800/40 px-4 py-2.5 hover:bg-slate-800/80 transition text-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex h-3 w-3 items-center justify-center">
+                      <span className={cx("absolute inline-flex h-full w-full rounded-full opacity-75", stream.status === 'Online' ? 'bg-emerald-400 animate-ping' : 'bg-amber-400 animate-pulse')}></span>
+                      <span className={cx("relative inline-flex h-2 w-2 rounded-full", stream.status === 'Online' ? 'bg-emerald-500' : 'bg-amber-500')}></span>
+                    </div>
+                    <span className="font-semibold text-slate-200">{stream.campaignName || `Stream #${stream.id}`}</span>
+                    <span className="hidden rounded-md bg-slate-950 px-2 py-0.5 text-xs text-slate-400 sm:inline-block">{stream.platform}</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-4 text-xs text-slate-400">
+                    <div className="flex items-center gap-3 font-mono">
+                      {stream.pid && <span>PID: <span className="text-cyan-400">{stream.pid}</span></span>}
+                      {stream.memoryUsed && <span className="hidden md:inline-block">RAM: <span className="text-cyan-400">{formatBytes(stream.memoryUsed)}</span></span>}
+                    </div>
+                    {stream.durationFormatted && <span className="hidden sm:inline-block text-slate-300">{stream.durationFormatted}</span>}
+                    {stream.isChatbotRunning && <span className="hidden lg:inline-block text-green-400" title={`${stream.chatbotMessageCount || 0} messages sent`}>🤖 Active</span>}
+                    {stream.youtubeWatchUrl && (
+                      <a href={stream.youtubeWatchUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-lg bg-cyan-500/10 px-2.5 py-1 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300 transition">
+                        Buka YT ↗
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
     </>
   );
 }

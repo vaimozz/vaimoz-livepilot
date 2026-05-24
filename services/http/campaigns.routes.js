@@ -24,6 +24,7 @@ import {
   stopStreamMonitoring,
   getLiveStreamStats,
 } from '../youtubeAnalyticsService.js';
+import { stopActiveCampaignStream } from '../streamManager.js';
 
 export const campaignsRouter = Router();
 campaignsRouter.use(requireAuth);
@@ -402,61 +403,11 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
 // Hentikan stream aktif milik campaign ini
 // ═══════════════════════════════════════════════════════════════════════════════
 campaignsRouter.post('/:id/stop', asyncHandler(async (req, res) => {
-  const id = Number(req.params.id);
-  const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(id);
-  if (!campaign) return res.status(404).json({ error: 'Kampanye tidak ditemukan.' });
-
-  // Cari stream Online milik campaign ini
-  const activeStream = db.prepare(
-    "SELECT * FROM streams WHERE campaign_id = ? AND status IN ('Online','Starting') ORDER BY created_at DESC LIMIT 1"
-  ).get(id);
-
-  if (!activeStream) {
-    db.prepare('UPDATE campaigns SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run('Draft', id);
-    return res.json({ ok: true, stopped: false, message: 'Tidak ada stream aktif untuk kampanye ini.' });
+  const result = await stopActiveCampaignStream(req.params.id);
+  if (!result.ok) {
+    return res.status(404).json({ error: result.message });
   }
-
-  // Stop chatbot if active
-  try {
-    stopChatbot(activeStream.id);
-    logEvent('INFO', 'YouTube Chatbot', `Stopped chatbot for stream #${activeStream.id}`);
-  } catch (error) {
-    logEvent('WARN', 'YouTube Chatbot', `Failed to stop chatbot: ${error.message}`);
-  }
-
-  // Stop analytics monitoring
-  try {
-    stopStreamMonitoring(activeStream.id);
-    logEvent('INFO', 'YouTube Analytics', `Stopped monitoring stream #${activeStream.id}`);
-  } catch (error) {
-    logEvent('WARN', 'YouTube Analytics', `Failed to stop monitoring: ${error.message}`);
-  }
-
-  // Stop FFmpeg stream
-  const result = stopFfmpegStream(activeStream.id);
-
-  // Complete YouTube broadcast if exists
-  if (activeStream.youtube_broadcast_id) {
-    try {
-      let cfg = {};
-      try { cfg = JSON.parse(campaign.config_json || '{}'); } catch { cfg = {}; }
-      const youtubeChannelId = cfg.youtubeChannelId;
-      
-      if (youtubeChannelId) {
-        await completeBroadcast(youtubeChannelId, activeStream.youtube_broadcast_id);
-        logEvent('INFO', 'YouTube Live', `Broadcast ${activeStream.youtube_broadcast_id} completed`);
-      }
-    } catch (error) {
-      logEvent('ERROR', 'YouTube Live', `Failed to complete broadcast: ${error.message}`);
-    }
-  }
-
-  // Update campaign status → Draft
-  db.prepare('UPDATE campaigns SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run('Draft', id);
-
-  logEvent('INFO', 'Kampanye', `Campaign #${id} "${campaign.name}" dihentikan. Stream #${activeStream.id}`);
-
-  res.json({ ok: true, stopped: result.stopped, streamId: activeStream.id });
+  res.json(result);
 }));
 
 // ═══════════════════════════════════════════════════════════════════════════════
