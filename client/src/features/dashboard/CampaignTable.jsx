@@ -5,7 +5,7 @@ import { getStreamingRows } from '@/lib/dashboardUtils.js';
 import { StreamPreview } from '@/components/shared/Previews.jsx';
 import { api } from '@/lib/api.js';
 
-export function CampaignTable({ streamingRows, onRefresh, onEdit }) {
+export function CampaignTable({ streamingRows, onRefresh, onEdit, viewMode = 'list' }) {
   const [actionLoading, setActionLoading] = useState({}); // { [rowId]: true }
   const [actionMsg, setActionMsg] = useState('');
 
@@ -66,6 +66,138 @@ export function CampaignTable({ streamingRows, onRefresh, onEdit }) {
       setActionMsg(`Gagal hapus: ${err.message}`);
     }
   };
+
+  if (viewMode === 'grid') {
+    return (
+      <div className="space-y-3">
+        {actionMsg && (
+          <div className="rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-2 text-xs text-slate-300">
+            {actionMsg}
+          </div>
+        )}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {streamingRows.length === 0 ? (
+            <div className="col-span-full flex min-h-40 items-center justify-center text-center text-sm text-slate-500 border border-slate-800 rounded-2xl">
+              Belum ada streaming/campaign. Buat campaign baru di menu Kampanye Live.
+            </div>
+          ) : null}
+          {streamingRows.map((row) => {
+            const isOnline = row.status === 'Sedang Live' || row.status === 'Online' || row.status === 'Aktif';
+            const isReconnecting = row.status === 'Reconnecting';
+            const isError = row.status === 'Error';
+            const isLoading = actionLoading[row.rowId];
+            const streamTitle = row.name;
+            const isYouTube = row.platform === 'YouTube';
+            const platformIconClass = isYouTube ? 'border-red-500 text-red-400' : 'border-blue-500 text-blue-400';
+
+            return (
+              <div key={row.rowId} className="relative flex flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-xl transition hover:bg-slate-800/60">
+                <div className="relative h-36 w-full shrink-0">
+                  {row.thumbnailUrl ? (
+                    <img src={row.thumbnailUrl} alt={streamTitle} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className={cx('absolute inset-0 bg-gradient-to-br', isYouTube ? 'from-red-500/30 to-slate-950' : 'from-blue-500/30 to-slate-950')} />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                  {isOnline && <div className="absolute left-3 top-3 rounded bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-lg">LIVE</div>}
+                  <div className={cx('absolute right-3 top-3 rounded px-2 py-0.5 text-[10px] font-bold text-white shadow-lg', platformIconClass, 'border bg-slate-900/80')}>{isYouTube ? '▶ YT' : 'f FB'}</div>
+                </div>
+                <div className="flex flex-1 flex-col p-4">
+                  <p className="line-clamp-2 text-sm font-bold text-white" title={streamTitle}>{streamTitle}</p>
+                  <p className="mt-1 truncate text-xs text-slate-400">{row.channel}</p>
+                  
+                  <div className="mt-3 flex items-center justify-between text-xs">
+                    <span className="text-slate-400">{row.scheduleInfo.label}</span>
+                    <span className={cx('font-semibold', isOnline ? 'text-emerald-400' : isError ? 'text-red-400' : 'text-slate-500')}>{isOnline ? 'Online' : row.status}</span>
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2 border-t border-slate-800 pt-3">
+                    <button onClick={() => isOnline ? handleStop(row) : handleStart(row)} disabled={isLoading} className={cx('flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold text-white transition disabled:opacity-50', isOnline ? 'bg-red-600 hover:bg-red-500' : 'bg-blue-600 hover:bg-blue-500')}>
+                      {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                      {isOnline ? 'Stop' : 'Start'}
+                    </button>
+                    <button onClick={() => onEdit && onEdit(row)} className="rounded-xl border border-slate-700 bg-slate-800 p-2 text-slate-400 hover:text-cyan-400"><Edit className="h-4 w-4" /></button>
+                    <button onClick={() => handleDelete(row)} className="rounded-xl border border-slate-700 bg-slate-800 p-2 text-slate-400 hover:text-red-400"><Trash2 className="h-4 w-4" /></button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  if (viewMode === 'detail') {
+    return (
+      <div className="space-y-4">
+        {actionMsg && (
+          <div className="rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-2 text-xs text-slate-300">
+            {actionMsg}
+          </div>
+        )}
+        <div className="grid gap-4">
+          {streamingRows.length === 0 ? (
+            <div className="flex min-h-40 items-center justify-center text-center text-sm text-slate-500 border border-slate-800 rounded-2xl">
+              Belum ada streaming/campaign. Buat campaign baru di menu Kampanye Live.
+            </div>
+          ) : null}
+          {streamingRows.map((row) => {
+            const isOnline = row.status === 'Sedang Live' || row.status === 'Online' || row.status === 'Aktif';
+            const isReconnecting = row.status === 'Reconnecting';
+            const isError = row.status === 'Error';
+            const isLoading = actionLoading[row.rowId];
+            const streamTitle = row.name;
+            const isYouTube = row.platform === 'YouTube';
+            const channelAvatarClass = isYouTube ? 'bg-orange-600' : 'bg-blue-600';
+
+            return (
+              <div key={row.rowId} className="flex flex-col sm:flex-row overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-xl transition hover:bg-slate-800/60">
+                <div className="relative h-48 sm:w-72 shrink-0">
+                  {row.thumbnailUrl ? (
+                    <img src={row.thumbnailUrl} alt={streamTitle} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className={cx('absolute inset-0 bg-gradient-to-br', isYouTube ? 'from-red-500/30 to-slate-950' : 'from-blue-500/30 to-slate-950')} />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                  {isOnline && <div className="absolute left-3 top-3 rounded bg-emerald-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-lg">LIVE</div>}
+                </div>
+                <div className="flex flex-1 flex-col p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h4 className="text-base font-bold text-white line-clamp-2">{streamTitle}</h4>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className={cx('flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold text-white', channelAvatarClass)}>{row.channelInitial}</span>
+                        <span className="text-sm font-semibold text-slate-300">{row.channel}</span>
+                        <span className="text-sm text-slate-500">• {row.platform}</span>
+                      </div>
+                    </div>
+                    <span className={cx('shrink-0 rounded-full px-3 py-1 text-xs font-semibold ring-1', isOnline ? 'bg-emerald-400/10 text-emerald-400 ring-emerald-400/20' : isError ? 'bg-red-500/10 text-red-400 ring-red-500/20' : 'bg-slate-800 text-slate-300 ring-white/5')}>{isOnline ? 'Online' : row.status}</span>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-4 text-xs text-slate-400 sm:grid-cols-4">
+                    <div><p className="font-semibold text-slate-200">Jadwal</p><p className="mt-0.5">{row.scheduleInfo.label} {row.scheduleInfo.time}</p></div>
+                    <div><p className="font-semibold text-slate-200">Mode</p><p className="mt-0.5">{row.niche}</p></div>
+                    <div><p className="font-semibold text-slate-200">Video Asset</p><p className="mt-0.5 truncate" title={row.video}>{row.video}</p></div>
+                    <div><p className="font-semibold text-slate-200">Waktu Live</p><p className="mt-0.5">{isOnline ? `${row.startedAt} - ${row.stopAt}` : '--'}</p></div>
+                  </div>
+
+                  <div className="mt-auto flex items-center gap-3 pt-5 border-t border-slate-800">
+                    <button onClick={() => isOnline ? handleStop(row) : handleStart(row)} disabled={isLoading} className={cx('flex items-center justify-center gap-2 rounded-xl px-6 py-2 text-sm font-semibold text-white transition disabled:opacity-50', isOnline ? 'bg-red-600 hover:bg-red-500' : 'bg-blue-600 hover:bg-blue-500')}>
+                      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                      {isOnline ? 'Stop Stream' : 'Start Stream'}
+                    </button>
+                    <button onClick={() => onEdit && onEdit(row)} className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-300 hover:text-cyan-400"><Edit className="h-4 w-4" /> Edit</button>
+                    <button onClick={() => handleDelete(row)} className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-300 hover:text-red-400"><Trash2 className="h-4 w-4" /> Hapus</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">

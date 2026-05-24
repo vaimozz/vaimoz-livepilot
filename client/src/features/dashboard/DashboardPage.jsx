@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarClock, Clapperboard, Cpu, HardDrive, ListVideo, MemoryStick, Radio, RefreshCw } from 'lucide-react';
+import { CalendarClock, Clapperboard, Cpu, HardDrive, ListVideo, MemoryStick, Radio, RefreshCw, LayoutGrid, List, LayoutList } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { SectionLabel } from '@/components/shared/SectionTitle.jsx';
@@ -48,6 +48,7 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
   const [ytChannels, setYtChannels] = useState([]);
   const [dashboardMessage, setDashboardMessage] = useState('Dashboard membaca data asli dari SQLite dan backend.');
   const [isLoading, setIsLoading] = useState(false);
+  const [viewMode, setViewMode] = useState('list');
 
   const loadDashboardData = async () => {
     setIsLoading(true);
@@ -130,13 +131,29 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
                 <h3 className="text-lg font-bold text-white">Streaming Status</h3>
                 <p className="text-sm text-slate-400">Kelola dan pantau seluruh campaign dari SQLite.</p>
               </div>
-              <div className="flex rounded-2xl bg-slate-950 p-1 text-xs ring-1 ring-slate-800">
-                {['Semua', 'YouTube', 'Facebook'].map((platform) => (
-                  <button key={platform} type="button" onClick={() => setSelectedPlatform(platform)} className={cx('rounded-xl px-3 py-2 transition', selectedPlatform === platform ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white')}>{platform}</button>
-                ))}
+              <div className="flex gap-4">
+                <div className="flex rounded-2xl bg-slate-950 p-1 text-xs ring-1 ring-slate-800">
+                  {[
+                    { id: 'list', icon: List, label: 'List' },
+                    { id: 'grid', icon: LayoutGrid, label: 'Grid' },
+                    { id: 'detail', icon: LayoutList, label: 'Detail' }
+                  ].map((mode) => {
+                    const Icon = mode.icon;
+                    return (
+                      <button key={mode.id} type="button" title={mode.label} onClick={() => setViewMode(mode.id)} className={cx('rounded-xl p-2 transition', viewMode === mode.id ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white')}>
+                        <Icon className="h-4 w-4" />
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex rounded-2xl bg-slate-950 p-1 text-xs ring-1 ring-slate-800">
+                  {['Semua', 'YouTube', 'Facebook'].map((platform) => (
+                    <button key={platform} type="button" onClick={() => setSelectedPlatform(platform)} className={cx('rounded-xl px-3 py-2 transition', selectedPlatform === platform ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white')}>{platform}</button>
+                  ))}
+                </div>
               </div>
             </div>
-            <CampaignTable streamingRows={streamingRows} onRefresh={loadDashboardData} onEdit={(campaign) => { setEditCampaign(campaign); setActivePage('Kampanye Live'); }} />
+            <CampaignTable streamingRows={streamingRows} onRefresh={loadDashboardData} onEdit={(campaign) => { setEditCampaign(campaign); setActivePage('Kampanye Live'); }} viewMode={viewMode} />
           </CardContent>
         </Card>
       </section>
