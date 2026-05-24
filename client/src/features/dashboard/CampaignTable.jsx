@@ -5,7 +5,7 @@ import { getStreamingRows } from '@/lib/dashboardUtils.js';
 import { StreamPreview } from '@/components/shared/Previews.jsx';
 import { api } from '@/lib/api.js';
 
-export function CampaignTable({ streamingRows, onRefresh, onEdit, viewMode = 'list' }) {
+export function CampaignTable({ streamingRows, onRefresh, onEdit, viewMode = 'list', groupByChannel = false }) {
   const [actionLoading, setActionLoading] = useState({}); // { [rowId]: true }
   const [actionMsg, setActionMsg] = useState('');
 
@@ -67,21 +67,38 @@ export function CampaignTable({ streamingRows, onRefresh, onEdit, viewMode = 'li
     }
   };
 
+  const groups = groupByChannel 
+    ? streamingRows.reduce((acc, row) => {
+        const channel = row.channel || 'Tanpa Channel';
+        if (!acc[channel]) acc[channel] = [];
+        acc[channel].push(row);
+        return acc;
+      }, {})
+    : { 'Semua Kampanye': streamingRows };
+
   if (viewMode === 'grid') {
     return (
-      <div className="space-y-3">
+      <div className="space-y-6">
         {actionMsg && (
           <div className="rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-2 text-xs text-slate-300">
             {actionMsg}
           </div>
         )}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {streamingRows.length === 0 ? (
+        {Object.entries(groups).map(([groupName, rows]) => (
+          <div key={groupName} className="space-y-3">
+            {groupByChannel && (
+              <h3 className="text-sm font-bold text-cyan-400 border-b border-slate-800 pb-2 flex items-center gap-2">
+                <span>{groupName}</span>
+                <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">{rows.length}</span>
+              </h3>
+            )}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {rows.length === 0 && !groupByChannel ? (
             <div className="col-span-full flex min-h-40 items-center justify-center text-center text-sm text-slate-500 border border-slate-800 rounded-2xl">
               Belum ada streaming/campaign. Buat campaign baru di menu Kampanye Live.
             </div>
           ) : null}
-          {streamingRows.map((row) => {
+          {rows.map((row) => {
             const isOnline = row.status === 'Sedang Live' || row.status === 'Online' || row.status === 'Aktif';
             const isReconnecting = row.status === 'Reconnecting';
             const isError = row.status === 'Error';
@@ -130,19 +147,27 @@ export function CampaignTable({ streamingRows, onRefresh, onEdit, viewMode = 'li
 
   if (viewMode === 'detail') {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         {actionMsg && (
           <div className="rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-2 text-xs text-slate-300">
             {actionMsg}
           </div>
         )}
-        <div className="grid gap-4">
-          {streamingRows.length === 0 ? (
+        {Object.entries(groups).map(([groupName, rows]) => (
+          <div key={groupName} className="space-y-3">
+            {groupByChannel && (
+              <h3 className="text-sm font-bold text-cyan-400 border-b border-slate-800 pb-2 flex items-center gap-2">
+                <span>{groupName}</span>
+                <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">{rows.length}</span>
+              </h3>
+            )}
+            <div className="grid gap-4">
+              {rows.length === 0 && !groupByChannel ? (
             <div className="flex min-h-40 items-center justify-center text-center text-sm text-slate-500 border border-slate-800 rounded-2xl">
               Belum ada streaming/campaign. Buat campaign baru di menu Kampanye Live.
             </div>
           ) : null}
-          {streamingRows.map((row) => {
+          {rows.map((row) => {
             const isOnline = row.status === 'Sedang Live' || row.status === 'Online' || row.status === 'Aktif';
             const isReconnecting = row.status === 'Reconnecting';
             const isError = row.status === 'Error';
@@ -200,13 +225,22 @@ export function CampaignTable({ streamingRows, onRefresh, onEdit, viewMode = 'li
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
       {actionMsg && (
         <div className="rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-2 text-xs text-slate-300">
           {actionMsg}
         </div>
       )}
-      <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-xl shadow-black/10">
+      
+      {Object.entries(groups).map(([groupName, rows]) => (
+        <div key={groupName} className="space-y-3">
+          {groupByChannel && (
+            <h3 className="text-sm font-bold text-cyan-400 border-b border-slate-800 pb-2 flex items-center gap-2">
+              <span>{groupName}</span>
+              <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">{rows.length}</span>
+            </h3>
+          )}
+          <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-xl shadow-black/10">
         <div className="overflow-x-auto">
           <div className="min-w-[1080px]">
             <div className="grid grid-cols-12 border-b border-slate-800 bg-slate-900 px-7 py-4 text-[12px] font-semibold uppercase tracking-wide text-slate-300">
@@ -216,13 +250,13 @@ export function CampaignTable({ streamingRows, onRefresh, onEdit, viewMode = 'li
               <div className="col-span-2">Status</div>
               <div className="col-span-2 text-right">Actions</div>
             </div>
-            <div className="divide-y divide-slate-800">
-              {streamingRows.length === 0 ? (
-                <div className="flex min-h-40 items-center justify-center text-center text-sm text-slate-500">
-                  Belum ada streaming/campaign. Buat campaign baru di menu Kampanye Live.
-                </div>
-              ) : null}
-              {streamingRows.map((row) => {
+              <div className="divide-y divide-slate-800">
+                {rows.length === 0 && !groupByChannel ? (
+                  <div className="flex min-h-40 items-center justify-center text-center text-sm text-slate-500">
+                    Belum ada streaming/campaign. Buat campaign baru di menu Kampanye Live.
+                  </div>
+                ) : null}
+                {rows.map((row) => {
                 const isOnline = row.status === 'Sedang Live' || row.status === 'Online' || row.status === 'Aktif';
                 const isReconnecting = row.status === 'Reconnecting';
                 const isError = row.status === 'Error';
@@ -349,10 +383,11 @@ export function CampaignTable({ streamingRows, onRefresh, onEdit, viewMode = 'li
                   </div>
                 );
               })}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      ))}
     </div>
   );
 }

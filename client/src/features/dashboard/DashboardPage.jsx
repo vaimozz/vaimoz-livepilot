@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarClock, Clapperboard, Cpu, HardDrive, ListVideo, MemoryStick, Radio, RefreshCw, LayoutGrid, List, LayoutList } from 'lucide-react';
+import { CalendarClock, Clapperboard, Cpu, HardDrive, ListVideo, MemoryStick, Radio, RefreshCw, LayoutGrid, List, LayoutList, Layers } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { SectionLabel } from '@/components/shared/SectionTitle.jsx';
@@ -49,6 +49,7 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
   const [dashboardMessage, setDashboardMessage] = useState('Dashboard membaca data asli dari SQLite dan backend.');
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState('list');
+  const [groupByChannel, setGroupByChannel] = useState(false);
 
   const loadDashboardData = async () => {
     setIsLoading(true);
@@ -132,6 +133,15 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
                 <p className="text-sm text-slate-400">Kelola dan pantau seluruh campaign dari SQLite.</p>
               </div>
               <div className="flex gap-4">
+                <button 
+                  type="button" 
+                  onClick={() => setGroupByChannel(!groupByChannel)}
+                  title="Kelompokkan berdasarkan Channel"
+                  className={cx('flex items-center gap-2 rounded-2xl px-3 py-1.5 text-xs font-semibold ring-1 transition', groupByChannel ? 'bg-cyan-500 text-slate-950 ring-cyan-500' : 'bg-slate-950 text-slate-400 ring-slate-800 hover:text-white')}
+                >
+                  <Layers className="h-4 w-4" />
+                  <span className="hidden sm:inline">Group by Channel</span>
+                </button>
                 <div className="flex rounded-2xl bg-slate-950 p-1 text-xs ring-1 ring-slate-800">
                   {[
                     { id: 'list', icon: List, label: 'List' },
@@ -153,7 +163,7 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
                 </div>
               </div>
             </div>
-            <CampaignTable streamingRows={streamingRows} onRefresh={loadDashboardData} onEdit={(campaign) => { setEditCampaign(campaign); setActivePage('Kampanye Live'); }} viewMode={viewMode} />
+            <CampaignTable streamingRows={streamingRows} onRefresh={loadDashboardData} onEdit={(campaign) => { setEditCampaign(campaign); setActivePage('Kampanye Live'); }} viewMode={viewMode} groupByChannel={groupByChannel} />
           </CardContent>
         </Card>
       </section>
