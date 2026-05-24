@@ -218,12 +218,56 @@ export function startChatbot(streamId, config) {
     }
   };
 
-  // Send first message immediately
-  sendNextMessage();
+  let intervalId;
 
-  // Schedule periodic messages
-  const intervalMs = intervalMinutes * 60 * 1000;
-  const intervalId = setInterval(sendNextMessage, intervalMs);
+  if (mode === 'Pesan terjadwal (Jam tertentu)') {
+    // Parse format "19:30 | Halo semua"
+    const parsedMessages = messages.map(m => {
+      const parts = m.split('|');
+      if (parts.length >= 2) {
+        return { time: parts[0].trim(), text: parts.slice(1).join('|').trim(), lastSentDate: null };
+      }
+      return null;
+    }).filter(Boolean);
+
+    logEvent('INFO', 'YouTube Chatbot', `Chatbot started (Scheduled Time mode) for stream #${streamId} with ${parsedMessages.length} scheduled times.`);
+
+    intervalId = setInterval(() => {
+      const now = new Date();
+      const currentHour = String(now.getHours()).padStart(2, '0');
+      const currentMinute = String(now.getMinutes()).padStart(2, '0');
+      const currentTimeStr = `${currentHour}:${currentMinute}`;
+      const todayStr = now.toDateString();
+
+      for (const msg of parsedMessages) {
+        if (msg.time === currentTimeStr && msg.lastSentDate !== todayStr) {
+          msg.lastSentDate = todayStr;
+          
+          sendChatMessage(channelId, liveChatId, msg.text).then(() => {
+            db.prepare(`
+              UPDATE streams 
+              SET chatbot_last_message = ?, 
+                  chatbot_message_count = chatbot_message_count + 1,
+                  updated_at = CURRENT_TIMESTAMP 
+              WHERE id = ?
+            `).run(msg.text, streamId);
+            logEvent('INFO', 'YouTube Chatbot', `Stream #${streamId}: Sent scheduled message at ${currentTimeStr}`);
+          }).catch(err => {
+            logEvent('ERROR', 'YouTube Chatbot', `Stream #${streamId}: Failed to send scheduled message: ${err.message}`);
+          });
+        }
+      }
+    }, 60 * 1000); // Check every minute
+
+  } else {
+    // Send first message immediately
+    sendNextMessage();
+
+    // Schedule periodic messages
+    const intervalMs = intervalMinutes * 60 * 1000;
+    intervalId = setInterval(sendNextMessage, intervalMs);
+    logEvent('INFO', 'YouTube Chatbot', `Chatbot started for stream #${streamId}, interval: ${intervalMinutes} minutes`);
+  }
 
   activeChatbots.set(streamId, {
     intervalId,
@@ -240,7 +284,6 @@ export function startChatbot(streamId, config) {
     WHERE id = ?
   `).run(streamId);
 
-  logEvent('INFO', 'YouTube Chatbot', `Chatbot started for stream #${streamId}, interval: ${intervalMinutes} minutes`);
   return true;
 }
 

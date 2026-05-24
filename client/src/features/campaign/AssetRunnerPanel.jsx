@@ -579,28 +579,36 @@ export function EncoderPanel({ state, setters, saveCampaignDraft }) {
                   className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white"
                 >
                   <option>Pesan berkala</option>
+                  <option>Pesan terjadwal (Jam tertentu)</option>
                   <option>Balas keyword</option>
                   <option>Sapaan penonton</option>
                   <option>Promosi subscribe</option>
                 </select>
               </label>
-              <label className="block text-xs font-semibold text-slate-400">
-                Interval Kirim Pesan
-                <select
-                  value={state.youtubeChatbotInterval}
-                  onChange={(e) => setters.setYoutubeChatbotInterval(e.target.value)}
-                  disabled={!state.youtubeChatbotEnabled}
-                  className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white"
-                >
-                  <option value="5">Setiap 5 menit</option>
-                  <option value="10">Setiap 10 menit</option>
-                  <option value="15">Setiap 15 menit</option>
-                  <option value="30">Setiap 30 menit</option>
-                  <option value="60">Setiap 60 menit</option>
-                </select>
-              </label>
+              {state.youtubeChatbotMode !== 'Pesan terjadwal (Jam tertentu)' && (
+                <label className="block text-xs font-semibold text-slate-400">
+                  Interval Kirim Pesan
+                  <select
+                    value={state.youtubeChatbotInterval}
+                    onChange={(e) => setters.setYoutubeChatbotInterval(e.target.value)}
+                    disabled={!state.youtubeChatbotEnabled}
+                    className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white"
+                  >
+                    <option value="5">Setiap 5 menit</option>
+                    <option value="10">Setiap 10 menit</option>
+                    <option value="15">Setiap 15 menit</option>
+                    <option value="30">Setiap 30 menit</option>
+                    <option value="60">Setiap 60 menit</option>
+                  </select>
+                </label>
+              )}
               <label className="block text-xs font-semibold text-slate-400">
                 Daftar Pesan Otomatis
+                {state.youtubeChatbotMode === 'Pesan terjadwal (Jam tertentu)' && (
+                  <span className="block mt-1 font-normal text-cyan-400">
+                    Format: HH:MM | Pesan Anda (contoh: 19:30 | Selamat datang di live stream!)
+                  </span>
+                )}
                 <textarea
                   value={state.youtubeChatbotMessages}
                   onChange={(e) => setters.setYoutubeChatbotMessages(e.target.value)}
