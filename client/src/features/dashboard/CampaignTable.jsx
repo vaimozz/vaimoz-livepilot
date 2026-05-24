@@ -142,8 +142,10 @@ export function CampaignTable({ streamingRows, onRefresh, onEdit, viewMode = 'li
           })}
         </div>
       </div>
-    );
-  }
+      ))}
+    </div>
+  );
+}
 
   if (viewMode === 'detail') {
     return (
@@ -221,8 +223,10 @@ export function CampaignTable({ streamingRows, onRefresh, onEdit, viewMode = 'li
           })}
         </div>
       </div>
-    );
-  }
+      ))}
+    </div>
+  );
+}
 
   return (
     <div className="space-y-6">
@@ -386,6 +390,7 @@ export function CampaignTable({ streamingRows, onRefresh, onEdit, viewMode = 'li
               </div>
             </div>
           </div>
+        </div>
         </div>
       ))}
     </div>
