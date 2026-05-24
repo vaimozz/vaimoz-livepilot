@@ -42,26 +42,26 @@
 :root {
   color-scheme: dark;
   
-  /* Cyberpunk Neon Theme (Default) */
-  --bg-primary: #0a0e27;
-  --bg-secondary: #0f1729;
-  --bg-tertiary: #1a1f3a;
+  /* Aurora Glassmorphism Vibrant Theme */
+  --bg-primary: #1a0b2e; /* Deep purple */
+  --bg-secondary: #0b132b; /* Deep blue */
+  --bg-tertiary: #2e0854; /* Magenta dark */
   
-  --accent-primary: #00d9ff;
-  --accent-secondary: #ff00ff;
-  --accent-tertiary: #7000ff;
+  --accent-primary: #ff2a5f; /* Vibrant Coral Pink */
+  --accent-secondary: #00f2fe; /* Electric Cyan */
+  --accent-tertiary: #f9d423; /* Vibrant Yellow */
   
   --text-primary: #ffffff;
-  --text-secondary: #b4c6fc;
-  --text-muted: #6b7ba8;
+  --text-secondary: #e2d1f9;
+  --text-muted: #9c8fb7;
   
-  --border-primary: #1e2a4a;
-  --border-accent: #00d9ff33;
+  --border-primary: #3d2c5e;
+  --border-accent: #ff2a5f33;
   
   --success: #00ff88;
-  --warning: #ffaa00;
-  --error: #ff0055;
-  --info: #00d9ff;
+  --warning: #f9d423;
+  --error: #ff2a5f;
+  --info: #00f2fe;
 }
 
 * {
@@ -73,7 +73,10 @@ html, body {
   min-width: 320px;
   min-height: 100vh;
   background-color: var(--bg-primary) !important;
-  background-image: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-tertiary) 100%) !important;
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(255, 42, 95, 0.15), transparent 45%),
+    radial-gradient(circle at 85% 30%, rgba(0, 242, 254, 0.15), transparent 45%),
+    linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 50%, var(--bg-tertiary) 100%) !important;
   background-attachment: fixed !important;
   color: var(--text-primary) !important;
 }
