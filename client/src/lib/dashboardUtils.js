@@ -2,9 +2,13 @@ export function normalizeDashboardCampaign(campaign) {
   const config = campaign.config || {};
   const platform = config.platform || (campaign.mode === 'YouTube API' ? 'YouTube' : 'Manual RTMP');
   const schedule = config.scheduleText || config.startTime || 'Belum dijadwalkan';
+  
+  // Use the first line of youtubeLiveTitles as the primary display name if available
+  const firstTitle = (config.youtubeLiveTitles || '').split('\n').map(t => t.trim()).filter(Boolean)[0];
+  
   return {
     id: campaign.id,
-    name: campaign.name || 'Kampanye Tanpa Nama',
+    name: firstTitle || config.youtubeTitle || config.title || campaign.name || 'Kampanye Tanpa Nama',
     mode: campaign.mode,
     niche: campaign.mode || 'Live',
     platforms: platform === 'YouTube + Facebook' ? ['YouTube', 'Facebook'] : [platform === 'Manual RTMP' ? 'Custom RTMP' : platform],
