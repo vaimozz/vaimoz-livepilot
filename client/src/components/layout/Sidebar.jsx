@@ -66,14 +66,15 @@ export function Sidebar({ activePage, setActivePage }) {
               onClick={() => setActivePage(item.label)} 
               className={cx('flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm transition-all duration-200 hover:scale-[1.02]')}
               style={isActive ? {
-                color: 'var(--accent-primary)',
-                backgroundColor: 'color-mix(in srgb, var(--accent-primary) 12%, transparent)',
-                border: '1px solid color-mix(in srgb, var(--accent-primary) 20%, transparent)',
+                color: '#ffffff',
+                background: 'linear-gradient(to right, #f213a4, #7000ff)',
+                boxShadow: '0 4px 15px rgba(242, 19, 164, 0.3)',
+                border: 'none',
               } : {
                 color: 'var(--text-secondary)',
               }}
             >
-              <Icon className="h-4 w-4" style={{ color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)' }} />
+              <Icon className="h-4 w-4" style={{ color: isActive ? '#ffffff' : 'var(--text-muted)' }} />
               {item.label}
             </button>
           );

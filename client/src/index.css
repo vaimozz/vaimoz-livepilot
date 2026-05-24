@@ -42,26 +42,26 @@
 :root {
   color-scheme: dark;
   
-  /* Aurora Glassmorphism Vibrant Theme */
-  --bg-primary: #1a0b2e; /* Deep purple */
-  --bg-secondary: #0b132b; /* Deep blue */
-  --bg-tertiary: #2e0854; /* Magenta dark */
+  /* Set And Forget Dark Theme */
+  --bg-primary: #0b0e14; /* Solid Dark */
+  --bg-secondary: #161a23; /* Cards BG */
+  --bg-tertiary: #1e222e; /* Sub elements BG */
   
-  --accent-primary: #ff2a5f; /* Vibrant Coral Pink */
-  --accent-secondary: #00f2fe; /* Electric Cyan */
-  --accent-tertiary: #f9d423; /* Vibrant Yellow */
+  --accent-primary: #f213a4; /* Pink */
+  --accent-secondary: #7000ff; /* Purple */
+  --accent-tertiary: #00d9ff; /* Cyan */
   
   --text-primary: #ffffff;
-  --text-secondary: #e2d1f9;
-  --text-muted: #9c8fb7;
+  --text-secondary: #8b92a5;
+  --text-muted: #5e6473;
   
-  --border-primary: #3d2c5e;
-  --border-accent: #ff2a5f33;
+  --border-primary: #222736;
+  --border-accent: #f213a433;
   
-  --success: #00ff88;
-  --warning: #f9d423;
-  --error: #ff2a5f;
-  --info: #00f2fe;
+  --success: #00c853;
+  --warning: #ffaa00;
+  --error: #ff0055;
+  --info: #00d9ff;
 }
 
 * {
@@ -73,11 +73,7 @@ html, body {
   min-width: 320px;
   min-height: 100vh;
   background-color: var(--bg-primary) !important;
-  background-image: 
-    radial-gradient(circle at 15% 50%, rgba(255, 42, 95, 0.15), transparent 45%),
-    radial-gradient(circle at 85% 30%, rgba(0, 242, 254, 0.15), transparent 45%),
-    linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 50%, var(--bg-tertiary) 100%) !important;
-  background-attachment: fixed !important;
+  background-image: none !important;
   color: var(--text-primary) !important;
 }
 
