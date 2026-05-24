@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, Radio } from 'lucide-react';
+import { Eye, MonitorPlay } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import { canLogin } from '@/lib/validation.js';
 
@@ -18,7 +18,7 @@ export function LoginPage({ onLogin, onRegister }) {
     setAuthMode(nextMode);
     setPassword('');
     setConfirmPassword('');
-    setLoginMessage(nextMode === 'register' ? 'Buat akun admin lokal untuk Vaimoz LivePilot.' : 'Masukkan username dan password untuk masuk.');
+    setLoginMessage(nextMode === 'register' ? 'Buat akun admin lokal untuk Live Pilot.' : 'Masukkan username dan password untuk masuk.');
   };
 
   const submitAuth = async (event) => {
@@ -70,19 +70,20 @@ export function LoginPage({ onLogin, onRegister }) {
         }}
       >
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-5 flex items-center justify-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl" style={{
+          <div className="mx-auto mb-6 flex items-center justify-center gap-3">
+            <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/20" style={{
               background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-              boxShadow: '0 0 20px color-mix(in srgb, var(--accent-primary) 30%, transparent)'
+              boxShadow: '0 8px 24px color-mix(in srgb, var(--accent-primary) 40%, transparent)'
             }}>
-              <Radio className="h-7 w-7 text-white" />
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '8px 8px' }}></div>
+              <MonitorPlay className="relative z-10 h-7 w-7 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]" strokeWidth={2.5} />
             </div>
             <div className="text-left leading-none">
-              <p className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>Vaimoz</p>
-              <p className="text-xl font-bold italic" style={{ color: 'var(--accent-secondary)' }}>LivePilot</p>
+              <p className="text-3xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>Live Pilot</p>
+              <p className="mt-1.5 text-[11px] font-bold uppercase tracking-widest opacity-80" style={{ color: 'var(--accent-secondary)' }}>Kontrol Live Otomatis</p>
             </div>
           </div>
-          <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Vaimoz LivePilot</h1>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Autentikasi</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>{isRegisterMode ? 'Register' : 'Login'}</p>
         </div>
         <form onSubmit={submitAuth} className="space-y-5">

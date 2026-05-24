@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bell, Radio, Palette } from 'lucide-react';
+import { Bell, MonitorPlay, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import { ThemeSwitcher } from '@/components/shared/ThemeSwitcher.jsx';
 import { formatTopbarDate, formatTopbarTime } from '@/lib/formatters.js';
@@ -70,17 +70,19 @@ export function AppTopBar({ now }) {
         backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 95%, transparent)'
       }}>
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl shadow-glow-cyan" style={{
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-lg ring-1 ring-white/20" style={{
             background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+            boxShadow: '0 4px 14px 0 color-mix(in srgb, var(--accent-primary) 40%, transparent)'
           }}>
-            <Radio className="h-5 w-5 text-white" />
+            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '8px 8px' }}></div>
+            <MonitorPlay className="relative z-10 h-5 w-5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" strokeWidth={2.5} />
           </div>
-          <div>
-            <h1 className="text-sm font-bold tracking-tight sm:text-base" style={{ color: 'var(--text-primary)' }}>
-              Vaimoz LivePilot
+          <div className="flex flex-col justify-center">
+            <h1 className="text-base font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              Live Pilot
             </h1>
-            <p className="text-[10px] sm:text-xs" style={{ color: 'var(--text-muted)' }}>
-              Pusat Kontrol Live Otomatis
+            <p className="text-[10px] font-bold uppercase tracking-wider opacity-75" style={{ color: 'var(--text-secondary)' }}>
+              Kontrol Live Otomatis
             </p>
           </div>
         </div>
