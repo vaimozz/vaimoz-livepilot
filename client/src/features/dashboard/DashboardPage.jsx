@@ -175,14 +175,17 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
           <SectionLabel title="Live Stream Aktif" description="Stream yang sedang diproses oleh backend." />
           <div className="max-h-[400px] overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900/40 p-2 shadow-inner pr-2">
             <div className="flex flex-col gap-1.5">
-              {streams.filter(s => ['Online', 'Starting'].includes(s.status)).map((stream) => (
+              {streams.filter(s => ['Online', 'Starting'].includes(s.status)).map((stream) => {
+                const camp = campaigns.find(c => String(c.id) === String(stream.campaignId));
+                const displayName = stream.chosenTitle || camp?.name || stream.campaignName || `Stream #${stream.id}`;
+                return (
                 <div key={stream.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-slate-800/50 bg-slate-800/40 px-4 py-2.5 hover:bg-slate-800/80 transition text-sm">
                   <div className="flex items-center gap-3">
                     <div className="relative flex h-3 w-3 items-center justify-center">
                       <span className={cx("absolute inline-flex h-full w-full rounded-full opacity-75", stream.status === 'Online' ? 'bg-emerald-400 animate-ping' : 'bg-amber-400 animate-pulse')}></span>
                       <span className={cx("relative inline-flex h-2 w-2 rounded-full", stream.status === 'Online' ? 'bg-emerald-500' : 'bg-amber-500')}></span>
                     </div>
-                    <span className="font-semibold text-slate-200">{stream.campaignName || `Stream #${stream.id}`}</span>
+                    <span className="font-semibold text-slate-200">{displayName}</span>
                     <span className="hidden rounded-md bg-slate-950 px-2 py-0.5 text-xs text-slate-400 sm:inline-block">{stream.platform}</span>
                   </div>
                   
@@ -200,7 +203,8 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
                     )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>

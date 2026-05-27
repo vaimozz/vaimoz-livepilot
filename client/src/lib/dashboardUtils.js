@@ -69,14 +69,15 @@ export function getStreamingRows(items, selectedPlatform, youtubeChannels = [], 
           }
         }
 
-        const isOnline = campaign.status === 'Sedang Live' || campaign.status === 'Online' || campaign.status === 'Aktif' || campaign.status === 'Reconnecting';
-        const activeStream = streams.find(s => s.campaignId === campaign.id && ['Online', 'Starting', 'Reconnecting'].includes(s.status));
+        const activeStream = streams.find(s => String(s.campaignId) === String(campaign.id) && ['Online', 'Starting', 'Reconnecting'].includes(s.status));
+        const isOnline = !!activeStream || campaign.status === 'Sedang Live' || campaign.status === 'Online' || campaign.status === 'Aktif' || campaign.status === 'Reconnecting';
         const activeThumbnailId = activeStream?.chosenThumbnailId;
         const activeThumbnailUrl = activeThumbnailId ? assets.find(a => String(a.id) === String(activeThumbnailId))?.url : null;
 
         return {
           ...campaign,
           name: activeStream?.chosenTitle || campaign.name,
+          status: activeStream ? activeStream.status : campaign.status,
           thumbnailUrl: activeThumbnailUrl,
           streamId: activeStream?.id || campaign.streamId || null,
           rowId: `${campaign.id}-${platform}`,
