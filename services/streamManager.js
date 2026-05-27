@@ -18,56 +18,66 @@ export async function stopActiveCampaignStream(campaignId) {
     return { ok: false, stopped: false, message: 'Kampanye tidak ditemukan.' };
   }
 
-  // Find active stream for this campaign
-  const activeStream = db.prepare(
-    "SELECT * FROM streams WHERE campaign_id = ? AND status IN ('Online','Starting') ORDER BY created_at DESC LIMIT 1"
-  ).get(id);
+  // Find ALL active streams for this campaign to prevent orphaned streams
+  const activeStreams = db.prepare(
+    "SELECT * FROM streams WHERE campaign_id = ? AND status IN ('Online','Starting')"
+  ).all(id);
 
-  if (!activeStream) {
-    // If no active stream, ensure campaign is marked as Draft
-    db.prepare('UPDATE campaigns SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run('Draft', id);
+  if (activeStreams.length === 0) {
+    // If no active stream, ensure campaign status is correct
+    const newStatus = campaign.recurring_enabled ? 'Scheduled' : 'Draft';
+    db.prepare('UPDATE campaigns SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newStatus, id);
     return { ok: true, stopped: false, message: 'Tidak ada stream aktif untuk kampanye ini.' };
   }
 
-  // 1. Stop chatbot if active
-  try {
-    stopChatbot(activeStream.id);
-    logEvent('INFO', 'YouTube Chatbot', `Stopped chatbot for stream #${activeStream.id}`);
-  } catch (error) {
-    logEvent('WARN', 'YouTube Chatbot', `Failed to stop chatbot: ${error.message}`);
-  }
+  let anyStopped = false;
+  let lastStreamId = null;
 
-  // 2. Stop analytics monitoring
-  try {
-    stopStreamMonitoring(activeStream.id);
-    logEvent('INFO', 'YouTube Analytics', `Stopped monitoring stream #${activeStream.id}`);
-  } catch (error) {
-    logEvent('WARN', 'YouTube Analytics', `Failed to stop monitoring: ${error.message}`);
-  }
+  for (const activeStream of activeStreams) {
+    lastStreamId = activeStream.id;
 
-  // 3. Stop FFmpeg stream
-  const result = stopFfmpegStream(activeStream.id);
-
-  // 4. Complete YouTube broadcast if exists
-  if (activeStream.youtube_broadcast_id) {
+    // 1. Stop chatbot if active
     try {
-      let cfg = {};
-      try { cfg = JSON.parse(campaign.config_json || '{}'); } catch { cfg = {}; }
-      const youtubeChannelId = cfg.youtubeChannelId;
-      
-      if (youtubeChannelId) {
-        await completeBroadcast(youtubeChannelId, activeStream.youtube_broadcast_id);
-        logEvent('INFO', 'YouTube Live', `Broadcast ${activeStream.youtube_broadcast_id} completed`);
-      }
+      stopChatbot(activeStream.id);
+      logEvent('INFO', 'YouTube Chatbot', `Stopped chatbot for stream #${activeStream.id}`);
     } catch (error) {
-      logEvent('ERROR', 'YouTube Live', `Failed to complete broadcast: ${error.message}`);
+      logEvent('WARN', 'YouTube Chatbot', `Failed to stop chatbot: ${error.message}`);
+    }
+
+    // 2. Stop analytics monitoring
+    try {
+      stopStreamMonitoring(activeStream.id);
+      logEvent('INFO', 'YouTube Analytics', `Stopped monitoring stream #${activeStream.id}`);
+    } catch (error) {
+      logEvent('WARN', 'YouTube Analytics', `Failed to stop monitoring: ${error.message}`);
+    }
+
+    // 3. Stop FFmpeg stream
+    const result = stopFfmpegStream(activeStream.id);
+    if (result.stopped) anyStopped = true;
+
+    // 4. Complete YouTube broadcast if exists
+    if (activeStream.youtube_broadcast_id) {
+      try {
+        let cfg = {};
+        try { cfg = JSON.parse(campaign.config_json || '{}'); } catch { cfg = {}; }
+        const youtubeChannelId = cfg.youtubeChannelId;
+        
+        if (youtubeChannelId) {
+          await completeBroadcast(youtubeChannelId, activeStream.youtube_broadcast_id);
+          logEvent('INFO', 'YouTube Live', `Broadcast ${activeStream.youtube_broadcast_id} completed`);
+        }
+      } catch (error) {
+        logEvent('ERROR', 'YouTube Live', `Failed to complete broadcast: ${error.message}`);
+      }
     }
   }
 
-  // 5. Update campaign status → Draft
-  db.prepare('UPDATE campaigns SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run('Draft', id);
+  // 5. Update campaign status → Draft (or Scheduled if recurring)
+  const newStatus = campaign.recurring_enabled ? 'Scheduled' : 'Draft';
+  db.prepare('UPDATE campaigns SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newStatus, id);
 
-  logEvent('INFO', 'Kampanye', `Campaign #${id} "${campaign.name}" dihentikan. Stream #${activeStream.id}`);
+  logEvent('INFO', 'Kampanye', `Campaign #${id} "${campaign.name}" dihentikan. Status: ${newStatus}`);
 
-  return { ok: true, stopped: result.stopped, streamId: activeStream.id };
+  return { ok: true, stopped: anyStopped, streamId: lastStreamId };
 }

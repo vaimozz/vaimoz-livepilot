@@ -20,9 +20,26 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 initDatabase();
 import { db } from './db/database.js';
 try {
+  // Kill orphaned FFmpeg processes to prevent zombie streams
+  const activeStreams = db.prepare(`SELECT id, pid FROM streams WHERE status IN ('Online', 'Starting')`).all();
+  for (const stream of activeStreams) {
+    if (stream.pid) {
+      try {
+        process.kill(stream.pid, 'SIGTERM');
+        logEvent('INFO', 'Server', `Menghentikan stream yatim (orphan) PID ${stream.pid} saat startup.`);
+      } catch (e) {
+        // Process might already be dead
+      }
+    }
+  }
+
   const result = db.prepare(`UPDATE streams SET status = 'Error', stopped_at = CURRENT_TIMESTAMP WHERE status IN ('Online', 'Starting')`).run();
-  if (result.changes > 0) {
-    logEvent('INFO', 'Server', `Memperbaiki ${result.changes} stream yatim (orphan) menjadi Error saat startup.`);
+  
+  // Restore campaign statuses so scheduled campaigns survive restarts
+  const campResult = db.prepare(`UPDATE campaigns SET status = 'Scheduled' WHERE recurring_enabled = 1 AND status NOT IN ('Paused', 'Completed')`).run();
+  
+  if (result.changes > 0 || campResult.changes > 0) {
+    logEvent('INFO', 'Server', `Memperbaiki ${result.changes} stream yatim dan merestore ${campResult.changes} kampanye ke status Scheduled saat startup.`);
   }
 } catch (e) {
   console.error("Gagal membersihkan orphan streams:", e);

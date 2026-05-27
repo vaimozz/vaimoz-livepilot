@@ -180,6 +180,13 @@ async function executeCampaign(campaignData) {
     db.prepare("UPDATE campaigns SET status = 'Completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(campaign.id);
     return;
   }
+
+  // Ensure we don't pile up multiple streams for the same campaign (stop stuck ones)
+  try {
+    await stopActiveCampaignStream(campaign.id);
+  } catch (e) {
+    logEvent('WARN', 'Scheduler', `Gagal menghentikan stream sebelumnya untuk kampanye #${campaign.id}: ${e.message}`);
+  }
   
   // Get duration for this execution
   const durationMinutes = getExecutionDuration(campaign);
