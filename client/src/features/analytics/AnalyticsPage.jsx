@@ -70,6 +70,9 @@ export function AnalyticsPage() {
   const [channelAnalytics, setChannelAnalytics] = useState(null);
   const [isLoadingChannelAnalytics, setIsLoadingChannelAnalytics] = useState(false);
 
+  const [selectedStreams, setSelectedStreams] = useState([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // 1. Fetch data analitik dari backend
   const fetchAnalytics = async () => {
     setIsLoading(true);
@@ -94,6 +97,7 @@ export function AnalyticsPage() {
       // Ambit list running streams
       const runningResult = await api.streams.running();
       setActiveStreams(runningResult.streams || []);
+      setSelectedStreams([]); // Reset selection when data changes
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Gagal mengambil data analitik.');
     } finally {
@@ -193,6 +197,38 @@ export function AnalyticsPage() {
     const hrs = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hrs}j ${mins}m`;
+  };
+
+  const handleDeleteStreams = async () => {
+    if (selectedStreams.length === 0) return;
+    if (!window.confirm(`Yakin ingin menghapus ${selectedStreams.length} riwayat stream ini?`)) return;
+    
+    setIsDeleting(true);
+    try {
+      await api.streams.delete(selectedStreams);
+      setSelectedStreams([]);
+      fetchAnalytics();
+    } catch (err) {
+      alert(err.message || 'Gagal menghapus riwayat stream');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedStreams.length === streamsHistory.length) {
+      setSelectedStreams([]);
+    } else {
+      setSelectedStreams(streamsHistory.map(s => s.id));
+    }
+  };
+
+  const toggleSelectStream = (id) => {
+    if (selectedStreams.includes(id)) {
+      setSelectedStreams(prev => prev.filter(streamId => streamId !== id));
+    } else {
+      setSelectedStreams(prev => [...prev, id]);
+    }
   };
 
   return (
@@ -445,6 +481,7 @@ export function AnalyticsPage() {
                         color: 'var(--text-primary)' 
                       }} 
                       labelStyle={{ color: 'var(--text-secondary)', fontWeight: 'bold' }} 
+                      itemStyle={{ color: '#f8fafc' }}
                     />
                     <Legend verticalAlign="top" height={36} iconType="circle" />
                     <Area type="monotone" dataKey="views" name="Total Views" stroke="#38bdf8" fill="url(#viewsGradient)" strokeWidth={3} />
@@ -491,6 +528,7 @@ export function AnalyticsPage() {
                             border: '1px solid var(--border-primary)', 
                             borderRadius: '12px' 
                           }}
+                          itemStyle={{ color: '#f8fafc' }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
@@ -572,6 +610,7 @@ export function AnalyticsPage() {
                         border: '1px solid var(--border-primary)', 
                         borderRadius: '12px' 
                       }} 
+                      itemStyle={{ color: '#f8fafc' }}
                     />
                     <Legend verticalAlign="top" height={36} iconType="circle" />
                     <Bar dataKey="likes" name="Suka" fill="#34d399" radius={[4, 4, 0, 0]} />
@@ -589,15 +628,36 @@ export function AnalyticsPage() {
       {/* ── Tabel Riwayat Stream Lengkap ── */}
       <Card className="rounded-3xl border-[var(--border-primary)] bg-[var(--bg-secondary)]/80 shadow-xl shadow-black/10">
         <CardContent className="p-5">
-          <div className="mb-5 flex items-center gap-3">
-            <span className="inline-block h-5 w-1.5 rounded-full bg-sky-400" />
-            <h3 className="text-lg font-bold text-[var(--text-primary)]">Riwayat Lengkap Sesi Stream</h3>
+          <div className="mb-5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="inline-block h-5 w-1.5 rounded-full bg-sky-400" />
+              <h3 className="text-lg font-bold text-[var(--text-primary)]">Riwayat Lengkap Sesi Stream</h3>
+            </div>
+            {selectedStreams.length > 0 && (
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={handleDeleteStreams}
+                disabled={isDeleting}
+                className="bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 hover:text-rose-300 font-bold border border-rose-500/20 rounded-xl"
+              >
+                Hapus ({selectedStreams.length})
+              </Button>
+            )}
           </div>
           
           <div className="overflow-x-auto rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)]/10">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
                 <tr className="border-b border-[var(--border-primary)] bg-[var(--bg-tertiary)]/40 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                  <th className="px-5 py-4 w-12 text-center">
+                    <input 
+                      type="checkbox" 
+                      className="rounded border-[var(--border-primary)] bg-[var(--bg-tertiary)]" 
+                      checked={streamsHistory.length > 0 && selectedStreams.length === streamsHistory.length}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
                   <th className="px-5 py-4">Kampanye / Judul</th>
                   <th className="px-4 py-4">Platform</th>
                   <th className="px-4 py-4">Waktu Mulai</th>
@@ -617,6 +677,14 @@ export function AnalyticsPage() {
                     const isOnline = ['Online', 'Starting'].includes(s.status);
                     return (
                       <tr key={s.id} className="hover:bg-[var(--bg-secondary)]/40 transition-colors">
+                        <td className="px-5 py-4 text-center">
+                          <input 
+                            type="checkbox" 
+                            className="rounded border-[var(--border-primary)] bg-[var(--bg-tertiary)]" 
+                            checked={selectedStreams.includes(s.id)}
+                            onChange={() => toggleSelectStream(s.id)}
+                          />
+                        </td>
                         <td className="px-5 py-4">
                           <p className="font-extrabold text-[var(--text-primary)]">{s.chosenTitle || 'Stream Tanpa Judul'}</p>
                           <p className="text-2xs text-[var(--text-tertiary)] mt-0.5">{s.campaignName || 'Sesi Manual'}</p>
@@ -659,7 +727,7 @@ export function AnalyticsPage() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan="8" className="px-5 py-8 text-center text-[var(--text-tertiary)] bg-[var(--bg-secondary)]/10">
+                    <td colSpan="9" className="px-5 py-8 text-center text-[var(--text-tertiary)] bg-[var(--bg-secondary)]/10">
                       Belum ada riwayat sesi streaming yang tersimpan.
                     </td>
                   </tr>

@@ -183,3 +183,14 @@ streamsRouter.post('/:id/stop', asyncHandler(async (req, res) => {
   }
   res.json(result);
 }));
+
+// ── POST /streams/delete ──────────────────────────────────────────────────────
+streamsRouter.post('/delete', asyncHandler(async (req, res) => {
+  const ids = req.body.ids || [];
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'Berikan array id stream yang ingin dihapus.' });
+  }
+  const placeholders = ids.map(() => '?').join(', ');
+  const info = db.prepare(`DELETE FROM streams WHERE id IN (${placeholders})`).run(...ids);
+  res.json({ message: `${info.changes} riwayat stream berhasil dihapus.` });
+}));
