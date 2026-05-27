@@ -182,7 +182,14 @@ export function startChatbot(streamId, config) {
     return false;
   }
 
-  if (messages.length === 0) {
+  let messageArray = [];
+  if (Array.isArray(messages)) {
+    messageArray = messages;
+  } else if (typeof messages === 'string') {
+    messageArray = messages.split('\n').map(m => m.trim()).filter(Boolean);
+  }
+
+  if (messageArray.length === 0) {
     logEvent('WARN', 'YouTube Chatbot', `Cannot start chatbot: no messages configured for stream ${streamId}`);
     return false;
   }
@@ -194,9 +201,9 @@ export function startChatbot(streamId, config) {
       // Select message based on mode
       let message;
       if (mode === 'random') {
-        message = messages[Math.floor(Math.random() * messages.length)];
+        message = messageArray[Math.floor(Math.random() * messageArray.length)];
       } else {
-        message = messages[messageIndex % messages.length];
+        message = messageArray[messageIndex % messageArray.length];
         messageIndex++;
       }
 
@@ -222,7 +229,7 @@ export function startChatbot(streamId, config) {
 
   if (mode === 'Pesan terjadwal (Jam tertentu)') {
     // Parse format "19:30 | Halo semua"
-    const parsedMessages = messages.map(m => {
+    const parsedMessages = messageArray.map(m => {
       const parts = m.split('|');
       if (parts.length >= 2) {
         return { time: parts[0].trim(), text: parts.slice(1).join('|').trim(), lastSentDate: null };
