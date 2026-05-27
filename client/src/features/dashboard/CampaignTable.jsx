@@ -106,6 +106,15 @@ export function CampaignTable({ streamingRows, onRefresh, onEdit, viewMode = 'li
             const streamTitle = row.name;
             const isYouTube = row.platform === 'YouTube';
             const platformIconClass = isYouTube ? 'border-red-500 text-red-400' : 'border-blue-500 text-blue-400';
+            
+            let ytStudioUrl = 'https://studio.youtube.com';
+            if (isYouTube) {
+              if (row.youtubeBroadcastId) {
+                ytStudioUrl = `https://studio.youtube.com/video/${row.youtubeBroadcastId}/livestreaming`;
+              } else if (row.youtubeChannelIdStr) {
+                ytStudioUrl = `https://studio.youtube.com/channel/${row.youtubeChannelIdStr}/livestreaming`;
+              }
+            }
 
             return (
               <div key={row.rowId} className="relative flex flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-xl transition hover:bg-slate-800/60">
@@ -177,6 +186,15 @@ export function CampaignTable({ streamingRows, onRefresh, onEdit, viewMode = 'li
             const streamTitle = row.name;
             const isYouTube = row.platform === 'YouTube';
             const channelAvatarClass = isYouTube ? 'bg-orange-600' : 'bg-blue-600';
+            
+            let ytStudioUrl = 'https://studio.youtube.com';
+            if (isYouTube) {
+              if (row.youtubeBroadcastId) {
+                ytStudioUrl = `https://studio.youtube.com/video/${row.youtubeBroadcastId}/livestreaming`;
+              } else if (row.youtubeChannelIdStr) {
+                ytStudioUrl = `https://studio.youtube.com/channel/${row.youtubeChannelIdStr}/livestreaming`;
+              }
+            }
 
             return (
               <div key={row.rowId} className="flex flex-col sm:flex-row overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-xl transition hover:bg-slate-800/60">
@@ -270,6 +288,16 @@ export function CampaignTable({ streamingRows, onRefresh, onEdit, viewMode = 'li
                 const isYouTube = row.platform === 'YouTube';
                 const platformIconClass = isYouTube ? 'border-red-500 text-red-400' : 'border-blue-500 text-blue-400';
                 const channelAvatarClass = isYouTube ? 'bg-orange-600' : 'bg-blue-600';
+                
+                let ytStudioUrl = 'https://studio.youtube.com';
+                if (isYouTube) {
+                  if (row.youtubeBroadcastId) {
+                    ytStudioUrl = `https://studio.youtube.com/video/${row.youtubeBroadcastId}/livestreaming`;
+                  } else if (row.youtubeChannelIdStr) {
+                    ytStudioUrl = `https://studio.youtube.com/channel/${row.youtubeChannelIdStr}/livestreaming`;
+                  }
+                }
+                
                 return (
                   <div key={row.rowId} className="grid grid-cols-12 items-center px-7 py-5 text-sm transition hover:bg-slate-800/70">
                     <div className="col-span-4">
@@ -296,7 +324,7 @@ export function CampaignTable({ streamingRows, onRefresh, onEdit, viewMode = 'li
                           <span>{row.platform}</span>
                         </div>
                         {isYouTube ? (
-                          <a href="https://studio.youtube.com" target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[11px] font-medium text-slate-400 transition hover:text-red-400">
+                          <a href={ytStudioUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[11px] font-medium text-slate-400 transition hover:text-red-400">
                             <span>Buka {row.dashboard}</span>
                             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                           </a>

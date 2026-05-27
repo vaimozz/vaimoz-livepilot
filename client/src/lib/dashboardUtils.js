@@ -45,19 +45,27 @@ export function getStreamingRows(items, selectedPlatform, youtubeChannels = [], 
     .flatMap((campaign) =>
       (campaign.platforms || []).map((platform) => {
         let channelName = platform === 'YouTube' ? 'YouTube Channel' : platform === 'Facebook' ? 'Facebook Page' : 'Custom RTMP';
+        let youtubeChannelIdStr = '';
         if (platform === 'YouTube') {
+          // Find from ytChannels list to get the real UC... id
+          const ch = Array.isArray(youtubeChannels)
+            ? youtubeChannels.find(c =>
+                String(c.id) === String(campaign.config?.youtubeChannelId) ||
+                c.youtubeChannelId === campaign.config?.youtubeChannelId
+              )
+            : null;
+            
+          if (ch) {
+            youtubeChannelIdStr = ch.youtubeChannelId;
+          } else if (String(campaign.config?.youtubeChannelId).startsWith('UC')) {
+            youtubeChannelIdStr = campaign.config.youtubeChannelId;
+          }
+
           // First: use pre-resolved title from backend (most reliable)
           if (campaign.config?.youtubeChannelTitle) {
             channelName = campaign.config.youtubeChannelTitle;
-          } else if (campaign.config?.youtubeChannelId) {
-            // Fallback: find from ytChannels list by SQLite id or YouTube channel id string
-            const ch = Array.isArray(youtubeChannels)
-              ? youtubeChannels.find(c =>
-                  String(c.id) === String(campaign.config.youtubeChannelId) ||
-                  c.youtubeChannelId === campaign.config.youtubeChannelId
-                )
-              : null;
-            if (ch) channelName = ch.title || channelName;
+          } else if (ch) {
+            channelName = ch.title || channelName;
           }
         }
 
@@ -81,6 +89,8 @@ export function getStreamingRows(items, selectedPlatform, youtubeChannels = [], 
           serverCondition: isOnline ? 'Server stabil' : 'Menunggu',
           viewers: activeStream?.youtubeConcurrentViewers || '0',
           scheduleInfo: getScheduleInfo(campaign.schedule),
+          youtubeChannelIdStr,
+          youtubeBroadcastId: activeStream?.youtubeBroadcastId || null,
         };
       })
     )
