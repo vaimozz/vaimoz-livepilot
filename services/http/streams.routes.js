@@ -4,6 +4,7 @@ import { requireAuth } from '../../middleware/auth.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { serializeStream } from '../../utils/serializers.js';
 import { listRunningStreams, startFfmpegStream, stopFfmpegStream } from '../ffmpegRunner.js';
+import { getLiveStreamStats } from '../youtubeAnalyticsService.js';
 
 export const streamsRouter = Router();
 streamsRouter.use(requireAuth);
@@ -193,4 +194,44 @@ streamsRouter.post('/delete', asyncHandler(async (req, res) => {
   const placeholders = ids.map(() => '?').join(', ');
   const info = db.prepare(`DELETE FROM streams WHERE id IN (${placeholders})`).run(...ids);
   res.json({ message: `${info.changes} riwayat stream berhasil dihapus.` });
+}));
+
+// ── POST /streams/sync ────────────────────────────────────────────────────────
+streamsRouter.post('/sync', asyncHandler(async (req, res) => {
+  const ids = req.body.ids || [];
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'Berikan array id stream yang ingin disinkronkan.' });
+  }
+
+  let syncedCount = 0;
+  for (const streamId of ids) {
+    const stream = db.prepare('SELECT * FROM streams WHERE id = ?').get(streamId);
+    if (!stream || !stream.youtube_broadcast_id || !stream.campaign_id) continue;
+
+    const campaign = db.prepare('SELECT config_json FROM campaigns WHERE id = ?').get(stream.campaign_id);
+    if (!campaign) continue;
+
+    let cfg = {};
+    try { cfg = JSON.parse(campaign.config_json || '{}'); } catch { continue; }
+    if (!cfg.youtubeChannelId) continue;
+
+    try {
+      const stats = await getLiveStreamStats(cfg.youtubeChannelId, stream.youtube_broadcast_id);
+      if (stats) {
+        db.prepare(`
+          UPDATE streams 
+          SET youtube_total_views = ?,
+              youtube_likes = ?,
+              youtube_comments = ?,
+              youtube_stats_updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).run(stats.viewCount, stats.likeCount, stats.commentCount, streamId);
+        syncedCount++;
+      }
+    } catch (err) {
+      console.warn(`Gagal sinkronisasi stream #${streamId}:`, err.message);
+    }
+  }
+
+  res.json({ message: `${syncedCount} dari ${ids.length} stream berhasil disinkronkan dengan YouTube Studio.` });
 }));

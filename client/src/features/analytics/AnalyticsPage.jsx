@@ -72,6 +72,7 @@ export function AnalyticsPage() {
 
   const [selectedStreams, setSelectedStreams] = useState([]);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // 1. Fetch data analitik dari backend
   const fetchAnalytics = async () => {
@@ -212,6 +213,20 @@ export function AnalyticsPage() {
       alert(err.message || 'Gagal menghapus riwayat stream');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleSyncStreams = async () => {
+    if (selectedStreams.length === 0) return;
+    setIsSyncing(true);
+    try {
+      const res = await api.streams.sync(selectedStreams);
+      alert(res.message || 'Sinkronisasi berhasil.');
+      fetchAnalytics();
+    } catch (err) {
+      alert(err.message || 'Gagal menyinkronkan data dengan YouTube.');
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -634,15 +649,26 @@ export function AnalyticsPage() {
               <h3 className="text-lg font-bold text-[var(--text-primary)]">Riwayat Lengkap Sesi Stream</h3>
             </div>
             {selectedStreams.length > 0 && (
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                onClick={handleDeleteStreams}
-                disabled={isDeleting}
-                className="bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 hover:text-rose-300 font-bold border border-rose-500/20 rounded-xl"
-              >
-                Hapus ({selectedStreams.length})
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleSyncStreams}
+                  disabled={isSyncing || isDeleting}
+                  className="bg-[var(--bg-tertiary)] border-[var(--border-primary)] text-[var(--text-secondary)] hover:text-sky-400 font-bold rounded-xl"
+                >
+                  {isSyncing ? 'Menyinkronkan...' : `Sinkronkan (${selectedStreams.length})`}
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={handleDeleteStreams}
+                  disabled={isDeleting || isSyncing}
+                  className="bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 hover:text-rose-300 font-bold border border-rose-500/20 rounded-xl"
+                >
+                  Hapus ({selectedStreams.length})
+                </Button>
+              </div>
             )}
           </div>
           

@@ -105,6 +105,7 @@ export const api = {
     startCampaign: (campaignId, payload) => apiRequest('/streams/start-campaign', { method: 'POST', body: JSON.stringify({ campaignId, ...payload }) }),
     stop:    (id) => apiRequest(`/streams/${id}/stop`, { method: 'POST' }),
     delete:  (ids) => apiRequest('/streams/delete', { method: 'POST', body: JSON.stringify({ ids }) }),
+    sync:    (ids) => apiRequest('/streams/sync', { method: 'POST', body: JSON.stringify({ ids }) }),
   },
   youtube: {
     authUrl: () => apiRequest('/youtube/auth-url'),
