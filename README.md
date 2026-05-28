@@ -207,50 +207,81 @@ Build frontend:
 npm run build
 ```
 
-### 3. Konfigurasi Firewall
+### 3. Konfigurasi Nginx & Domain (Sangat Direkomendasikan)
+
+Agar aplikasi dapat diakses secara profesional menggunakan HTTPS (wajib untuk integrasi Google), konfigurasikan Nginx sebagai reverse proxy.
+
+1. Install Nginx dan Certbot:
+```bash
+sudo apt install nginx certbot python3-certbot-nginx -y
+```
+
+2. Buat konfigurasi Nginx:
+```bash
+sudo nano /etc/nginx/sites-available/livepilot
+```
+Isi dengan konfigurasi berikut (ganti `domainanda.com` dengan domain asli Anda):
+```nginx
+server {
+    listen 80;
+    server_name domainanda.com;
+
+    location / {
+        proxy_pass http://localhost:8787;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+3. Aktifkan konfigurasi:
+```bash
+sudo ln -s /etc/nginx/sites-available/livepilot /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+### 4. Konfigurasi Firewall
 
 **PENTING: Buka port SSH terlebih dahulu untuk menghindari terputusnya koneksi!**
 
-Buka port SSH (biasanya port 22):
 ```bash
+# Buka port SSH
 sudo ufw allow ssh
-# atau jika menggunakan port custom SSH
-# sudo ufw allow [PORT_SSH_ANDA]
-```
 
-Buka port aplikasi (default: 8787):
-```bash
+# Buka port untuk Nginx (HTTP & HTTPS)
+sudo ufw allow 'Nginx Full'
+
+# (Opsional) Buka port aplikasi langsung jika tanpa Nginx
 sudo ufw allow 8787
-```
 
-Verifikasi aturan firewall sebelum mengaktifkan:
-```bash
-sudo ufw status verbose
-```
-
-Aktifkan firewall:
-```bash
+# Aktifkan firewall
 sudo ufw enable
 ```
+*(Catatan: Jika Anda menggunakan layanan cloud seperti AWS/Tencent/GCP, pastikan Anda juga membuka port 80 dan 443 di menu Security Group/Firewall pada dashboard penyedia cloud Anda).*
 
-Verifikasi status firewall setelah aktif:
-```bash
-sudo ufw status
-```
+### 5. Install Process Manager (PM2)
 
-### 4. Install Process Manager
-
-Install PM2 untuk mengelola aplikasi:
+Install PM2 untuk mengelola aplikasi di latar belakang:
 ```bash
 sudo npm install -g pm2
 ```
 
-### 5. Menjalankan Aplikasi
+### 6. Menjalankan Aplikasi
 
 Jalankan aplikasi dengan PM2:
 ```bash
 pm2 start app.js --name vaimoz-livepilot
 ```
+
+Amankan domain Anda dengan SSL (HTTPS):
+```bash
+sudo certbot --nginx -d domainanda.com
+```
+*(Ikuti instruksi di layar, dan pilih opsi Redirect (2) agar semua trafik diarahkan ke HTTPS).*
 
 **Setup Auto-Restart saat Server Reboot:**
 ```bash
@@ -385,19 +416,17 @@ docker compose exec vaimoz-livepilot node scripts/reset-password.js
    - User support email: your email
    - Developer contact: your email
    - Scopes: Add `youtube`, `youtube.force-ssl`, `youtube.upload`
-   - Test users: Add your Google account
+   - **Test users (SANGAT PENTING):** Tambahkan alamat email Google Anda sendiri. Jika aplikasi berstatus "Testing", Anda WAJIB menambahkan email Anda di sini agar tidak terkena error *403: access_denied*.
 4. Application type: **Web application**
 5. Name: "Vaimoz LivePilot Web Client"
-6. **Authorized redirect URIs**: Add your callback URL
-   ```
-   http://YOUR_SERVER_IP:8787/api/youtube/callback
-   ```
-   atau untuk localhost:
-   ```
-   http://localhost:8787/api/youtube/callback
-   ```
-7. Klik **Create**
-8. Copy **Client ID** dan **Client Secret** ke `.env`
+6. **Authorized JavaScript origins**: 
+   - Masukkan URL HTTPS domain Anda (contoh: `https://domainanda.com`)
+   - *(Alternatif jika tidak punya domain, gunakan Ngrok)*
+7. **Authorized redirect URIs**: 
+   - Tambahkan `/api/youtube/callback` di belakang URL Anda.
+   - Contoh: `https://domainanda.com/api/youtube/callback`
+8. Klik **Create**
+9. Copy **Client ID** dan **Client Secret** ke file `.env` di VPS Anda.
 
 ### 4. Test OAuth Flow
 
