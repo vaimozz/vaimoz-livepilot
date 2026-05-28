@@ -183,7 +183,7 @@ nano .env
 ```env
 # App
 NODE_ENV=production
-PORT=8787
+PORT=8787 # Ganti dengan port pilihan Anda jika diperlukan
 
 # Frontend
 CLIENT_ORIGIN=http://YOUR_SERVER_IP:8787
@@ -227,7 +227,7 @@ server {
     server_name domainanda.com;
 
     location / {
-        proxy_pass http://localhost:8787;
+        proxy_pass http://localhost:8787; # Sesuaikan dengan PORT di file .env Anda
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -256,7 +256,7 @@ sudo ufw allow ssh
 sudo ufw allow 'Nginx Full'
 
 # (Opsional) Buka port aplikasi langsung jika tanpa Nginx
-sudo ufw allow 8787
+sudo ufw allow 8787 # Sesuaikan jika Anda mengubah port default
 
 # Aktifkan firewall
 sudo ufw enable
