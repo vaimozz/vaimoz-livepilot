@@ -53,10 +53,11 @@ export function listRunningStreams() {
   return [...runningProcesses.entries()].map(([streamId, item]) => ({ streamId, pid: item.process.pid, startedAt: item.startedAt }));
 }
 
-export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP', inputPath, rtmpUrl, streamKey, encoder }) {
+export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP', inputPath, rtmpUrl, streamKey, encoder, durationMinutes }) {
   const outputUrl = buildOutputUrl({ rtmpUrl, streamKey });
   const args = buildFfmpegArgs({ inputPath, outputUrl, encoder });
   const startedAt = new Date().toISOString();
+  const plannedStopTime = durationMinutes ? new Date(Date.now() + durationMinutes * 60000).toISOString() : null;
 
   let campaignName = `Campaign #${campaignId || 'Unknown'}`;
   if (campaignId) {
@@ -65,9 +66,9 @@ export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP',
   }
 
   const insert = db.prepare(`
-    INSERT INTO streams (campaign_id, platform, status, rtmp_url, started_at)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(campaignId, platform, 'Starting', outputUrl.replace(streamKey || '', '***'), startedAt);
+    INSERT INTO streams (campaign_id, platform, status, rtmp_url, started_at, smart_stop_delayed_until)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(campaignId, platform, 'Starting', outputUrl.replace(streamKey || '', '***'), startedAt, plannedStopTime);
 
   const streamId = Number(insert.lastInsertRowid);
   
@@ -109,6 +110,19 @@ export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP',
       }
 
       if (attempt <= maxRetries) {
+        // Cek apakah waktu jadwal sudah habis dan tidak ada delay Smart Stop
+        const streamRow = db.prepare('SELECT smart_stop_delayed_until FROM streams WHERE id = ?').get(streamId);
+        if (streamRow && streamRow.smart_stop_delayed_until) {
+          const stopTime = new Date(streamRow.smart_stop_delayed_until).getTime();
+          if (Date.now() >= stopTime) {
+            db.prepare('UPDATE streams SET status = ?, stopped_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+              .run('Stopped', new Date().toISOString(), streamId);
+            logEvent('INFO', 'FFmpeg Server', `Stream #${streamId} terputus setelah batas waktu. Tidak auto-reconnect.`);
+            notifyStreamStopped({ campaignName, streamId }).catch(e => logEvent('ERROR', 'Telegram', e.message));
+            return;
+          }
+        }
+
         db.prepare('UPDATE streams SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
           .run('Reconnecting', streamId);
         logEvent('WARN', 'FFmpeg Server', `Stream #${streamId} terputus. Mencoba reconnect ${attempt}/${maxRetries} dalam ${delaySeconds} detik...`);

@@ -32,6 +32,7 @@ import {
 } from 'recharts';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent } from '@/components/ui/card.jsx';
+import { ActiveLiveStreamsWidget } from '@/components/shared/ActiveLiveStreamsWidget.jsx';
 import { cx } from '@/lib/cn.js';
 import { api } from '@/lib/api.js';
 
@@ -60,8 +61,6 @@ export function AnalyticsPage() {
   const [selectedPeriod, setSelectedPeriod] = useState('Semua Waktu');
   
   const [analyticsData, setAnalyticsData] = useState(null);
-  const [activeStreams, setActiveStreams] = useState([]);
-  const [activeStreamStats, setActiveStreamStats] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -95,9 +94,6 @@ export function AnalyticsPage() {
       const result = await api.analytics.getGlobal(params);
       setAnalyticsData(result);
       
-      // Ambit list running streams
-      const runningResult = await api.streams.running();
-      setActiveStreams(runningResult.streams || []);
       setSelectedStreams([]); // Reset selection when data changes
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Gagal mengambil data analitik.');
@@ -137,36 +133,6 @@ export function AnalyticsPage() {
     };
     fetchChannelAnalytics();
   }, [selectedChannelId]);
-
-  // Polling data untuk stream yang sedang aktif (setiap 10 detik)
-  useEffect(() => {
-    if (activeStreams.length === 0) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const statsPromises = activeStreams.map(async (stream) => {
-          if (stream.campaignId && stream.platform === 'YouTube API') {
-            const res = await api.analytics.get(stream.campaignId);
-            return { streamId: stream.id, stats: res.analytics };
-          }
-          return null;
-        });
-
-        const results = await Promise.all(statsPromises);
-        const newStats = {};
-        results.forEach(r => {
-          if (r && r.stats) {
-            newStats[r.streamId] = r.stats;
-          }
-        });
-        setActiveStreamStats(newStats);
-      } catch (err) {
-        console.error('Gagal memproses polling live metrics:', err);
-      }
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [activeStreams]);
 
   const campaigns = useMemo(() => {
     if (!analyticsData?.campaignsList) return ['Semua Kampanye'];
@@ -248,59 +214,6 @@ export function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      {/* ── Banner Stream Sedang Berjalan (Real-time) ── */}
-      {activeStreams.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-1">
-          {activeStreams.map(stream => {
-            const stats = activeStreamStats[stream.id] || {
-              concurrentViewers: stream.youtubeConcurrentViewers || 0,
-              totalViews: stream.youtubeTotalViews || 0,
-              likes: stream.youtubeLikes || 0,
-              comments: stream.youtubeComments || 0
-            };
-            return (
-              <Card key={stream.id} className="relative overflow-hidden rounded-3xl border-rose-500/30 bg-rose-500/5 shadow-lg shadow-rose-950/10">
-                <CardContent className="p-6">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="relative flex h-3 w-3">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75"></span>
-                          <span className="relative inline-flex h-3 w-3 rounded-full bg-rose-500"></span>
-                        </span>
-                        <span className="text-xs font-bold uppercase tracking-widest text-rose-400">SIARAN LANGSUNG AKTIF</span>
-                        <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-2xs font-semibold text-rose-400 border border-rose-500/20">{stream.platform}</span>
-                      </div>
-                      <h3 className="text-xl font-extrabold text-[var(--text-primary)]">{stream.chosenTitle || 'Siaran Langsung Tanpa Judul'}</h3>
-                      <p className="text-xs text-[var(--text-tertiary)]">Mulai sejak: {stream.startedAt ? new Date(stream.startedAt).toLocaleString('id-ID') : '-'}</p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)]/40 p-4 sm:grid-cols-4">
-                      <div className="text-center">
-                        <p className="text-3xs font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Penonton Saat Ini</p>
-                        <p className="mt-1 text-lg font-black text-rose-400">{(stats.concurrentViewers || 0).toLocaleString('id-ID')}</p>
-                      </div>
-                      <div className="text-center border-l border-[var(--border-primary)] sm:border-l sm:pl-4">
-                        <p className="text-3xs font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Total Tayangan</p>
-                        <p className="mt-1 text-lg font-black text-sky-400">{(stats.totalViews || 0).toLocaleString('id-ID')}</p>
-                      </div>
-                      <div className="text-center border-l border-[var(--border-primary)] pl-4">
-                        <p className="text-3xs font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Suka</p>
-                        <p className="mt-1 text-lg font-black text-emerald-400">{(stats.likes || 0).toLocaleString('id-ID')}</p>
-                      </div>
-                      <div className="text-center border-l border-[var(--border-primary)] pl-4">
-                        <p className="text-3xs font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Komentar</p>
-                        <p className="mt-1 text-lg font-black text-purple-400">{(stats.comments || 0).toLocaleString('id-ID')}</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
       {/* ── Panel Filter ── */}
       <Card className="rounded-3xl border-[var(--border-primary)] bg-[var(--bg-secondary)]/80 shadow-xl shadow-black/10">
         <CardContent className="p-5">
@@ -763,6 +676,9 @@ export function AnalyticsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ── Unified Active Live Streams Widget ── */}
+      <ActiveLiveStreamsWidget />
     </div>
   );
 }

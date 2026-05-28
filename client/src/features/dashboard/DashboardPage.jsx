@@ -6,6 +6,7 @@ import { SectionLabel } from '@/components/shared/SectionTitle.jsx';
 import { StatCard, SystemStatCard, InternetSpeedCard } from '@/components/shared/StatCards.jsx';
 import { CampaignTable } from './CampaignTable.jsx';
 import { SchedulerPanel } from './SchedulerPanel.jsx';
+import { ActiveLiveStreamsWidget } from '@/components/shared/ActiveLiveStreamsWidget.jsx';
 import { getVisibleCampaigns, normalizeDashboardCampaign, getStreamingRows } from '@/lib/dashboardUtils.js';
 import { cx } from '@/lib/cn.js';
 import { api } from '@/lib/api.js';
@@ -169,46 +170,9 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
       </section>
 
       <section className="mb-6"><SchedulerPanel campaigns={campaigns} /></section>
-
-      {streams.filter(s => ['Online', 'Starting'].includes(s.status)).length > 0 && (
-        <section className="mb-6">
-          <SectionLabel title="Live Stream Aktif" description="Stream yang sedang diproses oleh backend." />
-          <div className="max-h-[400px] overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900/40 p-2 shadow-inner pr-2">
-            <div className="flex flex-col gap-1.5">
-              {streams.filter(s => ['Online', 'Starting'].includes(s.status)).map((stream) => {
-                const camp = campaigns.find(c => String(c.id) === String(stream.campaignId));
-                const displayName = stream.chosenTitle || camp?.name || stream.campaignName || `Stream #${stream.id}`;
-                return (
-                <div key={stream.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-slate-800/50 bg-slate-800/40 px-4 py-2.5 hover:bg-slate-800/80 transition text-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="relative flex h-3 w-3 items-center justify-center">
-                      <span className={cx("absolute inline-flex h-full w-full rounded-full opacity-75", stream.status === 'Online' ? 'bg-emerald-400 animate-ping' : 'bg-amber-400 animate-pulse')}></span>
-                      <span className={cx("relative inline-flex h-2 w-2 rounded-full", stream.status === 'Online' ? 'bg-emerald-500' : 'bg-amber-500')}></span>
-                    </div>
-                    <span className="font-semibold text-slate-200">{displayName}</span>
-                    <span className="hidden rounded-md bg-slate-950 px-2 py-0.5 text-xs text-slate-400 sm:inline-block">{stream.platform}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-xs text-slate-400">
-                    <div className="flex items-center gap-3 font-mono">
-                      {stream.pid && <span>PID: <span className="text-cyan-400">{stream.pid}</span></span>}
-                      {stream.memoryUsed && <span className="hidden md:inline-block">RAM: <span className="text-cyan-400">{formatBytes(stream.memoryUsed)}</span></span>}
-                    </div>
-                    {stream.durationFormatted && <span className="hidden sm:inline-block text-slate-300">{stream.durationFormatted}</span>}
-                    {stream.isChatbotRunning && <span className="hidden lg:inline-block text-green-400" title={`${stream.chatbotMessageCount || 0} messages sent`}>🤖 Active</span>}
-                    {stream.youtubeWatchUrl && (
-                      <a href={stream.youtubeWatchUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-lg bg-cyan-500/10 px-2.5 py-1 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300 transition">
-                        Buka YT ↗
-                      </a>
-                    )}
-                  </div>
-                </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      )}
+      
+      {/* ── Unified Active Live Streams Widget ── */}
+      <ActiveLiveStreamsWidget />
     </>
   );
 }

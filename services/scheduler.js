@@ -193,6 +193,7 @@ async function executeCampaign(campaignData) {
   
   try {
     const isYouTubeAPI = campaign.mode === 'YouTube API' || config.mode === 'YouTube API';
+    let streamResult = null;
     
     if (isYouTubeAPI) {
       // ── YouTube API mode: call the full start-youtube-live logic ─────────────
@@ -205,7 +206,7 @@ async function executeCampaign(campaignData) {
       
       // Import startYoutubeLive dynamically to avoid circular deps
       const { startYoutubeLiveCampaign } = await import('./youtubeLiveService.js');
-      const streamResult = await startYoutubeLiveCampaign(campaign.id, { durationMinutes });
+      streamResult = await startYoutubeLiveCampaign(campaign.id, { durationMinutes });
       
       recordExecution(campaign.id, 'success', durationMinutes, null, streamResult?.streamId);
       logEvent('INFO', 'Scheduler', `Kampanye YouTube #${campaign.id} berhasil dimulai oleh scheduler.`);
@@ -218,7 +219,7 @@ async function executeCampaign(campaignData) {
         return;
       }
       
-      const streamResult = await startFfmpegStream({
+      streamResult = await startFfmpegStream({
         campaignId: campaign.id,
         platform: campaign.mode,
         inputPath: config.inputPath,
@@ -237,16 +238,34 @@ async function executeCampaign(campaignData) {
     db.prepare('UPDATE campaigns SET next_execution_at = ? WHERE id = ?').run(nextExecution, campaign.id);
     
     // Schedule auto stop
-    if (durationMinutes > 0) {
+    if (durationMinutes > 0 && streamResult?.streamId) {
       const ms = durationMinutes * 60 * 1000;
-      setTimeout(async () => {
-        logEvent('INFO', 'Scheduler', `Durasi kampanye #${campaign.id} (${durationMinutes} menit) telah habis. Menghentikan stream secara otomatis.`);
+      const streamId = streamResult.streamId;
+      
+      const scheduleStopCheck = () => {
         try {
-          await stopActiveCampaignStream(campaign.id);
+          const stream = db.prepare('SELECT smart_stop_delayed_until, status FROM streams WHERE id = ?').get(streamId);
+          if (!stream || stream.status === 'Stopped' || stream.status === 'Error' || stream.status === 'Stopping') return;
+
+          if (stream.smart_stop_delayed_until) {
+            const stopTime = new Date(stream.smart_stop_delayed_until).getTime();
+            const now = Date.now();
+            if (now < stopTime) {
+              const remainingMs = stopTime - now;
+              setTimeout(scheduleStopCheck, remainingMs);
+              logEvent('INFO', 'Scheduler', `Auto-stop ditunda untuk stream #${streamId} (Smart Stop). Cek lagi dalam ${Math.round(remainingMs/60000)} menit.`);
+              return;
+            }
+          }
+          
+          logEvent('INFO', 'Scheduler', `Durasi kampanye #${campaign.id} (${durationMinutes} menit) telah habis. Menghentikan stream secara otomatis.`);
+          stopActiveCampaignStream(campaign.id).catch(e => logEvent('ERROR', 'Scheduler', `Gagal menghentikan stream kampanye #${campaign.id}: ${e.message}`));
         } catch (e) {
-          logEvent('ERROR', 'Scheduler', `Gagal menghentikan stream kampanye #${campaign.id}: ${e.message}`);
+          logEvent('ERROR', 'Scheduler', `Gagal mengecek jadwal auto-stop stream #${streamId}: ${e.message}`);
         }
-      }, ms);
+      };
+
+      setTimeout(scheduleStopCheck, ms);
       logEvent('INFO', 'Scheduler', `Auto-stop dijadwalkan dalam ${durationMinutes} menit untuk kampanye #${campaign.id}`);
     }
     

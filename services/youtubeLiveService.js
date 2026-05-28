@@ -426,6 +426,7 @@ export async function startYoutubeLiveCampaign(campaignId, options = {}) {
     rtmpUrl,
     streamKey,
     encoder: cfg.encoder || {},
+    durationMinutes: options.durationMinutes,
   });
 
   // ── Simpan data stream ─────────────────────────────────────────────────────
