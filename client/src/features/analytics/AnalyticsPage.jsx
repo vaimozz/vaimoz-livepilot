@@ -157,6 +157,14 @@ export function AnalyticsPage() {
   // Warna-warni grafik
   const COLORS = ['#38bdf8', '#fb7185', '#a78bfa', '#34d399', '#fbbf24'];
 
+  const formatDuration = (minutes) => {
+    if (!minutes) return '0m';
+    if (minutes < 60) return `${minutes}m`;
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hrs}j ${mins}m`;
+  };
+
   return (
     <div className="space-y-6">
       {/* ── Panel Filter ── */}
