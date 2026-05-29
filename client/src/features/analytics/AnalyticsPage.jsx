@@ -32,7 +32,7 @@ import {
 } from 'recharts';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent } from '@/components/ui/card.jsx';
-import { ActiveLiveStreamsWidget } from '@/components/shared/ActiveLiveStreamsWidget.jsx';
+
 import { cx } from '@/lib/cn.js';
 import { api } from '@/lib/api.js';
 
@@ -677,8 +677,7 @@ export function AnalyticsPage() {
         </CardContent>
       </Card>
 
-      {/* ── Unified Active Live Streams Widget ── */}
-      <ActiveLiveStreamsWidget />
+
     </div>
   );
 }
