@@ -92,7 +92,6 @@ export function AnalyticsPage() {
       const result = await api.analytics.getGlobal(params);
       setAnalyticsData(result);
       
-      setSelectedStreams([]); // Reset selection when data changes
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Gagal mengambil data analitik.');
     } finally {
