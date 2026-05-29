@@ -418,7 +418,7 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
         chosenTitle:     result.chosenTitle,
       });
       setCampaignMessage(
-        `🔴 Live dimulai! Video: ${result.chosenVideo?.name} | Judul: ${result.chosenTitle} | PID: ${result.pid}`
+        `🔴 Live dimulai! Video: ${result.chosenVideo?.name} | Judul: ${result.chosenTitle}`
       );
     } catch (error) {
       setCampaignMessage(`Gagal memulai live: ${error instanceof Error ? error.message : 'Kesalahan tidak dikenal.'}`);

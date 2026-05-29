@@ -29,7 +29,7 @@ export function CampaignTable({ streamingRows, onRefresh, onEdit, viewMode = 'li
         result = await api.campaigns.start(row.id, { rtmpUrl, streamKey });
       }
       
-      setActionMsg(`🔴 ${row.name} dimulai! Video: ${result.chosenVideo?.name || '-'} (PID ${result.pid || '-'})`);
+      setActionMsg(`🔴 ${row.name} dimulai! Video: ${result.chosenVideo?.name || '-'}`);
       onRefresh?.();
     } catch (err) {
       setActionMsg(`Gagal start ${row.name}: ${err.message}`);

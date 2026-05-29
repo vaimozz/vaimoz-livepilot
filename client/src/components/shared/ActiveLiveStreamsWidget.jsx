@@ -98,9 +98,7 @@ export function ActiveLiveStreamsWidget() {
                       <span className="rounded-full bg-[var(--bg-tertiary)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-secondary)] border border-[var(--border-primary)]">
                         {stream.platform}
                       </span>
-                      {stream.pid && (
-                        <span className="text-[10px] font-mono text-cyan-400 ml-2">PID: {stream.pid}</span>
-                      )}
+
                     </div>
                     <h3 className="text-sm font-extrabold text-[var(--text-primary)] truncate">
                       {stream.chosenTitle || 'Siaran Langsung Tanpa Judul'}
