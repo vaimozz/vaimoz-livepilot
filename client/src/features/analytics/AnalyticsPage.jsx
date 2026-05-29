@@ -599,6 +599,8 @@ export function AnalyticsPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
     </div>
   );
 }
