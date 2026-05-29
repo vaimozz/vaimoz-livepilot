@@ -232,8 +232,6 @@ export function StreamMonitorPage() {
         ))}
       </section>
 
-      {/* Running Streams Panel */}
-      <ActiveLiveStreamsWidget />
 
       {/* Log Viewer */}
       <Card className="rounded-3xl border-slate-800 bg-slate-900/70">
