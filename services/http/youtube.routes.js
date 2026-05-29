@@ -104,6 +104,47 @@ youtubeRouter.post('/channels/:id/broadcasts', asyncHandler(async (req, res) => 
 }));
 
 youtubeRouter.get('/channels/:id/analytics', asyncHandler(async (req, res) => {
+  if (req.params.id === 'all') {
+    const rows = db.prepare('SELECT * FROM youtube_channels WHERE refresh_token != "" OR access_token != ""').all();
+    if (rows.length === 0) return res.status(400).json({ error: 'Tidak ada channel YouTube yang terhubung.' });
+    
+    const aggregated = {
+      subscribers: 0,
+      totalViews: 0,
+      estimatedRevenue: 0,
+      estimatedMinutesWatched: 0,
+      dailyData: []
+    };
+    
+    const dailyMap = new Map();
+    
+    for (const row of rows) {
+      const analytics = await getChannelAnalytics(tokenFromChannel(row), String(row.id));
+      aggregated.subscribers += (analytics.subscribers || 0);
+      aggregated.totalViews += (analytics.totalViews || 0);
+      aggregated.estimatedRevenue += (analytics.estimatedRevenue || 0);
+      aggregated.estimatedMinutesWatched += (analytics.estimatedMinutesWatched || 0);
+      
+      if (analytics.dailyData) {
+        for (const item of analytics.dailyData) {
+          const existing = dailyMap.get(item.day) || { estimatedRevenue: 0, views: 0 };
+          dailyMap.set(item.day, {
+            estimatedRevenue: existing.estimatedRevenue + (item.estimatedRevenue || 0),
+            views: existing.views + (item.views || 0)
+          });
+        }
+      }
+    }
+    
+    aggregated.dailyData = Array.from(dailyMap.entries()).map(([day, data]) => ({
+      day,
+      estimatedRevenue: data.estimatedRevenue,
+      views: data.views
+    })).sort((a, b) => a.day.localeCompare(b.day));
+    
+    return res.json(aggregated);
+  }
+
   const row = db.prepare('SELECT * FROM youtube_channels WHERE id = ?').get(Number(req.params.id));
   if (!row) return res.status(404).json({ error: 'Channel YouTube tidak ditemukan.' });
   if (!row.refresh_token && !row.access_token) return res.status(400).json({ error: 'Channel ini belum punya token OAuth YouTube asli.' });

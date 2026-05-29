@@ -159,6 +159,21 @@ export async function getChannelAnalytics(tokens, channelId) {
       result.estimatedRevenue = Number(rows[0][0] || 0);
       result.estimatedMinutesWatched = Number(rows[0][1] || 0);
     }
+
+    const dailyRes = await analytics.reports.query({
+      ids: 'channel==MINE',
+      startDate,
+      endDate,
+      metrics: 'estimatedRevenue,views',
+      dimensions: 'day',
+      sort: 'day',
+    });
+
+    result.dailyData = (dailyRes.data.rows || []).map(row => ({
+      day: row[0],
+      estimatedRevenue: Number(row[1] || 0),
+      views: Number(row[2] || 0)
+    }));
   } catch (error) {
     console.warn(`[YouTube Analytics] Gagal mengambil data untuk ${channelId}. Mungkin channel belum dimonetisasi atau butuh re-otorisasi:`, error.message);
   }

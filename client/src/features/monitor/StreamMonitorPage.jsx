@@ -26,6 +26,14 @@ function metricCards(metrics, runningCount) {
   ];
 }
 
+const formatDuration = (minutes) => {
+  if (!minutes) return '0m';
+  if (minutes < 60) return `${minutes}m`;
+  const hrs = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hrs}j ${mins}m`;
+};
+
 const AUTO_REFRESH_MS = 5000; // 5 detik
 
 export function StreamMonitorPage() {
@@ -35,6 +43,11 @@ export function StreamMonitorPage() {
   const [logs,           setLogs]           = useState([]);
   const [metrics,        setMetrics]        = useState(null);
   const [runningStreams,  setRunningStreams]  = useState([]);
+  const [streamsHistory, setStreamsHistory] = useState([]);
+  const [selectedStreams, setSelectedStreams] = useState([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [activeTab, setActiveTab] = useState('logs');
   const [isLoading,      setIsLoading]      = useState(false);
   const [autoRefresh,    setAutoRefresh]    = useState(false);
   const [monitorMessage, setMonitorMessage] = useState('Monitor membaca log asli dari backend.');
@@ -45,14 +58,16 @@ export function StreamMonitorPage() {
     try {
       const params = { limit: lineLimit };
       if (logSource !== 'Semua Log') params.source = logSource;
-      const [logResult, metricResult, runningResult] = await Promise.all([
+      const [logResult, metricResult, runningResult, analyticsResult] = await Promise.all([
         api.monitor.logs(params),
         api.monitor.metrics(),
         api.streams.running(),
+        api.analytics.getGlobal({}),
       ]);
       setLogs(logResult.logs || []);
       setMetrics(metricResult || null);
       setRunningStreams(runningResult.streams || []);
+      setStreamsHistory(analyticsResult.streams || []);
       setMonitorMessage(`Diperbarui ${new Date().toLocaleTimeString('id-ID')}. ${logResult.logs?.length || 0} log, ${runningResult.count || 0} stream aktif.`);
     } catch (error) {
       setMonitorMessage(`Gagal membaca monitor: ${error instanceof Error ? error.message : 'Kesalahan tidak dikenal.'}`);
@@ -106,6 +121,52 @@ export function StreamMonitorPage() {
 
   const runningCount = runningStreams.length;
 
+  const handleDeleteStreams = async () => {
+    if (selectedStreams.length === 0) return;
+    if (!window.confirm(`Yakin ingin menghapus ${selectedStreams.length} riwayat stream ini?`)) return;
+    
+    setIsDeleting(true);
+    try {
+      await api.streams.delete(selectedStreams);
+      setSelectedStreams([]);
+      loadMonitor();
+    } catch (err) {
+      alert(err.message || 'Gagal menghapus riwayat stream');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleSyncStreams = async () => {
+    if (selectedStreams.length === 0) return;
+    setIsSyncing(true);
+    try {
+      const res = await api.streams.sync(selectedStreams);
+      alert(res.message || 'Sinkronisasi berhasil.');
+      loadMonitor();
+    } catch (err) {
+      alert(err.message || 'Gagal menyinkronkan data dengan YouTube.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedStreams.length === streamsHistory.length) {
+      setSelectedStreams([]);
+    } else {
+      setSelectedStreams(streamsHistory.map(s => s.id));
+    }
+  };
+
+  const toggleSelectStream = (id) => {
+    if (selectedStreams.includes(id)) {
+      setSelectedStreams(prev => prev.filter(streamId => streamId !== id));
+    } else {
+      setSelectedStreams(prev => [...prev, id]);
+    }
+  };
+
   return (
     <>
       <header className="mb-8 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
@@ -134,8 +195,32 @@ export function StreamMonitorPage() {
         </div>
       </header>
 
-      {/* Metric Cards */}
-      <section className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {/* Tabs */}
+      <div className="mb-6 flex space-x-1 rounded-xl bg-slate-900/50 p-1 border border-slate-800">
+        <button
+          onClick={() => setActiveTab('logs')}
+          className={cx(
+            'flex-1 rounded-lg py-2.5 text-sm font-bold transition-all',
+            activeTab === 'logs' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+          )}
+        >
+          Monitor Sistem
+        </button>
+        <button
+          onClick={() => setActiveTab('streams')}
+          className={cx(
+            'flex-1 rounded-lg py-2.5 text-sm font-bold transition-all',
+            activeTab === 'streams' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+          )}
+        >
+          Sesi Stream ({runningCount})
+        </button>
+      </div>
+
+      {activeTab === 'logs' && (
+        <>
+          {/* Metric Cards */}
+          <section className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {metricCards(metrics, runningCount).map((stat) => (
           <Card key={stat.label} className="rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl shadow-black/10">
             <CardContent className="p-5">
@@ -201,6 +286,137 @@ export function StreamMonitorPage() {
           </div>
         </CardContent>
       </Card>
+      </>
+      )}
+
+      {activeTab === 'streams' && (
+        <div className="space-y-8">
+          <ActiveLiveStreamsWidget />
+          
+          <Card className="rounded-3xl border-slate-800 bg-slate-900/70 shadow-xl shadow-black/10">
+            <CardContent className="p-5">
+              <div className="mb-5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="inline-block h-5 w-1.5 rounded-full bg-sky-400" />
+                  <h3 className="text-lg font-bold text-slate-100">Riwayat Lengkap Sesi Stream</h3>
+                </div>
+                {selectedStreams.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleSyncStreams}
+                      disabled={isSyncing || isDeleting}
+                      className="bg-slate-900 border-slate-700 text-slate-300 hover:text-sky-400 font-bold rounded-xl"
+                    >
+                      {isSyncing ? 'Menyinkronkan...' : `Sinkronkan (${selectedStreams.length})`}
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      onClick={handleDeleteStreams}
+                      disabled={isDeleting || isSyncing}
+                      className="bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 hover:text-rose-300 font-bold border border-rose-500/20 rounded-xl"
+                    >
+                      Hapus ({selectedStreams.length})
+                    </Button>
+                  </div>
+                )}
+              </div>
+              
+              <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/50">
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800 bg-slate-900/50 text-xs font-bold uppercase tracking-wider text-slate-400">
+                      <th className="px-5 py-4 w-12 text-center">
+                        <input 
+                          type="checkbox" 
+                          className="rounded border-slate-700 bg-slate-900" 
+                          checked={streamsHistory.length > 0 && selectedStreams.length === streamsHistory.length}
+                          onChange={toggleSelectAll}
+                        />
+                      </th>
+                      <th className="px-5 py-4">Kampanye / Judul</th>
+                      <th className="px-4 py-4">Platform</th>
+                      <th className="px-4 py-4">Waktu Mulai</th>
+                      <th className="px-4 py-4">Durasi</th>
+                      <th className="px-4 py-4 text-center">Views</th>
+                      <th className="px-4 py-4 text-center">Puncak Penonton</th>
+                      <th className="px-4 py-4 text-center">Likes/Comments</th>
+                      <th className="px-5 py-4 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 text-slate-300">
+                    {streamsHistory.length > 0 ? (
+                      streamsHistory.map((s) => {
+                        const durationText = s.startedAt ? formatDuration(
+                          Math.round(((s.stoppedAt ? new Date(s.stoppedAt).getTime() : Date.now()) - new Date(s.startedAt).getTime()) / 60000)
+                        ) : '-';
+                        const isOnline = ['Online', 'Starting'].includes(s.status);
+                        return (
+                          <tr key={s.id} className="hover:bg-slate-800/50 transition-colors">
+                            <td className="px-5 py-4 text-center">
+                              <input 
+                                type="checkbox" 
+                                className="rounded border-slate-700 bg-slate-900" 
+                                checked={selectedStreams.includes(s.id)}
+                                onChange={() => toggleSelectStream(s.id)}
+                              />
+                            </td>
+                            <td className="px-5 py-4">
+                              <p className="font-extrabold text-slate-100">{s.chosenTitle || 'Stream Tanpa Judul'}</p>
+                              <p className="text-2xs text-slate-500 mt-0.5">{s.campaignName || 'Sesi Manual'}</p>
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className="rounded-full bg-slate-900 border border-slate-700 px-2 py-0.5 text-2xs font-semibold">
+                                {s.platform}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-2xs">
+                              {s.startedAt ? new Date(s.startedAt).toLocaleString('id-ID') : '-'}
+                            </td>
+                            <td className="px-4 py-4 text-xs font-bold">
+                              {durationText}
+                            </td>
+                            <td className="px-4 py-4 text-center font-extrabold text-slate-100">
+                              {(s.youtubeTotalViews || 0).toLocaleString('id-ID')}
+                            </td>
+                            <td className="px-4 py-4 text-center font-extrabold text-rose-400">
+                              {(s.youtubeConcurrentViewers || 0).toLocaleString('id-ID')}
+                            </td>
+                            <td className="px-4 py-4 text-center text-xs">
+                              <span className="text-emerald-400 font-semibold">{s.youtubeLikes || 0}</span>
+                              <span className="text-slate-600 mx-1">/</span>
+                              <span className="text-purple-400 font-semibold">{s.youtubeComments || 0}</span>
+                            </td>
+                            <td className="px-5 py-4 text-center">
+                              <span className={cx(
+                                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wider",
+                                s.status === 'Online' ? "bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse" :
+                                s.status === 'Starting' ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                                "bg-slate-800 text-slate-400 border border-slate-700"
+                              )}>
+                                {isOnline && <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />}
+                                {s.status === 'Online' ? 'LIVE' : s.status === 'Starting' ? 'STARTING' : 'OFFLINE'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan="9" className="px-5 py-8 text-center text-slate-500 bg-slate-900/50">
+                          Belum ada riwayat sesi streaming yang tersimpan.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </>
   );
 }

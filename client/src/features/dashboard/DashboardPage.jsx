@@ -28,16 +28,41 @@ function formatBytes(bytes) {
   return `${size.toFixed(size >= 100 ? 0 : size >= 10 ? 1 : 2)} ${units[unitIndex]}`;
 }
 
+function formatSpeed(bytesPerSec) {
+  const value = Number(bytesPerSec || 0);
+  if (!value) return '-';
+  const units = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+  let size = value;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  return `${size.toFixed(size >= 100 ? 0 : size >= 10 ? 1 : 2)} ${units[unitIndex]}`;
+}
+
 function buildSystemMetrics(metrics) {
   const memory = metrics?.memory || {};
   const cpu = metrics?.cpu || {};
   const memPercent = Math.max(0, Math.min(Number(memory.percent || 0), 100));
   const cpuPercent = Math.max(0, Math.min(Math.round((Number(cpu.load1 || 0) / Math.max(Number(cpu.cores || 1), 1)) * 100), 100));
 
+  let diskUsedStr = metrics?.disk?.available ? 'Aktif' : 'Belum terbaca';
+  let diskSubStr = '';
+  let diskProgress = metrics?.disk?.available ? 15 : 0;
+  
+  if (metrics?.disk?.totalBytes > 0) {
+    diskUsedStr = formatBytes(metrics.disk.usedBytes);
+    diskSubStr = `/ ${formatBytes(metrics.disk.totalBytes)}`;
+    diskProgress = Math.round((metrics.disk.usedBytes / metrics.disk.totalBytes) * 100);
+  } else if (metrics?.disk?.usedBytes > 0) {
+    diskUsedStr = formatBytes(metrics.disk.usedBytes);
+  }
+
   return [
     { title: 'Penggunaan CPU', value: `${cpuPercent}%`, subValue: cpu.cores ? `/ ${cpu.cores} core` : '', icon: Cpu, progress: cpuPercent },
     { title: 'Memori', value: formatBytes(memory.used), subValue: `/ ${formatBytes(memory.total)}`, icon: MemoryStick, progress: memPercent },
-    { title: 'Penyimpanan Upload', value: metrics?.disk?.available ? 'Aktif' : 'Belum terbaca', subValue: '', icon: HardDrive, progress: metrics?.disk?.available ? 15 : 0 },
+    { title: 'Penyimpanan Upload', value: diskUsedStr, subValue: diskSubStr, icon: HardDrive, progress: diskProgress },
   ];
 }
 
@@ -121,7 +146,11 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
         <SectionLabel title="Statistik Server" description="Pantau resource server berdasarkan endpoint monitor backend." />
         <div className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-4">
           {systemMetrics.map((metric, index) => <SystemStatCard key={metric.title} {...metric} index={index} />)}
-          <InternetSpeedCard upload="-" download="-" index={systemMetrics.length} />
+          <InternetSpeedCard 
+            upload={metrics?.network ? formatSpeed(metrics.network.uploadBytesPerSec) : '-'} 
+            download={metrics?.network ? formatSpeed(metrics.network.downloadBytesPerSec) : '-'} 
+            index={systemMetrics.length} 
+          />
         </div>
       </section>
 

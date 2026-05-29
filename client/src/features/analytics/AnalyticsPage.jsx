@@ -28,7 +28,9 @@ import {
   ResponsiveContainer, 
   Tooltip, 
   XAxis, 
-  YAxis 
+  YAxis,
+  LineChart,
+  Line
 } from 'recharts';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent } from '@/components/ui/card.jsx';
@@ -65,13 +67,9 @@ export function AnalyticsPage() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const [youtubeChannels, setYoutubeChannels] = useState([]);
-  const [selectedChannelId, setSelectedChannelId] = useState('');
+  const [selectedChannelId, setSelectedChannelId] = useState('all');
   const [channelAnalytics, setChannelAnalytics] = useState(null);
   const [isLoadingChannelAnalytics, setIsLoadingChannelAnalytics] = useState(false);
-
-  const [selectedStreams, setSelectedStreams] = useState([]);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
 
   // 1. Fetch data analitik dari backend
   const fetchAnalytics = async () => {
@@ -114,23 +112,24 @@ export function AnalyticsPage() {
     }).catch(console.error);
   }, []);
 
-  // Load Channel Analytics
-  useEffect(() => {
-    if (!selectedChannelId) {
+  const fetchChannelAnalytics = async (channelId = selectedChannelId) => {
+    if (!channelId) {
       setChannelAnalytics(null);
       return;
     }
-    const fetchChannelAnalytics = async () => {
-      setIsLoadingChannelAnalytics(true);
-      try {
-        const data = await api.youtube.analytics(selectedChannelId);
-        setChannelAnalytics(data);
-      } catch (err) {
-        console.error('Failed to fetch channel analytics', err);
-      } finally {
-        setIsLoadingChannelAnalytics(false);
-      }
-    };
+    setIsLoadingChannelAnalytics(true);
+    try {
+      const data = await api.youtube.analytics(channelId);
+      setChannelAnalytics(data);
+    } catch (err) {
+      console.error('Failed to fetch channel analytics', err);
+    } finally {
+      setIsLoadingChannelAnalytics(false);
+    }
+  };
+
+  // Load Channel Analytics
+  useEffect(() => {
     fetchChannelAnalytics();
   }, [selectedChannelId]);
 
@@ -157,60 +156,6 @@ export function AnalyticsPage() {
 
   // Warna-warni grafik
   const COLORS = ['#38bdf8', '#fb7185', '#a78bfa', '#34d399', '#fbbf24'];
-
-  const formatDuration = (minutes) => {
-    if (!minutes) return '0m';
-    if (minutes < 60) return `${minutes}m`;
-    const hrs = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hrs}j ${mins}m`;
-  };
-
-  const handleDeleteStreams = async () => {
-    if (selectedStreams.length === 0) return;
-    if (!window.confirm(`Yakin ingin menghapus ${selectedStreams.length} riwayat stream ini?`)) return;
-    
-    setIsDeleting(true);
-    try {
-      await api.streams.delete(selectedStreams);
-      setSelectedStreams([]);
-      fetchAnalytics();
-    } catch (err) {
-      alert(err.message || 'Gagal menghapus riwayat stream');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleSyncStreams = async () => {
-    if (selectedStreams.length === 0) return;
-    setIsSyncing(true);
-    try {
-      const res = await api.streams.sync(selectedStreams);
-      alert(res.message || 'Sinkronisasi berhasil.');
-      fetchAnalytics();
-    } catch (err) {
-      alert(err.message || 'Gagal menyinkronkan data dengan YouTube.');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedStreams.length === streamsHistory.length) {
-      setSelectedStreams([]);
-    } else {
-      setSelectedStreams(streamsHistory.map(s => s.id));
-    }
-  };
-
-  const toggleSelectStream = (id) => {
-    if (selectedStreams.includes(id)) {
-      setSelectedStreams(prev => prev.filter(streamId => streamId !== id));
-    } else {
-      setSelectedStreams(prev => [...prev, id]);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -267,71 +212,174 @@ export function AnalyticsPage() {
       </Card>
 
       {/* ── Analitik Channel YouTube ── */}
-      <Card className="rounded-3xl border-[var(--border-primary)] bg-[var(--bg-secondary)]/80 shadow-xl shadow-black/10">
-        <CardContent className="p-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-              <span className="inline-block h-5 w-1.5 rounded-full bg-red-500" />
-              <h3 className="text-lg font-bold text-[var(--text-primary)]">Analitik Channel YouTube</h3>
-            </div>
-            <div className="w-full md:w-64">
+      <div className="mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-5 rounded-2xl bg-[var(--bg-secondary)]/80 p-4 border border-[var(--border-primary)] shadow-sm">
+          <div className="flex items-center gap-6 w-full md:w-auto">
+            <div className="flex-1 md:flex-none">
+              <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Channel</label>
               <select 
                 value={selectedChannelId} 
                 onChange={(e) => setSelectedChannelId(e.target.value)} 
-                className="h-10 w-full rounded-xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-4 text-sm font-semibold text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] transition-all"
+                className="h-10 w-full md:w-56 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-4 text-sm font-semibold text-[var(--text-primary)] outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
               >
-                <option value="">Pilih Channel YouTube...</option>
+                <option value="all">Semua Channel</option>
                 {youtubeChannels.map((c) => (
                   <option key={c.id} value={c.id}>{c.title}</option>
                 ))}
               </select>
             </div>
-          </div>
-          
-          {selectedChannelId ? (
-            isLoadingChannelAnalytics ? (
-              <div className="flex justify-center p-8">
-                <RefreshCw className="h-8 w-8 animate-spin text-[var(--accent-primary)]" />
-              </div>
-            ) : channelAnalytics ? (
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                <AnalyticsStatCard 
-                  title="Estimasi Pendapatan" 
-                  value={`$${channelAnalytics.estimatedRevenue.toFixed(2)}`} 
-                  note="28 Hari Terakhir" 
-                  icon={TrendingUp} 
-                  accentClass="text-emerald-400" 
-                />
-                <AnalyticsStatCard 
-                  title="Jam Tayang" 
-                  value={channelAnalytics.estimatedMinutesWatched.toLocaleString('id-ID')} 
-                  note="Menit (28 Hari Terakhir)" 
-                  icon={Clock3} 
-                  accentClass="text-purple-400" 
-                />
-                <AnalyticsStatCard 
-                  title="Total Subscribers" 
-                  value={channelAnalytics.subscribers.toLocaleString('id-ID')} 
-                  note="Keseluruhan" 
-                  icon={Users} 
-                  accentClass="text-sky-400" 
-                />
-                <AnalyticsStatCard 
-                  title="Total Views" 
-                  value={channelAnalytics.totalViews.toLocaleString('id-ID')} 
-                  note="Keseluruhan" 
-                  icon={Video} 
-                  accentClass="text-rose-400" 
-                />
-              </div>
-            ) : null
-          ) : (
-            <div className="text-center text-sm text-[var(--text-tertiary)] p-8 border-2 border-dashed border-[var(--border-primary)] rounded-2xl">
-              Pilih channel YouTube dari dropdown di atas untuk melihat analitik (Estimasi Pendapatan, Jam Tayang, Subscribers, dan Views).
+            <div className="flex-1 md:flex-none">
+              <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Periode</label>
+              <select 
+                className="h-10 w-full md:w-48 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-4 text-sm font-semibold text-[var(--text-secondary)] outline-none"
+                disabled
+              >
+                <option>28 Hari Terakhir</option>
+              </select>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+          <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+            <span className="text-xs font-semibold text-[var(--text-tertiary)]">Update: {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+            <Button variant="outline" size="sm" onClick={() => fetchChannelAnalytics(selectedChannelId)} disabled={isLoadingChannelAnalytics} className="rounded-xl border-[var(--border-primary)] bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] font-bold">
+              <RefreshCw className={cx("mr-2 h-4 w-4", isLoadingChannelAnalytics && "animate-spin")} /> Refresh Data
+            </Button>
+          </div>
+        </div>
+
+        {selectedChannelId ? (
+          isLoadingChannelAnalytics ? (
+            <div className="flex justify-center p-12">
+              <RefreshCw className="h-10 w-10 animate-spin text-cyan-400" />
+            </div>
+          ) : channelAnalytics ? (
+            <>
+              <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <Card className="rounded-2xl border-[var(--border-primary)] bg-[var(--bg-secondary)]/80 shadow-sm hover:border-cyan-500/30 transition-colors">
+                  <CardContent className="p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Estimasi Pendapatan</p>
+                    <div className="mt-2 flex items-baseline gap-2">
+                      <h3 className="text-3xl font-extrabold text-emerald-400">Rp {(channelAnalytics.estimatedRevenue * 16000 || 0).toLocaleString('id-ID')}</h3>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--text-tertiary)] font-medium">~ USD {channelAnalytics.estimatedRevenue?.toFixed(2) || '0.00'}</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-2xl border-[var(--border-primary)] bg-[var(--bg-secondary)]/80 shadow-sm hover:border-cyan-500/30 transition-colors">
+                  <CardContent className="p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Jam Tayang</p>
+                    <div className="mt-2">
+                      <h3 className="text-3xl font-extrabold text-rose-400">{(Math.round((channelAnalytics.estimatedMinutesWatched || 0) / 60)).toLocaleString('id-ID')}</h3>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--text-tertiary)] font-medium">Total Jam (28 Hari)</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-2xl border-[var(--border-primary)] bg-[var(--bg-secondary)]/80 shadow-sm hover:border-cyan-500/30 transition-colors">
+                  <CardContent className="p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Subscribers</p>
+                    <div className="mt-2">
+                      <h3 className="text-3xl font-extrabold text-[var(--text-primary)]">{(channelAnalytics.subscribers || 0).toLocaleString('id-ID')}</h3>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--text-tertiary)] font-medium">Keseluruhan</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-2xl border-[var(--border-primary)] bg-[var(--bg-secondary)]/80 shadow-sm hover:border-cyan-500/30 transition-colors">
+                  <CardContent className="p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Total Views</p>
+                    <div className="mt-2">
+                      <h3 className="text-3xl font-extrabold text-sky-400">{(channelAnalytics.totalViews || 0).toLocaleString('id-ID')}</h3>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--text-tertiary)] font-medium">Kali Ditonton</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="rounded-3xl border-[var(--border-primary)] bg-[var(--bg-secondary)]/80 shadow-xl shadow-black/10">
+                <CardContent className="p-5">
+                  <div className="mb-6 flex items-center gap-3">
+                    <span className="inline-block h-5 w-1.5 rounded-full bg-rose-500" />
+                    <h3 className="text-sm font-bold text-[var(--text-primary)]">Grafik Performa</h3>
+                  </div>
+                  
+                  <div className="h-[300px] w-full">
+                    {channelAnalytics.dailyData && channelAnalytics.dailyData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={channelAnalytics.dailyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-primary)" vertical={false} />
+                          <XAxis 
+                            dataKey="day" 
+                            stroke="var(--text-tertiary)" 
+                            fontSize={10} 
+                            tickLine={false} 
+                            axisLine={false}
+                            tickFormatter={(val) => {
+                              const date = new Date(val);
+                              return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+                            }}
+                          />
+                          <YAxis 
+                            yAxisId="left"
+                            stroke="var(--text-tertiary)" 
+                            fontSize={10} 
+                            tickLine={false} 
+                            axisLine={false} 
+                            tickFormatter={(val) => val >= 1000 ? `${(val/1000).toFixed(1)}k` : val}
+                          />
+                          <YAxis 
+                            yAxisId="right"
+                            orientation="right"
+                            stroke="var(--text-tertiary)" 
+                            fontSize={10} 
+                            tickLine={false} 
+                            axisLine={false} 
+                            tickFormatter={(val) => val >= 1000 ? `${(val/1000).toFixed(1)}k` : val}
+                          />
+                          <Tooltip 
+                            contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: '8px', color: 'var(--text-primary)' }}
+                            labelStyle={{ color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 'bold' }}
+                            formatter={(value, name) => [name === 'Pendapatan (USD)' ? `$${Number(value).toFixed(2)}` : value, name]}
+                          />
+                          <Legend verticalAlign="top" height={36} iconType="plainline" wrapperStyle={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold' }} />
+                          <Line 
+                            yAxisId="left"
+                            type="monotone" 
+                            dataKey="estimatedRevenue" 
+                            name="Pendapatan (USD)" 
+                            stroke="#10b981" 
+                            strokeWidth={2}
+                            dot={{ r: 3, fill: '#10b981', strokeWidth: 0 }}
+                            activeDot={{ r: 5 }}
+                          />
+                          <Line 
+                            yAxisId="right"
+                            type="monotone" 
+                            dataKey="views" 
+                            name="Views" 
+                            stroke="#38bdf8" 
+                            strokeWidth={2}
+                            strokeDasharray="4 4"
+                            dot={{ r: 3, fill: '#38bdf8', strokeWidth: 0 }}
+                            activeDot={{ r: 5 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm font-semibold text-[var(--text-tertiary)] border border-dashed border-[var(--border-primary)] rounded-2xl">
+                        Tidak ada data grafik harian (28 Hari Terakhir)
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : null
+        ) : (
+          <div className="text-center text-sm font-semibold text-[var(--text-tertiary)] p-8 border-2 border-dashed border-[var(--border-primary)] rounded-2xl">
+            Pilih channel YouTube dari dropdown di atas untuk melihat analitik.
+          </div>
+        )}
+      </div>
 
       {/* ── Statistik Utama ── */}
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
