@@ -78,7 +78,7 @@ export async function createYoutubeLiveBroadcast(options) {
         recordFromStart,
         enableDvr: true,
         enableContentEncryption: false,
-        enableEmbed: true,
+        enableEmbed: false,
         latencyPreference: 'normal',
       },
     },
