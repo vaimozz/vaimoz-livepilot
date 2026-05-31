@@ -241,10 +241,17 @@ export function startChatbot(streamId, config) {
 
     intervalId = setInterval(() => {
       const now = new Date();
-      const currentHour = String(now.getHours()).padStart(2, '0');
-      const currentMinute = String(now.getMinutes()).padStart(2, '0');
-      const currentTimeStr = `${currentHour}:${currentMinute}`;
-      const todayStr = now.toDateString();
+      
+      const timeFormatter = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Jakarta',
+        hour: '2-digit', minute: '2-digit', hour12: false
+      });
+      const currentTimeStr = timeFormatter.format(now);
+      
+      const dateFormatter = new Intl.DateTimeFormat('en-CA', { 
+        timeZone: 'Asia/Jakarta' 
+      });
+      const todayStr = dateFormatter.format(now);
 
       for (const msg of parsedMessages) {
         if (msg.time === currentTimeStr && msg.lastSentDate !== todayStr) {

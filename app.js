@@ -36,7 +36,7 @@ try {
   const result = db.prepare(`UPDATE streams SET status = 'Error', stopped_at = CURRENT_TIMESTAMP WHERE status IN ('Online', 'Starting')`).run();
   
   // Restore campaign statuses so scheduled campaigns survive restarts
-  const campResult = db.prepare(`UPDATE campaigns SET status = 'Scheduled' WHERE recurring_enabled = 1 AND status NOT IN ('Paused', 'Completed')`).run();
+  const campResult = db.prepare(`UPDATE campaigns SET status = 'Scheduled' WHERE recurring_enabled = 1 AND recurring_type != 'once' AND status NOT IN ('Paused', 'Completed')`).run();
   
   if (result.changes > 0 || campResult.changes > 0) {
     logEvent('INFO', 'Server', `Memperbaiki ${result.changes} stream yatim dan merestore ${campResult.changes} kampanye ke status Scheduled saat startup.`);

@@ -74,7 +74,11 @@ export async function stopActiveCampaignStream(campaignId) {
   }
 
   // 5. Update campaign status → Draft (or Scheduled if recurring)
-  const newStatus = campaign.recurring_enabled ? 'Scheduled' : 'Draft';
+  // If the campaign is a 'once' schedule, scheduler sets it to 'Completed'. Don't overwrite it with 'Draft'.
+  let newStatus = campaign.status;
+  if (campaign.status !== 'Completed') {
+    newStatus = (campaign.recurring_enabled && campaign.recurring_type !== 'once') ? 'Scheduled' : 'Draft';
+  }
   db.prepare('UPDATE campaigns SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newStatus, id);
 
   logEvent('INFO', 'Kampanye', `Campaign #${id} "${campaign.name}" dihentikan. Status: ${newStatus}`);

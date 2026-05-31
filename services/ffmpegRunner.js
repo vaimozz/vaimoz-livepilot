@@ -100,15 +100,34 @@ export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP',
       }).catch(e => logEvent('ERROR', 'Telegram', e.message));
     }
 
-    child.stdout.on('data', (buffer) => logEvent('FFMPEG', 'FFmpeg Server', buffer.toString().slice(0, 500)));
+    child.stdout.on('data', (buffer) => {
+      const line = buffer.toString().trim();
+      // Ignore routine progress lines to prevent database bloat
+      if (line && !line.startsWith('frame=') && !line.includes('bitrate=')) {
+        logEvent('FFMPEG', 'FFmpeg Server', line.slice(0, 500));
+      }
+    });
     child.stderr.on('data', (buffer) => {
       const line = buffer.toString().trim();
-      if (line) logEvent('FFMPEG', 'FFmpeg Server', line.slice(0, 500));
+      // FFmpeg sends progress to stderr by default. Filter it out.
+      if (line && !line.startsWith('frame=') && !line.includes('bitrate=')) {
+        logEvent('FFMPEG', 'FFmpeg Server', line.slice(0, 500));
+      }
     });
     
-    child.on('exit', (code, signal) => {
+    child.on('exit', async (code, signal) => {
       runningProcesses.delete(streamId);
       const isError = code !== 0 && signal !== 'SIGTERM' && signal !== 'SIGKILL';
+      
+      // Cleanup associated services to prevent memory/API quota leaks
+      try {
+        const { stopChatbot } = await import('./youtubeChatService.js');
+        const { stopStreamMonitoring } = await import('./youtubeAnalyticsService.js');
+        stopChatbot(streamId);
+        stopStreamMonitoring(streamId);
+      } catch (err) {
+        logEvent('WARN', 'FFmpeg Server', `Gagal membersihkan service terkait stream #${streamId}: ${err.message}`);
+      }
       
       if (!isError) {
         db.prepare('UPDATE streams SET status = ?, stopped_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')

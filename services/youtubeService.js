@@ -22,7 +22,33 @@ export function getOAuthClient(tokens = null) {
     throw error;
   }
   const client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
-  if (tokens) client.setCredentials(tokens);
+  if (tokens) {
+    client.setCredentials(tokens);
+    
+    // Auto-save refreshed tokens to the database
+    client.on('tokens', (newTokens) => {
+      const rt = newTokens.refresh_token || tokens.refresh_token;
+      if (rt) {
+        try {
+          db.prepare(`
+            UPDATE youtube_channels 
+            SET access_token = ?, 
+                refresh_token = ?, 
+                expires_at = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE refresh_token = ?
+          `).run(
+            newTokens.access_token || tokens.access_token || '',
+            rt,
+            newTokens.expiry_date || (Date.now() + 3600 * 1000),
+            rt
+          );
+        } catch (e) {
+          // ignore error if DB is locked or refresh_token doesn't match
+        }
+      }
+    });
+  }
   return client;
 }
 

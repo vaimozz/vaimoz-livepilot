@@ -60,6 +60,7 @@ schedulerRouter.put('/campaigns/:id/recurring', asyncHandler(async (req, res) =>
     recurringTime,
     recurringDurationMode,
     recurringDurationMinutes,
+    recurringDurationMin,
     recurringDurationMax,
     recurringEndDate,
     recurringTimezone,

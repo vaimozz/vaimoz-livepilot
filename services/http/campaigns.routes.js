@@ -355,7 +355,7 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
         liveChatId,
         messages: chatbotMessages,
         intervalMinutes: chatbotInterval,
-        mode: chatbotMode === 'Pesan berkala' ? 'sequential' : 'random',
+        mode: chatbotMode === 'Pesan terjadwal (Jam tertentu)' ? chatbotMode : (chatbotMode === 'Pesan berkala' ? 'sequential' : 'random'),
       });
 
       logEvent('INFO', 'YouTube Chatbot', `Started chatbot for stream #${started.streamId}`);
@@ -455,7 +455,7 @@ campaignsRouter.post('/:id/chatbot/start', asyncHandler(async (req, res) => {
     liveChatId: activeStream.youtube_live_chat_id,
     messages: chatbotMessages,
     intervalMinutes: chatbotInterval,
-    mode: chatbotMode === 'Pesan berkala' ? 'sequential' : 'random',
+    mode: chatbotMode === 'Pesan terjadwal (Jam tertentu)' ? chatbotMode : (chatbotMode === 'Pesan berkala' ? 'sequential' : 'random'),
   });
 
   if (!started) {

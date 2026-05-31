@@ -398,6 +398,25 @@ export async function startYoutubeLiveCampaign(campaignId, options = {}) {
     enableAutoStart: true,
     enableAutoStop: cfg.youtubeAutoStopEnabled !== false,
     recordFromStart: true,
+    frameRate: (() => {
+      let fps = String(cfg.encoder?.frameRate || cfg.encoder?.fps || 'variable').toLowerCase();
+      if (fps.includes('ikut') || fps.includes('sumber')) return 'variable';
+      if (fps.includes('60') || fps.includes('50')) return '60fps';
+      if (fps.includes('30') || fps.includes('25') || fps.includes('24')) return '30fps';
+      return 'variable';
+    })(),
+    resolution: (() => {
+      let res = String(cfg.encoder?.resolution || 'variable').toLowerCase();
+      if (res.includes('ikut') || res.includes('sumber')) return 'variable';
+      if (res.includes('2160') || res.includes('4k')) return '2160p';
+      if (res.includes('1440') || res.includes('2k')) return '1440p';
+      if (res.includes('1080')) return '1080p';
+      if (res.includes('720')) return '720p';
+      if (res.includes('480')) return '480p';
+      if (res.includes('360')) return '360p';
+      if (res.includes('240')) return '240p';
+      return 'variable';
+    })(),
   });
 
   const { rtmpUrl, streamKey, broadcastId, streamId, watchUrl } = broadcastData;
@@ -452,7 +471,7 @@ export async function startYoutubeLiveCampaign(campaignId, options = {}) {
         channelId: youtubeChannelId, liveChatId,
         messages: cfg.chatbot.messages || [],
         intervalMinutes: parseInt(cfg.chatbot.interval || '10'),
-        mode: cfg.chatbot.mode === 'Pesan berkala' ? 'sequential' : 'random',
+        mode: cfg.chatbot.mode === 'Pesan terjadwal (Jam tertentu)' ? cfg.chatbot.mode : (cfg.chatbot.mode === 'Pesan berkala' ? 'sequential' : 'random'),
       });
     } catch (e) { logEvent('WARN', 'Scheduler', `Start chatbot gagal: ${e.message}`); }
   }

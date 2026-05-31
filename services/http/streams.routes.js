@@ -176,11 +176,18 @@ streamsRouter.post('/start-campaign', asyncHandler(async (req, res) => {
 // ── POST /streams/:id/stop ────────────────────────────────────────────────────
 streamsRouter.post('/:id/stop', asyncHandler(async (req, res) => {
   const result = stopFfmpegStream(req.params.id);
-  // Update status campaign terkait → Draft
+  // Update status campaign terkait
   const stream = db.prepare('SELECT campaign_id FROM streams WHERE id = ?').get(Number(req.params.id));
   if (stream?.campaign_id) {
-    db.prepare('UPDATE campaigns SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-      .run('Draft', stream.campaign_id);
+    const campaign = db.prepare('SELECT status, recurring_enabled, recurring_type FROM campaigns WHERE id = ?').get(stream.campaign_id);
+    if (campaign) {
+      let newStatus = campaign.status;
+      if (campaign.status !== 'Completed') {
+        newStatus = (campaign.recurring_enabled && campaign.recurring_type !== 'once') ? 'Scheduled' : 'Draft';
+      }
+      db.prepare('UPDATE campaigns SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+        .run(newStatus, stream.campaign_id);
+    }
   }
   res.json(result);
 }));

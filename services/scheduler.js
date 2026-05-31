@@ -264,6 +264,12 @@ async function executeCampaign(campaignData) {
     const nextExecution = calculateNextExecution(campaign);
     db.prepare('UPDATE campaigns SET next_execution_at = ? WHERE id = ?').run(nextExecution, campaign.id);
     
+    if (campaign.recurring_type === 'once') {
+      logEvent('INFO', 'Scheduler', `Kampanye #${campaign.id} bertipe sekali jalan. Menghentikan schedule setelah eksekusi ini.`);
+      stopScheduledCampaign(campaign.id);
+      db.prepare("UPDATE campaigns SET status = 'Completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(campaign.id);
+    }
+    
     // Schedule auto stop
     if (durationMinutes > 0 && streamResult?.streamId) {
       const ms = durationMinutes * 60 * 1000;
