@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { config } from '../utils/config.js';
 import { db, logEvent } from '../db/database.js';
+import os from 'node:os';
 
 const runningProcesses = new Map();
 
@@ -83,11 +84,19 @@ export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP',
     logEvent('FFMPEG', 'FFmpeg Server', `Stream #${streamId} dimulai dengan PID ${child.pid} (Attempt ${attempt})`);
 
     if (attempt === 1) {
+      const freeMem = (os.freemem() / 1024 / 1024 / 1024).toFixed(2);
+      const totalMem = (os.totalmem() / 1024 / 1024 / 1024).toFixed(2);
+      const isStreamCopy = (!encoder || !encoder.mode || encoder.mode === 'Stream Copy (CPU ringan)');
+
       notifyStreamStarted({
         campaignName,
         platform,
         chosenVideo: inputPath.split(/[\/\\]/).pop(),
-        pid: child.pid
+        pid: child.pid,
+        streamId: streamId,
+        resolution: isStreamCopy ? 'Original (Copy)' : (encoder?.resolution || '1080p Full HD'),
+        targetDuration: durationMinutes ? `${durationMinutes} Menit` : 'Non-stop (Loop)',
+        serverMem: `${freeMem}GB / ${totalMem}GB`
       }).catch(e => logEvent('ERROR', 'Telegram', e.message));
     }
 

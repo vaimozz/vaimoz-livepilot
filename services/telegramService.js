@@ -55,16 +55,21 @@ export async function testTelegramConnection(botToken, chatId) {
   return sendTelegram(text, { botToken, chatId });
 }
 
-export async function notifyStreamStarted({ campaignName, platform, chosenTitle, chosenVideo, watchUrl, pid }) {
+export async function notifyStreamStarted({ campaignName, platform, chosenTitle, chosenVideo, watchUrl, pid, streamId, resolution, targetDuration, serverMem }) {
   if (!isPrefEnabled('notify_stream_start')) return;
+  const os = await import('node:os');
+  const serverName = os.hostname();
+
   const lines = [
     `🔴 <b>LIVE DIMULAI</b>`,
     ``,
     `📌 <b>Kampanye:</b> ${campaignName}`,
     `🎬 <b>Platform:</b> ${platform}`,
-    chosenTitle ? `📝 <b>Judul:</b> ${chosenTitle}` : null,
     chosenVideo ? `🎥 <b>Video:</b> ${chosenVideo}` : null,
-    watchUrl    ? `🔗 <b>Tonton:</b> ${watchUrl}` : null,
+    resolution  ? `📺 <b>Kualitas:</b> ${resolution}` : null,
+    targetDuration ? `⏱ <b>Target Durasi:</b> ${targetDuration}` : null,
+    streamId    ? `🆔 <b>Stream ID:</b> ${streamId}` : null,
+    `🖥 <b>Server:</b> ${serverName}`,
     pid         ? `⚙️ <b>PID:</b> ${pid}` : null,
     ``,
     `⏱ ${new Date().toLocaleString('id-ID')}`,
