@@ -345,7 +345,6 @@ export function StreamMonitorPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800 text-slate-300">
-                  <tbody className="divide-y divide-slate-800 text-slate-300">
                     {streamsHistory.length > 0 ? (
                       Object.entries(
                         streamsHistory.reduce((acc, s) => {
