@@ -42,26 +42,26 @@
 :root {
   color-scheme: dark;
   
-  /* Set And Forget Dark Theme - Professional SaaS Look */
-  --bg-primary: #020617; /* Slate 950 */
-  --bg-secondary: #0f172a; /* Slate 900 */
-  --bg-tertiary: #1e293b; /* Slate 800 */
+  /* Tokyo Night Theme */
+  --bg-primary: #1a1b26; 
+  --bg-secondary: #16161e; 
+  --bg-tertiary: #24283b; 
   
-  --accent-primary: #3b82f6; /* Blue 500 */
-  --accent-secondary: #6366f1; /* Indigo 500 */
-  --accent-tertiary: #8b5cf6; /* Violet 500 */
+  --accent-primary: #7aa2f7; /* Tokyo Blue */
+  --accent-secondary: #bb9af7; /* Tokyo Purple */
+  --accent-tertiary: #2ac3de; /* Tokyo Cyan */
   
-  --text-primary: #f8fafc; /* Slate 50 */
-  --text-secondary: #94a3b8; /* Slate 400 */
-  --text-muted: #64748b; /* Slate 500 */
+  --text-primary: #c0caf5; 
+  --text-secondary: #a9b1d6; 
+  --text-muted: #565f89; 
   
-  --border-primary: #334155; /* Slate 700 */
-  --border-accent: #3b82f633;
+  --border-primary: #414868; 
+  --border-accent: #7aa2f733;
   
-  --success: #10b981; /* Emerald 500 */
-  --warning: #f59e0b; /* Amber 500 */
-  --error: #ef4444; /* Red 500 */
-  --info: #0ea5e9; /* Sky 500 */
+  --success: #9ece6a; /* Tokyo Green */
+  --warning: #e0af68; /* Tokyo Yellow */
+  --error: #f7768e; /* Tokyo Red */
+  --info: #7dcfff; /* Tokyo Light Blue */
 }
 
 * {
@@ -156,17 +156,17 @@ textarea:focus {
 
 /* Glassmorphism Utilities */
 .glass-panel {
-  background-color: rgba(15, 23, 42, 0.65) !important; /* bg-secondary with opacity */
+  background-color: rgba(22, 22, 30, 0.65) !important; /* bg-secondary with opacity */
   backdrop-filter: blur(12px) saturate(160%);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(192, 202, 245, 0.05) !important;
 }
 
 .glass-header {
-  background-color: rgba(2, 6, 23, 0.75) !important; /* bg-primary with opacity */
+  background-color: rgba(26, 27, 38, 0.75) !important; /* bg-primary with opacity */
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-bottom: 1px solid rgba(192, 202, 245, 0.05) !important;
 }
 
 
