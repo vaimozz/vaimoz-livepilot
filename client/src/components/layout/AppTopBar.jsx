@@ -67,21 +67,13 @@ export function AppTopBar({ now }) {
       
       <div className="glass-header sticky top-0 z-50 flex h-16 items-center justify-between px-5 lg:px-8 transition-all duration-300">
         <div className="flex items-center gap-3">
-          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-lg ring-1 ring-white/20" style={{
-            background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-            boxShadow: '0 4px 14px 0 color-mix(in srgb, var(--accent-primary) 40%, transparent)'
-          }}>
-            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '8px 8px' }}></div>
-            <MonitorPlay className="relative z-10 h-5 w-5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" strokeWidth={2.5} />
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800/50 ring-1 ring-white/10">
+            <MonitorPlay className="h-5 w-5" style={{ color: 'var(--accent-primary)' }} strokeWidth={2} />
           </div>
-          <div className="flex flex-col justify-center">
-            <h1 className="text-base font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-              Live Pilot
-            </h1>
-            <p className="text-[10px] font-bold uppercase tracking-wider opacity-75" style={{ color: 'var(--text-secondary)' }}>
-              Kontrol Live Otomatis
-            </p>
-          </div>
+          <h1 className="text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            Vaimoz<span className="font-light opacity-80">Live</span>
+          </h1>
         </div>
         <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
           <span>{formatTopbarDate(now)}</span>
