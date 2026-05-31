@@ -147,35 +147,77 @@ export async function getChannelAnalytics(tokens, channelId) {
     const endDate = new Date().toISOString().split('T')[0];
     const startDate = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     
-    const reportRes = await analytics.reports.query({
-      ids: 'channel==MINE',
-      startDate,
-      endDate,
-      metrics: 'estimatedRevenue,estimatedMinutesWatched',
-    });
-    
-    const rows = reportRes.data.rows || [];
-    if (rows.length > 0 && rows[0].length >= 2) {
-      result.estimatedRevenue = Number(rows[0][0] || 0);
-      result.estimatedMinutesWatched = Number(rows[0][1] || 0);
+    // Basic metrics that work for all channels
+    try {
+      const reportRes = await analytics.reports.query({
+        ids: 'channel==MINE',
+        startDate,
+        endDate,
+        metrics: 'estimatedMinutesWatched',
+      });
+      const rows = reportRes.data.rows || [];
+      if (rows.length > 0 && rows[0].length >= 1) {
+        result.estimatedMinutesWatched = Number(rows[0][0] || 0);
+      }
+    } catch (e) {
+      console.warn(`[YouTube Analytics] Failed watch time query for ${channelId}:`, e.message);
     }
 
-    const dailyRes = await analytics.reports.query({
-      ids: 'channel==MINE',
-      startDate,
-      endDate,
-      metrics: 'estimatedRevenue,views',
-      dimensions: 'day',
-      sort: 'day',
-    });
+    try {
+      const dailyRes = await analytics.reports.query({
+        ids: 'channel==MINE',
+        startDate,
+        endDate,
+        metrics: 'views',
+        dimensions: 'day',
+        sort: 'day',
+      });
+      result.dailyData = (dailyRes.data.rows || []).map(row => ({
+        day: row[0],
+        views: Number(row[1] || 0),
+        estimatedRevenue: 0
+      }));
+    } catch (e) {
+      console.warn(`[YouTube Analytics] Failed daily views query for ${channelId}:`, e.message);
+    }
 
-    result.dailyData = (dailyRes.data.rows || []).map(row => ({
-      day: row[0],
-      estimatedRevenue: Number(row[1] || 0),
-      views: Number(row[2] || 0)
-    }));
+    // Revenue metrics (fails if not monetized)
+    try {
+      const revRes = await analytics.reports.query({
+        ids: 'channel==MINE',
+        startDate,
+        endDate,
+        metrics: 'estimatedRevenue',
+      });
+      const rows = revRes.data.rows || [];
+      if (rows.length > 0 && rows[0].length >= 1) {
+        result.estimatedRevenue = Number(rows[0][0] || 0);
+      }
+
+      const dailyRevRes = await analytics.reports.query({
+        ids: 'channel==MINE',
+        startDate,
+        endDate,
+        metrics: 'estimatedRevenue',
+        dimensions: 'day',
+        sort: 'day',
+      });
+      const revMap = {};
+      (dailyRevRes.data.rows || []).forEach(row => {
+        revMap[row[0]] = Number(row[1] || 0);
+      });
+      if (result.dailyData) {
+        result.dailyData = result.dailyData.map(item => ({
+          ...item,
+          estimatedRevenue: revMap[item.day] || 0
+        }));
+      }
+    } catch (e) {
+      console.warn(`[YouTube Analytics] Revenue query failed for ${channelId} (likely not monetized):`, e.message);
+    }
+
   } catch (error) {
-    console.warn(`[YouTube Analytics] Gagal mengambil data untuk ${channelId}. Mungkin channel belum dimonetisasi atau butuh re-otorisasi:`, error.message);
+    console.warn(`[YouTube Analytics] Gagal inisialisasi analytics untuk ${channelId}:`, error.message);
   }
 
   return result;

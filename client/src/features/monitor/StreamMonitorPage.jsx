@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshCw, Search, Trash2, Radio, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent } from '@/components/ui/card.jsx';
@@ -345,62 +345,82 @@ export function StreamMonitorPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800 text-slate-300">
+                  <tbody className="divide-y divide-slate-800 text-slate-300">
                     {streamsHistory.length > 0 ? (
-                      streamsHistory.map((s) => {
-                        const durationText = s.startedAt ? formatDuration(
-                          Math.round(((s.stoppedAt ? new Date(s.stoppedAt).getTime() : Date.now()) - new Date(s.startedAt).getTime()) / 60000)
-                        ) : '-';
-                        const isOnline = ['Online', 'Starting'].includes(s.status);
-                        return (
-                          <tr key={s.id} className="hover:bg-slate-800/50 transition-colors">
-                            <td className="px-5 py-4 text-center">
-                              <input 
-                                type="checkbox" 
-                                className="rounded border-slate-700 bg-slate-900" 
-                                checked={selectedStreams.includes(s.id)}
-                                onChange={() => toggleSelectStream(s.id)}
-                              />
-                            </td>
-                            <td className="px-5 py-4">
-                              <p className="font-extrabold text-slate-100">{s.chosenTitle || 'Stream Tanpa Judul'}</p>
-                              <p className="text-2xs text-slate-500 mt-0.5">{s.campaignName || 'Sesi Manual'}</p>
-                            </td>
-                            <td className="px-4 py-4">
-                              <span className="rounded-full bg-slate-900 border border-slate-700 px-2 py-0.5 text-2xs font-semibold">
-                                {s.platform}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 text-2xs">
-                              {s.startedAt ? new Date(s.startedAt).toLocaleString('id-ID') : '-'}
-                            </td>
-                            <td className="px-4 py-4 text-xs font-bold">
-                              {durationText}
-                            </td>
-                            <td className="px-4 py-4 text-center font-extrabold text-slate-100">
-                              {(s.youtubeTotalViews || 0).toLocaleString('id-ID')}
-                            </td>
-                            <td className="px-4 py-4 text-center font-extrabold text-rose-400">
-                              {(s.youtubeConcurrentViewers || 0).toLocaleString('id-ID')}
-                            </td>
-                            <td className="px-4 py-4 text-center text-xs">
-                              <span className="text-emerald-400 font-semibold">{s.youtubeLikes || 0}</span>
-                              <span className="text-slate-600 mx-1">/</span>
-                              <span className="text-purple-400 font-semibold">{s.youtubeComments || 0}</span>
-                            </td>
-                            <td className="px-5 py-4 text-center">
-                              <span className={cx(
-                                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wider",
-                                s.status === 'Online' ? "bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse" :
-                                s.status === 'Starting' ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
-                                "bg-slate-800 text-slate-400 border border-slate-700"
-                              )}>
-                                {isOnline && <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />}
-                                {s.status === 'Online' ? 'LIVE' : s.status === 'Starting' ? 'STARTING' : 'OFFLINE'}
-                              </span>
+                      Object.entries(
+                        streamsHistory.reduce((acc, s) => {
+                          const ch = s.channelName || 'Platform Lain';
+                          if (!acc[ch]) acc[ch] = [];
+                          acc[ch].push(s);
+                          return acc;
+                        }, {})
+                      ).map(([channelName, streams]) => (
+                        <React.Fragment key={channelName}>
+                          <tr className="bg-slate-900 border-b border-slate-800">
+                            <td colSpan="9" className="px-5 py-3 text-xs font-bold text-sky-400 uppercase tracking-wider">
+                              <div className="flex items-center gap-2">
+                                <Radio className="h-3.5 w-3.5" />
+                                {channelName}
+                              </div>
                             </td>
                           </tr>
-                        );
-                      })
+                          {streams.map((s) => {
+                            const durationText = s.startedAt ? formatDuration(
+                              Math.round(((s.stoppedAt ? new Date(s.stoppedAt).getTime() : Date.now()) - new Date(s.startedAt).getTime()) / 60000)
+                            ) : '-';
+                            const isOnline = ['Online', 'Starting'].includes(s.status);
+                            return (
+                              <tr key={s.id} className="hover:bg-slate-800/50 transition-colors">
+                                <td className="px-5 py-4 text-center">
+                                  <input 
+                                    type="checkbox" 
+                                    className="rounded border-slate-700 bg-slate-900" 
+                                    checked={selectedStreams.includes(s.id)}
+                                    onChange={() => toggleSelectStream(s.id)}
+                                  />
+                                </td>
+                                <td className="px-5 py-4">
+                                  <p className="font-extrabold text-slate-100">{s.chosenTitle || 'Stream Tanpa Judul'}</p>
+                                  <p className="text-2xs text-slate-500 mt-0.5">{s.campaignName || 'Sesi Manual'}</p>
+                                </td>
+                                <td className="px-4 py-4">
+                                  <span className="rounded-full bg-slate-900 border border-slate-700 px-2 py-0.5 text-2xs font-semibold">
+                                    {s.platform}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-4 text-2xs">
+                                  {s.startedAt ? new Date(s.startedAt).toLocaleString('id-ID') : '-'}
+                                </td>
+                                <td className="px-4 py-4 text-xs font-bold">
+                                  {durationText}
+                                </td>
+                                <td className="px-4 py-4 text-center font-extrabold text-slate-100">
+                                  {(s.youtubeTotalViews || 0).toLocaleString('id-ID')}
+                                </td>
+                                <td className="px-4 py-4 text-center font-extrabold text-rose-400">
+                                  {(s.youtubeConcurrentViewers || 0).toLocaleString('id-ID')}
+                                </td>
+                                <td className="px-4 py-4 text-center text-xs">
+                                  <span className="text-emerald-400 font-semibold">{s.youtubeLikes || 0}</span>
+                                  <span className="text-slate-600 mx-1">/</span>
+                                  <span className="text-purple-400 font-semibold">{s.youtubeComments || 0}</span>
+                                </td>
+                                <td className="px-5 py-4 text-center">
+                                  <span className={cx(
+                                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wider",
+                                    s.status === 'Online' ? "bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse" :
+                                    s.status === 'Starting' ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                                    "bg-slate-800 text-slate-400 border border-slate-700"
+                                  )}>
+                                    {isOnline && <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />}
+                                    {s.status === 'Online' ? 'LIVE' : s.status === 'Starting' ? 'STARTING' : 'OFFLINE'}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </React.Fragment>
+                      ))
                     ) : (
                       <tr>
                         <td colSpan="9" className="px-5 py-8 text-center text-slate-500 bg-slate-900/50">

@@ -119,6 +119,30 @@ export function SettingsPage() {
     }
   };
 
+  const handleGoogleJsonUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target.result);
+        const credentials = json.web || json.installed;
+        if (credentials && credentials.client_id && credentials.client_secret) {
+          setGoogleClientId(credentials.client_id);
+          setGoogleClientSecret(credentials.client_secret);
+          setSettingsMessage('✅ File JSON berhasil dibaca. Silakan klik "Simpan Kredensial".');
+        } else {
+          setSettingsMessage('⚠ File JSON tidak memiliki client_id atau client_secret yang valid.');
+        }
+      } catch (error) {
+        setSettingsMessage('⚠ Gagal membaca file JSON.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset input
+  };
+
   const saveTelegram = async () => {
     if (!telegramBotToken.trim()) return setSettingsMessage('⚠ Bot Token wajib diisi.');
     if (!telegramChatId.trim()) return setSettingsMessage('⚠ Chat ID wajib diisi.');
@@ -234,9 +258,15 @@ export function SettingsPage() {
 
             {/* Kredensial Google API */}
             <div className="pt-4 border-t border-slate-800">
-              <label className="text-sm font-medium text-slate-300 mb-3 block">
-                Konfigurasi Google Cloud API
-              </label>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-slate-300">
+                  Konfigurasi Google Cloud API
+                </label>
+                <label className="cursor-pointer flex items-center gap-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+                  <input type="file" accept=".json" className="hidden" onChange={handleGoogleJsonUpload} />
+                  Impor File JSON
+                </label>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                 <div>
                   <input

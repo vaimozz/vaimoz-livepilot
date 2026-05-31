@@ -225,7 +225,7 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
     channelId: youtubeChannelId,
     title: chosenTitle,
     description: cfg.youtubeDescription || cfg.description || '',
-    categoryId: cfg.youtubeCategoryId || cfg.categoryId || '10',
+    categoryId: cfg.categoryId || cfg.youtubeCategoryId || '10',
     tags: cfg.youtubeTags || cfg.tags || '',
     privacyStatus: privacySetting.toLowerCase() === 'publik' ? 'public' : 
                    privacySetting.toLowerCase() === 'tidak publik' ? 'unlisted' : 'private',

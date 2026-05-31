@@ -14,7 +14,7 @@ import { monitorRouter } from './services/http/monitor.routes.js';
 import { schedulerRouter } from './services/http/scheduler.routes.js';
 import { settingsRouter } from './services/http/settings.routes.js';
 import { analyticsRouter } from './services/http/analytics.routes.js';
-import { loadScheduledCampaigns } from './services/scheduler.js';
+import { loadScheduledCampaigns, setupAutoCleanup } from './services/scheduler.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 initDatabase();
@@ -83,6 +83,7 @@ app.use(errorHandler);
 
 app.listen(config.port, () => {
   const scheduled = loadScheduledCampaigns();
+  setupAutoCleanup();
   logEvent('SERVER', 'Server', `Vaimoz LivePilot backend online pada port ${config.port}`);
   console.log(`Vaimoz LivePilot backend: http://localhost:${config.port}`);
   if (scheduled.length) console.log(`Loaded ${scheduled.length} scheduled campaign(s).`);

@@ -14,7 +14,7 @@ analyticsRouter.get('/', asyncHandler(async (req, res) => {
   const period = req.query.period ? String(req.query.period).trim() : '';
 
   let sql = `
-    SELECT s.*, c.name as campaign_name 
+    SELECT s.*, c.name as campaign_name, c.config_json as campaign_config
     FROM streams s 
     LEFT JOIN campaigns c ON s.campaign_id = c.id
   `;
@@ -55,6 +55,11 @@ analyticsRouter.get('/', asyncHandler(async (req, res) => {
   // Ambil list campaign untuk filter dropdown
   const campaignsList = db.prepare('SELECT id, name FROM campaigns ORDER BY name ASC').all();
 
+  // Mapping channel name
+  const channelsList = db.prepare('SELECT youtube_channel_id, title FROM youtube_channels').all();
+  const channelMap = {};
+  channelsList.forEach(ch => channelMap[ch.youtube_channel_id] = ch.title);
+
   // 1. Hitung Ringkasan (Summary)
   let totalViews = 0;
   let peakViewers = 0;
@@ -78,6 +83,9 @@ analyticsRouter.get('/', asyncHandler(async (req, res) => {
         completedStreamsCount++;
       }
     }
+
+    const config = s.campaign_config ? JSON.parse(s.campaign_config) : {};
+    s.channelName = config.youtubeChannelId ? channelMap[config.youtubeChannelId] || 'Channel Tidak Dikenal' : 'Platform Lain';
   });
 
   const summary = {

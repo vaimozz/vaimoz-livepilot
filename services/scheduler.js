@@ -310,6 +310,27 @@ export function scheduleCampaign(campaign) {
   };
 }
 
+export function setupAutoCleanup() {
+  // Run everyday at midnight (00:00)
+  cron.schedule('0 0 * * *', () => {
+    try {
+      logEvent('INFO', 'System', 'Menjalankan auto-cleanup riwayat stream lama...');
+      // Delete streams older than 14 days that are not running
+      const result = db.prepare(`
+        DELETE FROM streams 
+        WHERE created_at <= datetime('now', '-14 days') 
+          AND status NOT IN ('Starting', 'Online')
+      `).run();
+      if (result.changes > 0) {
+        logEvent('INFO', 'System', `Auto-cleanup: ${result.changes} riwayat stream (>14 hari) dihapus.`);
+      }
+    } catch (e) {
+      logEvent('ERROR', 'System', `Gagal menjalankan auto-cleanup: ${e.message}`);
+    }
+  });
+  logEvent('INFO', 'System', 'Auto-cleanup stream (>14 hari) dijadwalkan berjalan setiap tengah malam.');
+}
+
 export function loadScheduledCampaigns() {
   const rows = db.prepare("SELECT * FROM campaigns WHERE status = 'Scheduled'").all();
   const results = [];
