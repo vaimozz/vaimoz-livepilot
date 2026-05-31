@@ -171,8 +171,6 @@ async function executeCampaign(campaignData) {
   const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(campaignData.id) || campaignData;
   const config = readJson(campaign.config_json, {});
   
-  logEvent('INFO', 'Scheduler', `Menjalankan kampanye #${campaign.id}: ${campaign.name}`);
-  
   // Check if should still execute
   if (!shouldExecute(campaign)) {
     logEvent('INFO', 'Scheduler', `Kampanye #${campaign.id} telah melewati end date, menghentikan schedule`);
@@ -180,6 +178,25 @@ async function executeCampaign(campaignData) {
     db.prepare("UPDATE campaigns SET status = 'Completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(campaign.id);
     return;
   }
+
+  // --- SMART HUMANIZER START DELAY ---
+  if (config.recurringHumanize) {
+     const maxMins = config.recurringHumanizeMaxMins || 10;
+     const randomDelayMins = Math.floor(Math.random() * maxMins) + 1;
+     logEvent('INFO', 'Scheduler', `Smart Humanizer: Menunda start kampanye #${campaign.id} selama ${randomDelayMins} menit agar terlihat natural.`);
+     await new Promise(resolve => setTimeout(resolve, randomDelayMins * 60000));
+     
+     // Re-fetch campaign after delay to ensure it wasn't paused/deleted
+     const checkCampaign = db.prepare('SELECT status FROM campaigns WHERE id = ?').get(campaign.id);
+     if (!checkCampaign || checkCampaign.status !== 'Scheduled') {
+        logEvent('INFO', 'Scheduler', `Kampanye #${campaign.id} dibatalkan selama masa tunda Humanizer.`);
+        return;
+     }
+  }
+  // -----------------------------------
+
+  logEvent('INFO', 'Scheduler', `Menjalankan kampanye #${campaign.id}: ${campaign.name}`);
+
 
   // Ensure we don't pile up multiple streams for the same campaign (stop stuck ones)
   try {
@@ -189,7 +206,17 @@ async function executeCampaign(campaignData) {
   }
   
   // Get duration for this execution
-  const durationMinutes = getExecutionDuration(campaign);
+  let durationMinutes = getExecutionDuration(campaign);
+  
+  // --- SMART HUMANIZER DURATION VARIANCE ---
+  if (config.recurringHumanize && durationMinutes > 0) {
+      const maxMins = config.recurringHumanizeMaxMins || 10;
+      const variance = Math.floor(Math.random() * (maxMins * 2 + 1)) - maxMins; // e.g. -10 to +10
+      durationMinutes += variance;
+      if (durationMinutes < 1) durationMinutes = 1;
+      logEvent('INFO', 'Scheduler', `Smart Humanizer: Durasi disesuaikan menjadi ${durationMinutes} menit (variasi: ${variance > 0 ? '+' : ''}${variance} menit).`);
+  }
+  // -----------------------------------------
   
   try {
     const isYouTubeAPI = campaign.mode === 'YouTube API' || config.mode === 'YouTube API';

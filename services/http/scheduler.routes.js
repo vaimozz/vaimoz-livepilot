@@ -60,11 +60,24 @@ schedulerRouter.put('/campaigns/:id/recurring', asyncHandler(async (req, res) =>
     recurringTime,
     recurringDurationMode,
     recurringDurationMinutes,
-    recurringDurationMin,
     recurringDurationMax,
     recurringEndDate,
-    recurringTimezone
+    recurringTimezone,
+    recurringHumanize,
+    recurringHumanizeMaxMins
   } = req.body;
+
+  let config = {};
+  try {
+    config = JSON.parse(campaign.config_json || '{}');
+  } catch (e) {
+    config = {};
+  }
+  
+  // Update humanize config
+  config.recurringHumanize = !!recurringHumanize;
+  config.recurringHumanizeMaxMins = Number(recurringHumanizeMaxMins) || 10;
+  
   
   // Update recurring settings
   db.prepare(`
@@ -80,6 +93,7 @@ schedulerRouter.put('/campaigns/:id/recurring', asyncHandler(async (req, res) =>
       recurring_duration_max = ?,
       recurring_end_date = ?,
       recurring_timezone = ?,
+      config_json = ?,
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `).run(
@@ -93,6 +107,7 @@ schedulerRouter.put('/campaigns/:id/recurring', asyncHandler(async (req, res) =>
     recurringDurationMax,
     recurringEndDate,
     recurringTimezone || 'Asia/Jakarta',
+    writeJson(config),
     campaignId
   );
   
