@@ -66,7 +66,6 @@ export function AppTopBar({ now }) {
       <ThemeSwitcher isOpen={isThemeSwitcherOpen} onClose={() => setIsThemeSwitcherOpen(false)} />
       
       <div className="glass-header sticky top-0 z-50 flex h-16 items-center justify-between px-5 lg:px-8 transition-all duration-300">
-        <div className="flex items-center gap-3">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800/50 ring-1 ring-white/10">
             <MonitorPlay className="h-5 w-5" style={{ color: 'var(--accent-primary)' }} strokeWidth={2} />
