@@ -140,6 +140,7 @@ export function ManualRtmpForm({ state, setters, onSaveDraft, onStartLive, onSto
             <select value={state.smartStopDelayMinutes} onChange={(e) => setters.setSmartStopDelayMinutes(e.target.value)} disabled={!state.smartStopEnabled || isLive} className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none">
               <option value="5">5 menit</option><option value="15">15 menit</option><option value="30">30 menit</option><option value="60">60 menit</option><option value="120">2 jam</option>
             </select>
+          </div>
           <div className="mt-4 pt-4 border-t border-emerald-500/20">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div><p className="font-bold text-white">Smart Humanizer</p><p className="text-[11px] text-slate-400">Acak jam mulai & berhenti.</p></div>
