@@ -140,6 +140,14 @@ export function ManualRtmpForm({ state, setters, onSaveDraft, onStartLive, onSto
             <select value={state.smartStopDelayMinutes} onChange={(e) => setters.setSmartStopDelayMinutes(e.target.value)} disabled={!state.smartStopEnabled || isLive} className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none">
               <option value="5">5 menit</option><option value="15">15 menit</option><option value="30">30 menit</option><option value="60">60 menit</option><option value="120">2 jam</option>
             </select>
+          <div className="mt-4 pt-4 border-t border-emerald-500/20">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div><p className="font-bold text-white">Smart Humanizer</p><p className="text-[11px] text-slate-400">Acak jam mulai & berhenti.</p></div>
+              <label className="flex items-center gap-2 text-[11px] text-slate-300"><input type="checkbox" checked={state.youtubeSmartHumanizeEnabled} onChange={(e) => setters.setYoutubeSmartHumanizeEnabled(e.target.checked)} disabled={isLive} />Aktif</label>
+            </div>
+            <div className={cx('grid gap-2', !state.youtubeSmartHumanizeEnabled && 'opacity-40')}>
+              <input type="number" min="1" max="60" value={state.youtubeSmartHumanizeMaxMins} onChange={(e) => setters.setYoutubeSmartHumanizeMaxMins(e.target.value)} disabled={!state.youtubeSmartHumanizeEnabled || isLive} className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none" placeholder="Maks. Variasi (menit)" />
+            </div>
           </div>
         </div>
       </div>

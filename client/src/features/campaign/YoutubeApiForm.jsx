@@ -247,7 +247,17 @@ export function YoutubeApiForm({ state, setters, youtubeChannels = [], available
                 <option value="5">5 menit</option><option value="15">15 menit</option><option value="30">30 menit</option><option value="60">60 menit</option><option value="120">2 jam</option>
               </select>
             </div>
-            <p className="mt-auto pt-3 text-[11px] text-slate-400">Smart Stop tetap mengikuti mode durasi.</p>
+            <div className="mt-4 pt-4 border-t border-emerald-500/20">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div><p className="text-sm font-bold text-white">Smart Humanizer</p><p className="mt-1 text-[11px] text-slate-400">Acak jam mulai & berhenti (1-60m).</p></div>
+                <label className="flex items-center gap-2 text-[11px] text-slate-300">
+                  <input type="checkbox" checked={state.youtubeSmartHumanizeEnabled} onChange={(e) => setters.setYoutubeSmartHumanizeEnabled(e.target.checked)} />Aktif
+                </label>
+              </div>
+              <div className={cx('grid gap-2', !state.youtubeSmartHumanizeEnabled && 'opacity-40')}>
+                <input type="number" min="1" max="60" value={state.youtubeSmartHumanizeMaxMins} onChange={(e) => setters.setYoutubeSmartHumanizeMaxMins(e.target.value)} disabled={!state.youtubeSmartHumanizeEnabled} className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white" placeholder="Maks. Variasi (menit)" />
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -252,50 +252,6 @@ export function RecurringScheduleSettings({
               </p>
             </div>
 
-            {/* Smart Humanizer */}
-            <div className="rounded-2xl border border-slate-700 bg-slate-800/50 p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <h4 className="text-sm font-medium text-white flex items-center gap-2">
-                    <Info className="h-4 w-4 text-cyan-400" />
-                    Smart Humanizer (Variasi Acak)
-                  </h4>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Acak jam mulai dan berhenti agar terlihat natural (bukan bot).
-                  </p>
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={localSettings.recurringHumanize}
-                    onChange={(e) => handleChange('recurringHumanize', e.target.checked)}
-                    disabled={disabled}
-                    className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-2 focus:ring-cyan-500"
-                  />
-                  <span className="text-xs font-medium text-slate-300">Aktif</span>
-                </label>
-              </div>
-              
-              {localSettings.recurringHumanize && (
-                <div className="mt-4 pt-4 border-t border-slate-700/50">
-                  <label className="block text-xs font-medium text-slate-300 mb-2">
-                    Maksimal Variasi (menit)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="60"
-                    value={localSettings.recurringHumanizeMaxMins}
-                    onChange={(e) => handleChange('recurringHumanizeMaxMins', parseInt(e.target.value) || 10)}
-                    disabled={disabled}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-700 bg-slate-900 text-white focus:border-cyan-500 focus:outline-none"
-                  />
-                  <p className="text-xs text-slate-500 mt-2">
-                    Contoh: Jika diset 10 menit, jadwal jam 09:00 bisa mulai kapan saja antara 09:01 - 09:10 secara otomatis.
-                  </p>
-                </div>
-              )}
-            </div>
 
             {/* Preview */}
             <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20">
