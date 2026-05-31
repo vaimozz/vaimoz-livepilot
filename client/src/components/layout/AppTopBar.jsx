@@ -65,10 +65,7 @@ export function AppTopBar({ now }) {
     <>
       <ThemeSwitcher isOpen={isThemeSwitcherOpen} onClose={() => setIsThemeSwitcherOpen(false)} />
       
-      <div className="sticky top-0 z-50 flex h-16 items-center justify-between border-b px-5 backdrop-blur lg:px-8 transition-all duration-300" style={{
-        borderColor: 'var(--border-primary)',
-        backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 95%, transparent)'
-      }}>
+      <div className="glass-header sticky top-0 z-50 flex h-16 items-center justify-between px-5 lg:px-8 transition-all duration-300">
         <div className="flex items-center gap-3">
           <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-lg ring-1 ring-white/20" style={{
             background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
@@ -137,11 +134,8 @@ export function AppTopBar({ now }) {
       </div>
 
       {isAccountOpen ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <Card className="w-full max-w-md overflow-hidden rounded-3xl shadow-2xl shadow-black/60" style={{
-            borderColor: 'var(--border-primary)',
-            backgroundColor: 'var(--bg-secondary)'
-          }}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
+          <Card className="glass-panel w-full max-w-md overflow-hidden rounded-3xl shadow-2xl shadow-black/80">
             <div className="flex items-center justify-between border-b px-6 py-5" style={{ borderColor: 'var(--border-primary)' }}>
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white" style={{

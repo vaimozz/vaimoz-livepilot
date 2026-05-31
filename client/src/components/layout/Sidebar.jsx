@@ -42,20 +42,8 @@ export function Sidebar({ activePage, setActivePage }) {
   const storagePercent = Math.min(100, Math.max(0, (usedBytes / capacityBytes) * 100));
 
   return (
-    <aside 
-      className="sticky top-16 hidden h-[calc(100vh-4rem)] w-72 shrink-0 overflow-y-auto border-r p-5 lg:block transition-all duration-300"
-      style={{
-        borderColor: 'var(--border-primary)',
-        backgroundColor: 'var(--bg-secondary)',
-      }}
-    >
-      <nav 
-        className="space-y-2 rounded-3xl border p-2"
-        style={{
-          borderColor: 'var(--border-primary)',
-          backgroundColor: 'var(--bg-tertiary)',
-        }}
-      >
+    <aside className="glass-panel sticky top-16 hidden h-[calc(100vh-4rem)] w-72 shrink-0 overflow-y-auto border-r p-5 lg:block transition-all duration-300">
+      <nav className="space-y-2 rounded-3xl bg-slate-900/40 p-2">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activePage === item.label;
@@ -64,15 +52,10 @@ export function Sidebar({ activePage, setActivePage }) {
               key={item.label} 
               type="button" 
               onClick={() => setActivePage(item.label)} 
-              className={cx('flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm transition-all duration-200 hover:scale-[1.02]')}
-              style={isActive ? {
-                color: '#ffffff',
-                background: 'linear-gradient(to right, #f213a4, #7000ff)',
-                boxShadow: '0 4px 15px rgba(242, 19, 164, 0.3)',
-                border: 'none',
-              } : {
-                color: 'var(--text-secondary)',
-              }}
+              className={cx(
+                'flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm transition-all duration-200 hover:scale-[1.02]',
+                isActive ? 'bg-slate-800 text-white shadow-lg shadow-indigo-500/20 ring-1 ring-white/10' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              )}
             >
               <Icon className="h-4 w-4" style={{ color: isActive ? '#ffffff' : 'var(--text-muted)' }} />
               {item.label}
@@ -80,13 +63,7 @@ export function Sidebar({ activePage, setActivePage }) {
           );
         })}
       </nav>
-      <div 
-        className="mt-5 rounded-3xl border p-4 transition-all duration-300"
-        style={{
-          borderColor: 'var(--border-primary)',
-          backgroundColor: 'var(--bg-tertiary)',
-        }}
-      >
+      <div className="mt-5 rounded-3xl bg-slate-900/40 p-4 transition-all duration-300 ring-1 ring-white/5">
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
           <ShieldCheck className="h-4 w-4" style={{ color: 'var(--success)' }} /> Status API
         </div>
@@ -109,13 +86,7 @@ export function Sidebar({ activePage, setActivePage }) {
           </div>
         </div>
       </div>
-      <div 
-        className="mt-5 rounded-3xl border p-4 transition-all duration-300"
-        style={{
-          borderColor: 'var(--border-primary)',
-          backgroundColor: 'var(--bg-tertiary)',
-        }}
-      >
+      <div className="mt-5 rounded-3xl bg-slate-900/40 p-4 transition-all duration-300 ring-1 ring-white/5">
         <div className="mb-3 flex items-center justify-between text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
           <div className="flex items-center gap-2">
             <Database className="h-4 w-4" style={{ color: 'var(--accent-primary)' }} /> Penyimpanan Lokal
