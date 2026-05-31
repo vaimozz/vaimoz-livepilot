@@ -66,13 +66,18 @@ export function AppTopBar({ now }) {
       <ThemeSwitcher isOpen={isThemeSwitcherOpen} onClose={() => setIsThemeSwitcherOpen(false)} />
       
       <div className="glass-header sticky top-0 z-50 flex h-16 items-center justify-between px-5 lg:px-8 transition-all duration-300">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800/50 ring-1 ring-white/10">
-            <MonitorPlay className="h-5 w-5" style={{ color: 'var(--accent-primary)' }} strokeWidth={2} />
+        <div className="flex items-center gap-3">
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 shadow-[0_0_15px_rgba(42,195,222,0.3)] ring-1 ring-cyan-500/30">
+            <Radio className="h-5 w-5 text-cyan-400 drop-shadow-[0_0_5px_rgba(42,195,222,0.5)] animate-pulse" strokeWidth={2.5} />
           </div>
-          <h1 className="text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-            Vaimoz<span className="font-light opacity-80">Live</span>
-          </h1>
+          <div className="flex flex-col justify-center">
+            <h1 className="text-lg font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              LIVE<span style={{ color: 'var(--accent-primary)' }}>PILOT</span>
+            </h1>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 opacity-80">
+              Vaimoz Auto-Live System
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
           <span>{formatTopbarDate(now)}</span>
