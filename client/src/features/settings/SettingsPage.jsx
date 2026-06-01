@@ -505,7 +505,19 @@ export function SettingsPage() {
               <p className="text-xs text-slate-400">
                 {geminiConfigured 
                   ? '✅ API Key telah tersimpan. Isi ulang hanya jika ingin mengubahnya.' 
-                  : '⚠ API Key dibutuhkan untuk fitur Auto Generate Thumbnail.'}
+                  : (
+                    <>
+                      ⚠ API Key dibutuhkan untuk fitur Auto Generate. Dapatkan API Key gratis di{' '}
+                      <a 
+                        href="https://aistudio.google.com/app/apikey" 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="text-fuchsia-400 hover:text-fuchsia-300 underline underline-offset-2"
+                      >
+                        Google AI Studio
+                      </a>
+                    </>
+                  )}
               </p>
               <Button
                 onClick={saveGeminiApi}
