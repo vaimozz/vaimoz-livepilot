@@ -119,26 +119,43 @@ Tags: ${tags || 'No tags'}`;
     
     logEvent('INFO', 'Gemini AI', `Image prompt: ${imagePrompt}`);
 
-    // 2. Call Imagen 3 API to generate the image
-    const imagenReq = await fetch(`${baseUrl}/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        instances: [{ prompt: imagePrompt }],
-        parameters: { sampleCount: 1, aspectRatio: "16:9" }
-      })
-    });
+    let base64Image = null;
 
-    if (!imagenReq.ok) {
-      const errText = await imagenReq.text();
-      throw new Error(`Imagen API error: ${imagenReq.statusText} - ${errText}`);
-    }
+    try {
+      // 2. Call Imagen 3 API to generate the image
+      const imagenReq = await fetch(`${baseUrl}/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instances: [{ prompt: imagePrompt }],
+          parameters: { sampleCount: 1, aspectRatio: "16:9" }
+        })
+      });
 
-    const imagenData = await imagenReq.json();
-    const base64Image = imagenData.predictions?.[0]?.bytesBase64Encoded;
+      if (!imagenReq.ok) {
+        const errText = await imagenReq.text();
+        throw new Error(`Imagen API error: ${imagenReq.statusText} - ${errText}`);
+      }
 
-    if (!base64Image) {
-      throw new Error('API tidak mengembalikan data gambar. Pastikan project Google Cloud Anda memiliki akses ke model Imagen.');
+      const imagenData = await imagenReq.json();
+      base64Image = imagenData.predictions?.[0]?.bytesBase64Encoded;
+
+      if (!base64Image) {
+        throw new Error('API tidak mengembalikan data gambar.');
+      }
+    } catch (imagenErr) {
+      logEvent('WARN', 'Gemini AI', `Imagen 3 gagal (${imagenErr.message}). Fallback ke Pollinations AI...`);
+      
+      // Fallback ke Pollinations AI (100% Free, no API Key, no region block)
+      const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=1280&height=720&nologo=true`;
+      const pollReq = await fetch(pollUrl);
+      
+      if (!pollReq.ok) {
+        throw new Error(`Pollinations API error: ${pollReq.statusText}`);
+      }
+      
+      const buffer = await pollReq.arrayBuffer();
+      base64Image = Buffer.from(buffer).toString('base64');
     }
 
     // 3. Save base64 image to local filesystem
