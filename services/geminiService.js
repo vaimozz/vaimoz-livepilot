@@ -101,24 +101,32 @@ export async function generateGeminiMetadata(topic) {
   logEvent('INFO', 'AI Generator', `Memulai pembuatan metadata (Super SEO) untuk topik: ${topic}`);
 
   try {
-    const promptText = `Act as an elite YouTube SEO expert and professional copywriter.
-Create highly engaging, high-CTR metadata for a YouTube Live stream about: "${topic}".
+    const promptText = `Act as an elite YouTube SEO expert.
+Create highly engaging metadata for a YouTube Live about: "${topic}".
 
-STRICT CONSTRAINTS (MUST FOLLOW):
-1. "titles": Provide exactly 5 different, highly clickable title variations for A/B testing / Title Rotation. EACH title MUST be strictly UNDER 100 characters.
-2. "description": An engaging, SEO-optimized description with targeted keywords, viewer retention hooks, and a Call to Action. MUST be strictly UNDER 5000 characters.
-3. "tags": A comma-separated list of highly relevant SEO tags. The ENTIRE string length MUST be strictly UNDER 500 characters. Do not include the '#' symbol.
+STRICT CONSTRAINTS:
+1. "titles": Provide 3 different, highly clickable title variations. Under 100 characters each.
+2. "description": An engaging SEO description with targeted keywords. STRICTLY UNDER 1000 characters to ensure fast response.
+3. "tags": A comma-separated list of SEO tags. STRICTLY UNDER 300 characters. No '#' symbols.
 
-Respond ONLY with a raw, valid JSON object (no markdown, no backticks). Use this exact structure:
+Respond ONLY with a raw JSON object. Exact structure:
 {
-  "titles": ["Title 1", "Title 2", "Title 3", "Title 4", "Title 5"],
-  "description": "Your detailed SEO description here...",
-  "tags": "tag1, tag2, tag3, long tail keyword, another tag"
+  "titles": ["Title 1", "Title 2", "Title 3"],
+  "description": "Your detailed SEO description...",
+  "tags": "tag1, tag2, tag3"
 }`;
 
-    const aiUrl = `https://text.pollinations.ai/${encodeURIComponent(promptText)}?json=true`;
+    // Gunakan POST request ke Pollinations dengan model yang lebih cepat (misal mistral/llama)
+    const req = await fetch('https://text.pollinations.ai/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: promptText }],
+        model: 'mistral',
+        jsonMode: true
+      })
+    });
     
-    const req = await fetch(aiUrl);
     if (!req.ok) {
       const errText = await req.text();
       throw new Error(`Pollinations API Error: ${req.statusText} - ${errText}`);
