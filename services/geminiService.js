@@ -44,7 +44,8 @@ async function generateTextWithFallback(apiKey, promptText) {
   // 2. Jika standar 404, fetch list models yang diizinkan untuk API Key ini
   const listReq = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
   if (!listReq.ok) {
-    throw new Error('Gagal mengambil daftar model dari Google API.');
+    const errText = await listReq.text();
+    throw new Error(`Google API menolak akses. Status: ${listReq.status}. Pesan: ${errText}`);
   }
   const listData = await listReq.json();
   const availableModels = listData.models || [];
