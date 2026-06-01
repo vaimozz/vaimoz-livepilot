@@ -90,18 +90,15 @@ async function generateTextWithFallback(apiKey, baseUrl, promptText) {
 
 
 /**
- * Generate SEO optimized title, description and tags using Gemini
+ * Generate SEO optimized title, description and tags using Pollinations AI (Free)
  * @param {string} topic 
  * @returns {Promise<{title: string, description: string, tags: string}>}
  */
 export async function generateGeminiMetadata(topic) {
-  const { apiKey, baseUrl } = getGeminiConfig();
+  // We keep the function name as generateGeminiMetadata to avoid breaking other files,
+  // but it now uses Pollinations AI which is 100% free and keyless!
 
-  if (!apiKey) {
-    throw new Error('Gemini API Key belum diatur di Pengaturan.');
-  }
-
-  logEvent('INFO', 'Gemini AI', `Memulai pembuatan metadata (Super SEO) untuk topik: ${topic}`);
+  logEvent('INFO', 'AI Generator', `Memulai pembuatan metadata (Super SEO) untuk topik: ${topic}`);
 
   try {
     const promptText = `Act as an elite YouTube SEO expert and professional copywriter.
@@ -119,10 +116,18 @@ Respond ONLY with a raw, valid JSON object (no markdown, no backticks). Use this
   "tags": "tag1, tag2, tag3, long tail keyword, another tag"
 }`;
 
-    const promptData = await generateTextWithFallback(apiKey, baseUrl, promptText);
-    let textResult = promptData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    const aiUrl = `https://text.pollinations.ai/${encodeURIComponent(promptText)}?json=true`;
     
-    // Clean up markdown code blocks
+    const req = await fetch(aiUrl);
+    if (!req.ok) {
+      const errText = await req.text();
+      throw new Error(`Pollinations API Error: ${req.statusText} - ${errText}`);
+    }
+
+    let textResult = await req.text();
+    textResult = textResult.trim();
+    
+    // Clean up markdown code blocks if the AI accidentally adds them
     if (textResult.startsWith('\`\`\`json')) {
       textResult = textResult.replace(/^\`\`\`json\n?/, '').replace(/\n?\`\`\`$/, '');
     } else if (textResult.startsWith('\`\`\`')) {
@@ -158,7 +163,7 @@ Respond ONLY with a raw, valid JSON object (no markdown, no backticks). Use this
       }
     }
     
-    logEvent('INFO', 'Gemini AI', `Metadata Super SEO berhasil di-generate untuk topik: ${topic}`);
+    logEvent('INFO', 'AI Generator', `Metadata Super SEO berhasil di-generate untuk topik: ${topic}`);
     
     return {
       title: finalTitle,
@@ -166,7 +171,7 @@ Respond ONLY with a raw, valid JSON object (no markdown, no backticks). Use this
       tags: finalTags
     };
   } catch (error) {
-    logEvent('ERROR', 'Gemini AI', `Gagal men-generate metadata: ${error.message}`);
+    logEvent('ERROR', 'AI Generator', `Gagal men-generate metadata: ${error.message}`);
     throw error;
   }
 }
