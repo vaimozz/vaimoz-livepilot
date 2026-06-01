@@ -386,19 +386,7 @@ export async function startYoutubeLiveCampaign(campaignId, options = {}) {
   const titles = String(cfg.youtubeLiveTitles || cfg.liveTitles || '').split('\n').map(t => t.trim()).filter(Boolean);
   const chosenTitle = titles.length > 0 ? titles[Math.floor(Math.random() * titles.length)] : campaign.name;
 
-  // ── Auto Generate Gemini Thumbnail (jika dipilih) ──────────────────────────
-  if (thumbnailMode === 'Auto Generate via Gemini AI') {
-    try {
-      const { generateGeminiThumbnail } = await import('./geminiService.js');
-      const thumbData = await generateGeminiThumbnail(chosenTitle, cfg.youtubeDescription || cfg.description, cfg.youtubeTags || cfg.tags);
-      chosenThumbnail = { id: null, name: thumbData.name, path: thumbData.path };
-    } catch (err) {
-      logEvent('WARN', 'Scheduler', `Gagal auto-generate thumbnail Gemini: ${err.message}`);
-      if (!chosenThumbnail) {
-        chosenThumbnail = db.prepare("SELECT * FROM assets WHERE type IN ('Images','Thumbnail') ORDER BY RANDOM() LIMIT 1").get() || null;
-      }
-    }
-  }
+  // ── Auto Generate Gemini Thumbnail (dihapus sesuai permintaan pengguna) ──────
 
   // ── Buat broadcast YouTube ─────────────────────────────────────────────────
   logEvent('INFO', 'Scheduler', `Scheduler memulai YouTube Live untuk kampanye #${campaignId}: ${chosenTitle}`);
