@@ -56,11 +56,11 @@ export function SettingsPage() {
       const s = sr.settings || {};
       setTelegramSaved(s.telegram_bot_token?.set === true);
       if (typeof s.telegram_chat_id === 'string') setTelegramChatId(s.telegram_chat_id);
-      
+
       setGoogleConfigured(s.google_client_id?.set === true || s._env?.hasGoogleClientId === true);
       setGeminiConfigured(s.gemini_api_key?.set === true || s._env?.hasGeminiApiKey === true);
       if (typeof s.gemini_api_url === 'string') setGeminiApiUrl(s.gemini_api_url);
-      
+
       setNotifPrefs(pr);
     } catch { /* settings table mungkin kosong */ }
   };
@@ -109,7 +109,7 @@ export function SettingsPage() {
       const payload = {};
       if (googleClientId.trim()) payload.google_client_id = googleClientId.trim();
       if (googleClientSecret.trim()) payload.google_client_secret = googleClientSecret.trim();
-      
+
       // Auto-save frontend redirect URI to sync backend so OAuth URL points to correct domain
       payload.google_redirect_uri = redirectUri;
 
@@ -158,7 +158,7 @@ export function SettingsPage() {
       if (geminiApiKey.trim()) payload.gemini_api_key = geminiApiKey.trim();
       if (geminiApiUrl.trim()) payload.gemini_api_url = geminiApiUrl.trim();
       else payload.gemini_api_url = ''; // to clear it
-      
+
       if (Object.keys(payload).length > 0) {
         await api.settings.save(payload);
       }
@@ -219,10 +219,10 @@ export function SettingsPage() {
 
   const youtubeStatus = connectedChannels.length > 0 ? 'Terhubung' : 'Belum terhubung';
   const statusRows = useMemo(() => [
-    { label: 'YouTube API v3',      value: youtubeStatus,                                    active: connectedChannels.length > 0 },
-    { label: 'OAuth Redirect URI',  value: redirectUri ? 'Tersedia' : 'Belum',               active: Boolean(redirectUri) },
-    { label: 'Token Tersimpan',     value: connectedChannels.length > 0 ? 'Ada' : 'Kosong',  active: connectedChannels.length > 0 },
-    { label: 'Notifikasi Telegram', value: telegramSaved ? 'Terkonfigurasi' : 'Belum',       active: telegramSaved },
+    { label: 'YouTube API v3', value: youtubeStatus, active: connectedChannels.length > 0 },
+    { label: 'OAuth Redirect URI', value: redirectUri ? 'Tersedia' : 'Belum', active: Boolean(redirectUri) },
+    { label: 'Token Tersimpan', value: connectedChannels.length > 0 ? 'Ada' : 'Kosong', active: connectedChannels.length > 0 },
+    { label: 'Notifikasi Telegram', value: telegramSaved ? 'Terkonfigurasi' : 'Belum', active: telegramSaved },
     { label: 'Kredensial OAuth Google', value: googleConfigured ? 'Terkonfigurasi' : 'Belum', active: googleConfigured },
     { label: 'Gemini API (AI Thumbnail)', value: geminiConfigured ? 'Terkonfigurasi' : 'Belum', active: geminiConfigured },
   ], [connectedChannels.length, redirectUri, telegramSaved, youtubeStatus, googleConfigured, geminiConfigured]);
@@ -260,7 +260,7 @@ export function SettingsPage() {
               <p className="text-sm text-slate-400">Kelola channel YouTube yang terhubung</p>
             </div>
           </div>
-          
+
           <div className="space-y-4">
             {/* OAuth Redirect URI */}
             <div>
@@ -319,13 +319,13 @@ export function SettingsPage() {
               </div>
               <div className="flex items-center justify-between">
                 <p className="text-xs text-slate-400">
-                  {googleConfigured 
-                    ? '✅ Kredensial telah tersimpan. Isi ulang hanya jika ingin mengubahnya.' 
+                  {googleConfigured
+                    ? '✅ Kredensial telah tersimpan. Isi ulang hanya jika ingin mengubahnya.'
                     : '⚠ Kredensial belum dikonfigurasi. OAuth YouTube tidak akan berfungsi.'}
                 </p>
-                <Button 
-                  onClick={saveGoogleApi} 
-                  disabled={isSavingGoogle || (!googleClientId.trim() && !googleClientSecret.trim())} 
+                <Button
+                  onClick={saveGoogleApi}
+                  disabled={isSavingGoogle || (!googleClientId.trim() && !googleClientSecret.trim())}
                   className="gap-2 bg-cyan-500 hover:bg-cyan-600 text-white"
                 >
                   <Save className="h-4 w-4" />
@@ -418,7 +418,7 @@ export function SettingsPage() {
               <p className="text-sm text-slate-400">Konfigurasi bot Telegram untuk notifikasi</p>
             </div>
           </div>
-          
+
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -442,11 +442,11 @@ export function SettingsPage() {
                 />
               </div>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
               <p className="text-xs text-slate-400">
-                {telegramSaved 
-                  ? '✅ Bot Token telah tersimpan. Isi ulang hanya jika ingin mengubahnya.' 
+                {telegramSaved
+                  ? '✅ Bot Token telah tersimpan. Isi ulang hanya jika ingin mengubahnya.'
                   : '⚠ Bot Token dan Chat ID wajib diisi untuk mengaktifkan notifikasi Telegram.'}
               </p>
               <div className="flex gap-2">
@@ -492,7 +492,7 @@ export function SettingsPage() {
               <p className="text-sm text-slate-400">Konfigurasi API Key untuk AI Thumbnail Generation (Imagen 3)</p>
             </div>
           </div>
-          
+
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">Gemini API Key</label>
@@ -503,7 +503,7 @@ export function SettingsPage() {
                 onChange={(e) => setGeminiApiKey(e.target.value)}
                 className="w-full px-4 py-3 border border-slate-700 rounded-2xl bg-slate-800 text-slate-200 text-sm focus:border-fuchsia-500 focus:outline-none placeholder:text-slate-500 mb-4"
               />
-              
+
               <label className="block text-sm font-medium text-slate-300 mb-2">
                 Gemini Proxy URL <span className="text-slate-500 text-xs font-normal">(Opsional)</span>
               </label>
@@ -518,18 +518,18 @@ export function SettingsPage() {
                 Biarkan kosong untuk menggunakan URL default. Isi jika VPS Anda diblokir oleh Google karena masalah lokasi/region.
               </p>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
               <p className="text-xs text-slate-400">
-                {geminiConfigured 
-                  ? '✅ API Key telah tersimpan. Isi ulang hanya jika ingin mengubahnya.' 
+                {geminiConfigured
+                  ? '✅ API Key telah tersimpan. Isi ulang hanya jika ingin mengubahnya.'
                   : (
                     <>
                       ⚠ API Key dibutuhkan untuk fitur Auto Generate. Dapatkan API Key gratis di{' '}
-                      <a 
-                        href="https://aistudio.google.com/app/apikey" 
-                        target="_blank" 
-                        rel="noreferrer" 
+                      <a
+                        href="https://aistudio.google.com/app/apikey"
+                        target="_blank"
+                        rel="noreferrer"
                         className="text-fuchsia-400 hover:text-fuchsia-300 underline underline-offset-2"
                       >
                         Google AI Studio
@@ -562,7 +562,7 @@ export function SettingsPage() {
               <p className="text-sm text-slate-400">Status integrasi dan koneksi</p>
             </div>
           </div>
-          
+
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
