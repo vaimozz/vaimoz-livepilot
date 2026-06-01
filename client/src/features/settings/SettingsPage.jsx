@@ -29,6 +29,11 @@ export function SettingsPage() {
   const [isSavingGoogle, setIsSavingGoogle] = useState(false);
   const [googleConfigured, setGoogleConfigured] = useState(false);
 
+  // Gemini API
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [isSavingGemini, setIsSavingGemini] = useState(false);
+  const [geminiConfigured, setGeminiConfigured] = useState(false);
+
   // Notification prefs
   const [notifPrefs, setNotifPrefs] = useState({
     notifyStreamStart: true, notifyStreamStop: true, notifyStreamError: true,
@@ -52,6 +57,7 @@ export function SettingsPage() {
       if (typeof s.telegram_chat_id === 'string') setTelegramChatId(s.telegram_chat_id);
       
       setGoogleConfigured(s.google_client_id?.set === true || s._env?.hasGoogleClientId === true);
+      setGeminiConfigured(s.gemini_api_key?.set === true || s._env?.hasGeminiApiKey === true);
       
       setNotifPrefs(pr);
     } catch { /* settings table mungkin kosong */ }
@@ -143,6 +149,25 @@ export function SettingsPage() {
     e.target.value = ''; // Reset input
   };
 
+  const saveGeminiApi = async () => {
+    setIsSavingGemini(true);
+    try {
+      const payload = {};
+      if (geminiApiKey.trim()) payload.gemini_api_key = geminiApiKey.trim();
+      
+      if (Object.keys(payload).length > 0) {
+        await api.settings.save(payload);
+      }
+      setSettingsMessage('✅ Gemini API Key disimpan.');
+      await loadSettings();
+      setGeminiApiKey('');
+    } catch (e) {
+      setSettingsMessage(`Gagal: ${e instanceof Error ? e.message : 'Error.'}`);
+    } finally {
+      setIsSavingGemini(false);
+    }
+  };
+
   const saveTelegram = async () => {
     if (!telegramBotToken.trim()) return setSettingsMessage('⚠ Bot Token wajib diisi.');
     if (!telegramChatId.trim()) return setSettingsMessage('⚠ Chat ID wajib diisi.');
@@ -195,7 +220,8 @@ export function SettingsPage() {
     { label: 'Token Tersimpan',     value: connectedChannels.length > 0 ? 'Ada' : 'Kosong',  active: connectedChannels.length > 0 },
     { label: 'Notifikasi Telegram', value: telegramSaved ? 'Terkonfigurasi' : 'Belum',       active: telegramSaved },
     { label: 'Kredensial OAuth Google', value: googleConfigured ? 'Terkonfigurasi' : 'Belum', active: googleConfigured },
-  ], [connectedChannels.length, redirectUri, telegramSaved, youtubeStatus, googleConfigured]);
+    { label: 'Gemini API (AI Thumbnail)', value: geminiConfigured ? 'Terkonfigurasi' : 'Belum', active: geminiConfigured },
+  ], [connectedChannels.length, redirectUri, telegramSaved, youtubeStatus, googleConfigured, geminiConfigured]);
 
   return (
     <div className="space-y-6 p-8">
@@ -446,6 +472,49 @@ export function SettingsPage() {
                   Simpan
                 </Button>
               </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      {/* Gemini API */}
+      <Card className="rounded-3xl border-slate-800 bg-slate-900/70 shadow-xl">
+        <CardContent className="p-6">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-fuchsia-500/10 ring-1 ring-fuchsia-500/20">
+              <ShieldCheck className="h-5 w-5 text-fuchsia-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">Google Gemini API</h3>
+              <p className="text-sm text-slate-400">Konfigurasi API Key untuk AI Thumbnail Generation (Imagen 3)</p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Gemini API Key</label>
+              <input
+                type="password"
+                placeholder={geminiConfigured ? "******** (Tersimpan)" : "Masukkan Gemini API Key dari Google AI Studio"}
+                value={geminiApiKey}
+                onChange={(e) => setGeminiApiKey(e.target.value)}
+                className="w-full px-4 py-3 border border-slate-700 rounded-2xl bg-slate-800 text-slate-200 text-sm focus:border-fuchsia-500 focus:outline-none placeholder:text-slate-500"
+              />
+            </div>
+            
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
+              <p className="text-xs text-slate-400">
+                {geminiConfigured 
+                  ? '✅ API Key telah tersimpan. Isi ulang hanya jika ingin mengubahnya.' 
+                  : '⚠ API Key dibutuhkan untuk fitur Auto Generate Thumbnail.'}
+              </p>
+              <Button
+                onClick={saveGeminiApi}
+                disabled={isSavingGemini || !geminiApiKey}
+                className="gap-2 bg-fuchsia-500 hover:bg-fuchsia-600 text-white"
+              >
+                <Save className="h-4 w-4" />
+                Simpan API Key
+              </Button>
             </div>
           </div>
         </CardContent>

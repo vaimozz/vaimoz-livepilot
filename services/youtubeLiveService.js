@@ -377,11 +377,28 @@ export async function startYoutubeLiveCampaign(campaignId, options = {}) {
     const thumbs = db.prepare(`SELECT * FROM assets WHERE id IN (${pl})`).all(...thumbIds);
     if (thumbs.length > 0) chosenThumbnail = thumbs[Math.floor(Math.random() * thumbs.length)];
   }
-  if (!chosenThumbnail) chosenThumbnail = db.prepare("SELECT * FROM assets WHERE type IN ('Images','Thumbnail') ORDER BY RANDOM() LIMIT 1").get() || null;
+  const thumbnailMode = cfg.thumbnailMode || cfg.youtubeThumbnailMode || 'Rotasi otomatis';
+  if (!chosenThumbnail && thumbnailMode !== 'Tanpa thumbnail' && thumbnailMode !== 'Auto Generate via Gemini AI') {
+    chosenThumbnail = db.prepare("SELECT * FROM assets WHERE type IN ('Images','Thumbnail') ORDER BY RANDOM() LIMIT 1").get() || null;
+  }
 
   // ── Pilih JUDUL ────────────────────────────────────────────────────────────
   const titles = String(cfg.youtubeLiveTitles || cfg.liveTitles || '').split('\n').map(t => t.trim()).filter(Boolean);
   const chosenTitle = titles.length > 0 ? titles[Math.floor(Math.random() * titles.length)] : campaign.name;
+
+  // ── Auto Generate Gemini Thumbnail (jika dipilih) ──────────────────────────
+  if (thumbnailMode === 'Auto Generate via Gemini AI') {
+    try {
+      const { generateGeminiThumbnail } = await import('./geminiService.js');
+      const thumbData = await generateGeminiThumbnail(chosenTitle, cfg.youtubeDescription || cfg.description, cfg.youtubeTags || cfg.tags);
+      chosenThumbnail = { id: null, name: thumbData.name, path: thumbData.path };
+    } catch (err) {
+      logEvent('WARN', 'Scheduler', `Gagal auto-generate thumbnail Gemini: ${err.message}`);
+      if (!chosenThumbnail) {
+        chosenThumbnail = db.prepare("SELECT * FROM assets WHERE type IN ('Images','Thumbnail') ORDER BY RANDOM() LIMIT 1").get() || null;
+      }
+    }
+  }
 
   // ── Buat broadcast YouTube ─────────────────────────────────────────────────
   logEvent('INFO', 'Scheduler', `Scheduler memulai YouTube Live untuk kampanye #${campaignId}: ${chosenTitle}`);

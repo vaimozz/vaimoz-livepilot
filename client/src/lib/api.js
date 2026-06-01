@@ -146,6 +146,7 @@ export const api = {
     deleteTelegram: () => apiRequest('/settings/telegram', { method: 'DELETE' }),
     getNotifPrefs: () => apiRequest('/settings/notifications/prefs'),
     saveNotifPrefs: (prefs) => apiRequest('/settings/notifications', { method: 'POST', body: JSON.stringify(prefs) }),
+    generateGeminiMetadata: (topic) => apiRequest('/settings/gemini/generate-metadata', { method: 'POST', body: JSON.stringify({ topic }) }),
   },
   // Helper methods to match Axios-like requests used by some scheduler components
   get: (path, options = {}) => {

@@ -134,3 +134,19 @@ settingsRouter.post('/notifications', asyncHandler(async (req, res) => {
   logEvent('INFO', 'Settings', 'Notification preferences saved.');
   res.json({ ok: true, saved: prefs });
 }));
+
+// ── POST /api/settings/gemini/generate-metadata ──────────────────────────────
+settingsRouter.post('/gemini/generate-metadata', asyncHandler(async (req, res) => {
+  const { topic } = req.body;
+  if (!topic) {
+    return res.status(400).json({ error: 'Topik (topic) wajib diisi untuk men-generate metadata.' });
+  }
+
+  try {
+    const { generateGeminiMetadata } = await import('../../geminiService.js');
+    const result = await generateGeminiMetadata(topic);
+    res.json({ ok: true, data: result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}));

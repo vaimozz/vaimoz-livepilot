@@ -1,8 +1,36 @@
+import { useState } from 'react';
+import { api } from '@/lib/api.js';
 import { youtubeCategoryOptions } from '@/data/integrations.js';
 import { cx } from '@/lib/cn.js';
 import { countYoutubeTags, youtubeDurationModes, youtubeScheduleTypes, youtubeWeekdayOptions } from '@/lib/campaignUtils.js';
 
 export function YoutubeApiForm({ state, setters, youtubeChannels = [], availableYoutubePlaylists, selectedYoutubePlaylist, changeYoutubeChannel }) {
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerateMetadata = async () => {
+    const firstTitle = state.youtubeLiveTitles.split('\n').filter(Boolean)[0] || state.youtubeCampaignName;
+    if (!firstTitle) {
+      alert('Isi Nama Kampanye atau Judul Live terlebih dahulu untuk mendapatkan konteks.');
+      return;
+    }
+    
+    setIsGenerating(true);
+    try {
+      const res = await api.settings.generateGeminiMetadata(firstTitle);
+      if (res.data) {
+        if (res.data.title && !state.youtubeLiveTitles.includes(res.data.title)) {
+           setters.setYoutubeLiveTitles(state.youtubeLiveTitles ? state.youtubeLiveTitles + '\n' + res.data.title : res.data.title);
+        }
+        if (res.data.description) setters.setYoutubeDescription(res.data.description);
+        if (res.data.tags) setters.setYoutubeTags(res.data.tags);
+      }
+    } catch (err) {
+      alert('Gagal auto-generate: ' + err.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       {/* Nama Kampanye */}
@@ -63,7 +91,17 @@ export function YoutubeApiForm({ state, setters, youtubeChannels = [], available
 
       {/* Deskripsi */}
       <label className="block text-xs font-semibold text-slate-400">
-        Deskripsi Live
+        <div className="flex items-center justify-between mb-2">
+          <span>Deskripsi Live</span>
+          <button 
+            type="button" 
+            onClick={handleGenerateMetadata} 
+            disabled={isGenerating}
+            className="flex items-center gap-1.5 rounded-lg bg-fuchsia-500/10 px-3 py-1.5 text-[11px] font-bold text-fuchsia-400 hover:bg-fuchsia-500/20 disabled:opacity-50"
+          >
+            {isGenerating ? 'Mikir...' : '✨ Auto Generate Judul, Deskripsi & Tags'}
+          </button>
+        </div>
         <textarea
           value={state.youtubeDescription}
           onChange={(e) => setters.setYoutubeDescription(e.target.value)}
@@ -102,7 +140,7 @@ export function YoutubeApiForm({ state, setters, youtubeChannels = [], available
           <label className="block text-xs font-semibold text-slate-400">
             Mode Thumbnail
             <select value={state.youtubeThumbnailMode} onChange={(e) => setters.setYoutubeThumbnailMode(e.target.value)} className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500">
-              <option>Rotasi otomatis</option><option>Pakai 1 thumbnail</option><option>Tanpa thumbnail</option>
+              <option>Rotasi otomatis</option><option>Pakai 1 thumbnail</option><option>Tanpa thumbnail</option><option>Auto Generate via Gemini AI</option>
             </select>
             <p className="mt-2 text-[11px] text-slate-500">Pilih mode thumbnail untuk live.</p>
           </label>
