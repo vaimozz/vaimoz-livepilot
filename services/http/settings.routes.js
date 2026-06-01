@@ -143,7 +143,7 @@ settingsRouter.post('/gemini/generate-metadata', asyncHandler(async (req, res) =
   }
 
   try {
-    const { generateGeminiMetadata } = await import('../../geminiService.js');
+    const { generateGeminiMetadata } = await import('../geminiService.js');
     const result = await generateGeminiMetadata(topic);
     res.json({ ok: true, data: result });
   } catch (error) {
