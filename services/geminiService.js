@@ -8,12 +8,32 @@ import { config } from '../utils/config.js';
  * Helper untuk mencoba beberapa model Gemini jika salah satunya tidak ditemukan (404)
  */
 /**
+ * Helper untuk mengambil API Key dan Base URL
+ */
+function getGeminiConfig() {
+  let apiKey = '';
+  let baseUrl = 'https://generativelanguage.googleapis.com';
+  try {
+    const rowKey = db.prepare("SELECT value FROM settings WHERE key = 'gemini_api_key'").get();
+    if (rowKey && rowKey.value) apiKey = rowKey.value;
+
+    const rowUrl = db.prepare("SELECT value FROM settings WHERE key = 'gemini_api_url'").get();
+    if (rowUrl && rowUrl.value) {
+      // Remove trailing slash if any
+      baseUrl = rowUrl.value.replace(/\/$/, '');
+    }
+  } catch (e) {}
+
+  return { apiKey, baseUrl };
+}
+
+/**
  * Helper untuk mencoba memanggil Gemini, dan jika 404, ia akan mengecek daftar model 
  * yang tersedia di API Key tersebut (ListModels) secara dinamis.
  */
-async function generateTextWithFallback(apiKey, promptText) {
+async function generateTextWithFallback(apiKey, baseUrl, promptText) {
   const tryModel = async (modelName) => {
-    const req = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
+    const req = await fetch(`${baseUrl}/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -42,7 +62,7 @@ async function generateTextWithFallback(apiKey, promptText) {
   }
 
   // 2. Jika standar 404, fetch list models yang diizinkan untuk API Key ini
-  const listReq = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+  const listReq = await fetch(`${baseUrl}/v1beta/models?key=${apiKey}`);
   if (!listReq.ok) {
     const errText = await listReq.text();
     throw new Error(`Google API menolak akses. Status: ${listReq.status}. Pesan: ${errText}`);
@@ -75,13 +95,7 @@ async function generateTextWithFallback(apiKey, promptText) {
  * @returns {Promise<{path: string, name: string, prompt: string}>}
  */
 export async function generateGeminiThumbnail(title, description, tags) {
-  let apiKey = '';
-  try {
-    const row = db.prepare("SELECT value FROM settings WHERE key = 'gemini_api_key'").get();
-    if (row && row.value) apiKey = row.value;
-  } catch (e) {
-    // ignore
-  }
+  const { apiKey, baseUrl } = getGeminiConfig();
 
   if (!apiKey) {
     throw new Error('Gemini API Key belum diatur di Pengaturan.');
@@ -100,13 +114,13 @@ Title: ${title}
 Description: ${description || 'No description'}
 Tags: ${tags || 'No tags'}`;
 
-    const promptData = await generateTextWithFallback(apiKey, promptText);
+    const promptData = await generateTextWithFallback(apiKey, baseUrl, promptText);
     const imagePrompt = promptData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || `A vibrant, high-quality, eye-catching Youtube thumbnail for ${title}`;
     
     logEvent('INFO', 'Gemini AI', `Image prompt: ${imagePrompt}`);
 
     // 2. Call Imagen 3 API to generate the image
-    const imagenReq = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`, {
+    const imagenReq = await fetch(`${baseUrl}/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -153,13 +167,7 @@ Tags: ${tags || 'No tags'}`;
  * @returns {Promise<{title: string, description: string, tags: string}>}
  */
 export async function generateGeminiMetadata(topic) {
-  let apiKey = '';
-  try {
-    const row = db.prepare("SELECT value FROM settings WHERE key = 'gemini_api_key'").get();
-    if (row && row.value) apiKey = row.value;
-  } catch (e) {
-    // ignore
-  }
+  const { apiKey, baseUrl } = getGeminiConfig();
 
   if (!apiKey) {
     throw new Error('Gemini API Key belum diatur di Pengaturan.');
@@ -176,7 +184,7 @@ Respond ONLY with a valid JSON object (no markdown formatting, no backticks, jus
   "tags": "comma, separated, tags, relevant, to, the, video"
 }`;
 
-    const promptData = await generateTextWithFallback(apiKey, promptText);
+    const promptData = await generateTextWithFallback(apiKey, baseUrl, promptText);
     let textResult = promptData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
     
     // Clean up markdown code blocks

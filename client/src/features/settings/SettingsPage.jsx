@@ -31,6 +31,7 @@ export function SettingsPage() {
 
   // Gemini API
   const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [geminiApiUrl, setGeminiApiUrl] = useState('');
   const [isSavingGemini, setIsSavingGemini] = useState(false);
   const [geminiConfigured, setGeminiConfigured] = useState(false);
 
@@ -58,6 +59,7 @@ export function SettingsPage() {
       
       setGoogleConfigured(s.google_client_id?.set === true || s._env?.hasGoogleClientId === true);
       setGeminiConfigured(s.gemini_api_key?.set === true || s._env?.hasGeminiApiKey === true);
+      if (typeof s.gemini_api_url === 'string') setGeminiApiUrl(s.gemini_api_url);
       
       setNotifPrefs(pr);
     } catch { /* settings table mungkin kosong */ }
@@ -154,11 +156,13 @@ export function SettingsPage() {
     try {
       const payload = {};
       if (geminiApiKey.trim()) payload.gemini_api_key = geminiApiKey.trim();
+      if (geminiApiUrl.trim()) payload.gemini_api_url = geminiApiUrl.trim();
+      else payload.gemini_api_url = ''; // to clear it
       
       if (Object.keys(payload).length > 0) {
         await api.settings.save(payload);
       }
-      setSettingsMessage('✅ Gemini API Key disimpan.');
+      setSettingsMessage('✅ Konfigurasi Gemini API disimpan.');
       await loadSettings();
       setGeminiApiKey('');
     } catch (e) {
@@ -497,8 +501,22 @@ export function SettingsPage() {
                 placeholder={geminiConfigured ? "******** (Tersimpan)" : "Masukkan Gemini API Key dari Google AI Studio"}
                 value={geminiApiKey}
                 onChange={(e) => setGeminiApiKey(e.target.value)}
+                className="w-full px-4 py-3 border border-slate-700 rounded-2xl bg-slate-800 text-slate-200 text-sm focus:border-fuchsia-500 focus:outline-none placeholder:text-slate-500 mb-4"
+              />
+              
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Gemini Proxy URL <span className="text-slate-500 text-xs font-normal">(Opsional)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Misal: https://gemini-proxy.worker.dev"
+                value={geminiApiUrl}
+                onChange={(e) => setGeminiApiUrl(e.target.value)}
                 className="w-full px-4 py-3 border border-slate-700 rounded-2xl bg-slate-800 text-slate-200 text-sm focus:border-fuchsia-500 focus:outline-none placeholder:text-slate-500"
               />
+              <p className="text-xs text-slate-500 mt-2">
+                Biarkan kosong untuk menggunakan URL default. Isi jika VPS Anda diblokir oleh Google karena masalah lokasi/region.
+              </p>
             </div>
             
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
