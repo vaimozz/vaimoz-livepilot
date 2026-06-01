@@ -7,12 +7,13 @@ import { config } from '../utils/config.js';
 /**
  * Helper untuk mencoba beberapa model Gemini jika salah satunya tidak ditemukan (404)
  */
+/**
+ * Helper untuk mencoba memanggil Gemini, dan jika 404, ia akan mengecek daftar model 
+ * yang tersedia di API Key tersebut (ListModels) secara dinamis.
+ */
 async function generateTextWithFallback(apiKey, promptText) {
-  const models = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-pro'];
-  let lastError = null;
-
-  for (const model of models) {
-    const req = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+  const tryModel = async (modelName) => {
+    const req = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -20,21 +21,49 @@ async function generateTextWithFallback(apiKey, promptText) {
         generationConfig: { temperature: 0.7 }
       })
     });
-
-    if (req.ok) {
-      return await req.json();
-    }
-
+    if (req.ok) return await req.json();
     const errText = await req.text();
-    lastError = new Error(`Gemini API error (${model}): ${req.statusText} - ${errText}`);
-    
-    // Jika 404 (model tidak ditemukan), lanjut ke model berikutnya
-    if (req.status !== 404) {
-      throw lastError;
-    }
+    const err = new Error(`Gemini API error (${modelName}): ${req.statusText} - ${errText}`);
+    err.status = req.status;
+    throw err;
+  };
+
+  // 1. Coba model standar terbaru
+  try {
+    return await tryModel('gemini-1.5-flash');
+  } catch (err) {
+    if (err.status !== 404) throw err;
   }
 
-  throw lastError;
+  try {
+    return await tryModel('gemini-1.5-pro');
+  } catch (err) {
+    if (err.status !== 404) throw err;
+  }
+
+  // 2. Jika standar 404, fetch list models yang diizinkan untuk API Key ini
+  const listReq = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+  if (!listReq.ok) {
+    throw new Error('Gagal mengambil daftar model dari Google API.');
+  }
+  const listData = await listReq.json();
+  const availableModels = listData.models || [];
+  
+  // Cari model yang mensupport generateContent dan berawalan gemini
+  const validModels = availableModels
+    .filter(m => m.supportedGenerationMethods?.includes('generateContent') && m.name.includes('gemini'))
+    .map(m => m.name.replace('models/', '')); // name format is "models/gemini-xxx"
+
+  if (validModels.length === 0) {
+    throw new Error('API Key Anda valid, tetapi tidak memiliki akses ke model teks Gemini (Generative Language API) di region ini. Buat API Key baru di Google AI Studio.');
+  }
+
+  // 3. Coba model pertama yang tersedia
+  try {
+    return await tryModel(validModels[0]);
+  } catch (err) {
+    throw err;
+  }
 }
 
 /**
