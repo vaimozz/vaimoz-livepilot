@@ -116,13 +116,12 @@ Respond ONLY with a raw JSON object. Exact structure:
   "tags": "tag1, tag2, tag3"
 }`;
 
-    // Gunakan POST request ke Pollinations dengan model yang lebih cepat (misal mistral/llama)
+    // Gunakan POST request ke Pollinations menggunakan model default (gpt-4o-mini)
     const req = await fetch('https://text.pollinations.ai/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messages: [{ role: 'user', content: promptText }],
-        model: 'mistral',
         jsonMode: true
       })
     });
