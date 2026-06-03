@@ -75,26 +75,41 @@ export async function createYoutubeLiveBroadcast(options) {
   logEvent('INFO', 'YouTube Live', `Broadcast created: ${broadcast.id}`);
 
   // Update video metadata to set categoryId and tags
+  // Menambahkan retry mechanism karena API YouTube butuh waktu untuk memproses video id
   try {
-    const videoResponse = await youtube.videos.list({
-      part: ['snippet'],
-      id: [broadcast.id]
-    });
+    let videoFound = false;
+    let retries = 0;
     
-    if (videoResponse.data.items && videoResponse.data.items.length > 0) {
-      const videoSnippet = videoResponse.data.items[0].snippet;
-      await youtube.videos.update({
+    while (!videoFound && retries < 3) {
+      // Tunggu 3 detik sebelum mencoba atau retry
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      const videoResponse = await youtube.videos.list({
         part: ['snippet'],
-        requestBody: {
-          id: broadcast.id,
-          snippet: {
-            ...videoSnippet,
-            categoryId: categoryId,
-            tags: Array.isArray(tags) ? tags : String(tags || '').split(',').map(t => t.trim()).filter(Boolean),
-          }
-        }
+        id: [broadcast.id]
       });
-      logEvent('INFO', 'YouTube Live', `Updated categoryId and tags for video ${broadcast.id}`);
+      
+      if (videoResponse.data.items && videoResponse.data.items.length > 0) {
+        videoFound = true;
+        const videoSnippet = videoResponse.data.items[0].snippet;
+        
+        // Simpan id kategori yang diminta
+        await youtube.videos.update({
+          part: ['snippet'],
+          requestBody: {
+            id: broadcast.id,
+            snippet: {
+              ...videoSnippet,
+              categoryId: categoryId,
+              tags: Array.isArray(tags) ? tags : String(tags || '').split(',').map(t => t.trim()).filter(Boolean),
+            }
+          }
+        });
+        logEvent('INFO', 'YouTube Live', `Updated categoryId and tags for video ${broadcast.id}`);
+      } else {
+        retries++;
+        logEvent('WARN', 'YouTube Live', `Video entity ${broadcast.id} not found yet, retrying... (${retries}/3)`);
+      }
     }
   } catch (error) {
     logEvent('WARN', 'YouTube Live', `Failed to update video category and tags: ${error.message}`);
