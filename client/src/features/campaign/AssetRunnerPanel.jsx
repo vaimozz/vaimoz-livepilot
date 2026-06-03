@@ -322,7 +322,7 @@ export function AssetSelectorPanel({
                 <VideoCard
                   key={id}
                   asset={asset}
-                  isSelected={selectedVideoIds.includes(id)}
+                  isSelected={selectedVideoIds.includes(id) || selectedVideoIds.includes(asset.name)}
                   onToggle={toggleVideo}
                 />
               );
@@ -384,7 +384,7 @@ export function AssetSelectorPanel({
                 <ThumbnailCard
                   key={id}
                   asset={asset}
-                  isSelected={selectedThumbnailIds.includes(id)}
+                  isSelected={selectedThumbnailIds.includes(id) || selectedThumbnailIds.includes(asset.name)}
                   onToggle={toggleThumbnail}
                 />
               );

@@ -206,8 +206,8 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
       const result = await api.assets.list();
       const normalized = (result.assets || []).map(normalizeAssetFromApi);
       setCampaignAssets(normalized);
-      setYoutubeSelectedVideoNames((items) => items.filter((name) => normalized.some((asset) => asset.name === name && asset.type === 'Video')));
-      setYoutubeSelectedThumbnailNames((items) => items.filter((name) => normalized.some((asset) => asset.name === name && (asset.type === 'Images' || asset.type === 'Thumbnail'))));
+      setYoutubeSelectedVideoNames((items) => items.filter((idOrName) => normalized.some((asset) => (String(asset.id) === String(idOrName) || asset.name === idOrName) && asset.type === 'Video')));
+      setYoutubeSelectedThumbnailNames((items) => items.filter((idOrName) => normalized.some((asset) => (String(asset.id) === String(idOrName) || asset.name === idOrName) && (asset.type === 'Images' || asset.type === 'Thumbnail'))));
       if (nextMessage) setCampaignMessage(nextMessage);
       else setCampaignMessage(`Aset & Runner tersambung ke SQLite. ${normalized.length} aset tersedia.`);
     } catch (error) {
@@ -257,8 +257,8 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
       if (config.channelId) setYoutubeChannelId(config.channelId);
       if (config.playlist?.id) setYoutubePlaylistId(config.playlist.id);
       
-      setYoutubeSelectedVideoNames(config.videoNames || []);
-      setYoutubeSelectedThumbnailNames(config.thumbnailNames || []);
+      setYoutubeSelectedVideoNames(config.videoAssetIds ? config.videoAssetIds.map(String) : (config.videoNames || []));
+      setYoutubeSelectedThumbnailNames(config.thumbnailAssetIds ? config.thumbnailAssetIds.map(String) : (config.thumbnailNames || []));
       
       setYoutubeScheduleType(config.scheduleType || 'Harian');
       setYoutubeWeeklyDays(config.weeklyDays || ['Senin']);
@@ -363,7 +363,7 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
         recurringDays: [],
         recurringTime: manualStartTime || '00:00',
         recurringDurationMode: 'fixed',
-        recurringDurationMinutes: 60,
+        recurringDurationMinutes: autoStopEnabled ? 60 : 0,
         recurringDurationMin: 30,
         recurringDurationMax: 120,
         recurringEndDate: manualStopDate || '',
@@ -514,10 +514,10 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
   // ── Simpan draft YouTube API ─────────────────────────────────────────────
   const saveCampaignDraft = async () => {
     const selectedVideos = campaignAssets.filter((a) =>
-      youtubeSelectedVideoNames.includes(String(a.id || a.name)) && a.type === 'Video'
+      (youtubeSelectedVideoNames.includes(String(a.id)) || youtubeSelectedVideoNames.includes(a.name)) && a.type === 'Video'
     );
     const selectedThumbnails = campaignAssets.filter((a) =>
-      youtubeSelectedThumbnailNames.includes(String(a.id || a.name)) &&
+      (youtubeSelectedThumbnailNames.includes(String(a.id)) || youtubeSelectedThumbnailNames.includes(a.name)) &&
       (a.type === 'Images' || a.type === 'Thumbnail')
     );
 
@@ -638,7 +638,7 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
       const isScheduled = youtubeScheduleType !== 'Segera';
       const autoRecurringSettings = {
         recurringEnabled: isScheduled,
-        recurringType: youtubeScheduleType === 'Sekali Main' ? 'once' :
+        recurringType: youtubeScheduleType === 'Sekali Jalan' ? 'once' :
                        youtubeScheduleType === 'Harian' ? 'daily' :
                        youtubeScheduleType === 'Mingguan' ? 'weekly' :
                        youtubeScheduleType === 'Bulanan' ? 'monthly' : 'once',
@@ -646,7 +646,7 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
         recurringTime: youtubeStartTime || '00:00',
         recurringDurationMode: youtubeDurationMode === 'Tetap (Pilih Durasi Jam)' ? 'fixed' :
                                youtubeDurationMode === 'Acak' ? 'random' : 'pattern',
-        recurringDurationMinutes: youtubeDurationMode === 'Tetap (Pilih Durasi Jam)' ? (parseInt(youtubeStopTime) || 1) * 60 : 60,
+        recurringDurationMinutes: !youtubeAutoStopEnabled ? 0 : (youtubeDurationMode === 'Tetap (Pilih Durasi Jam)' ? (parseInt(youtubeStopTime) || 1) * 60 : 60),
         recurringDurationMin: 30,
         recurringDurationMax: 120,
         recurringEndDate: '', // Force empty so it repeats forever without expiring
