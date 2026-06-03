@@ -227,16 +227,32 @@ assetsRouter.post('/upload', upload.array('files', 20), asyncHandler(async (req,
   const files = req.files || [];
   if (files.length === 0) return res.status(400).json({ error: 'Pilih file terlebih dahulu.' });
 
-  const created = files.map((file) => insertAsset({
-    name: file.originalname,
-    originalName: file.originalname,
-    type: detectType(file),
-    mimeType: file.mimetype,
-    source: 'Lokal',
-    filePath: file.path,
-    sizeBytes: file.size,
-    metadata: { storageName: file.filename },
-  }));
+  const created = [];
+  for (const file of files) {
+    try {
+      const asset = insertAsset({
+        name: file.originalname,
+        originalName: file.originalname,
+        type: detectType(file),
+        mimeType: file.mimetype,
+        source: 'Lokal',
+        filePath: file.path,
+        sizeBytes: file.size,
+        metadata: { storageName: file.filename },
+      });
+      created.push(asset);
+    } catch (err) {
+      // BUG-021 FIX: Hapus file dari disk jika gagal insert ke database
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      logEvent('ERROR', 'Aset', `Gagal menyimpan metadata file upload: ${err.message}`);
+    }
+  }
+
+  if (created.length === 0) {
+    return res.status(500).json({ error: 'Semua file gagal disimpan ke database.' });
+  }
 
   logEvent('INFO', 'Aset', `${created.length} file berhasil diupload dari perangkat.`);
   res.status(201).json({ assets: created });
@@ -270,19 +286,32 @@ assetsRouter.patch('/:id', asyncHandler(async (req, res) => {
 
   let nextPath = row.path;
   let metadata = readJson(row.metadata_json, {});
+  let renamedOnDisk = false;
 
-  if (row.path && row.path.startsWith(config.uploadDir) && fs.existsSync(row.path)) {
-    const directory = path.dirname(row.path);
-    const currentExt = path.extname(row.path);
-    const requestedExt = path.extname(name);
-    const safeFileName = requestedExt ? name : `${name}${currentExt}`;
-    nextPath = getAvailablePath(directory, safeFileName);
-    if (nextPath !== row.path) fs.renameSync(row.path, nextPath);
-    metadata = { ...metadata, storageName: path.basename(nextPath), renamedFrom: row.name };
+  try {
+    if (row.path && row.path.startsWith(config.uploadDir) && fs.existsSync(row.path)) {
+      const directory = path.dirname(row.path);
+      const currentExt = path.extname(row.path);
+      const requestedExt = path.extname(name);
+      const safeFileName = requestedExt ? name : `${name}${currentExt}`;
+      nextPath = getAvailablePath(directory, safeFileName);
+      if (nextPath !== row.path) {
+        fs.renameSync(row.path, nextPath);
+        renamedOnDisk = true;
+      }
+      metadata = { ...metadata, storageName: path.basename(nextPath), renamedFrom: row.name };
+    }
+
+    db.prepare('UPDATE assets SET name = ?, path = ?, metadata_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .run(name, nextPath, writeJson(metadata), id);
+      
+  } catch (err) {
+    // Rollback rename if DB fails
+    if (renamedOnDisk && fs.existsSync(nextPath)) {
+      fs.renameSync(nextPath, row.path);
+    }
+    return res.status(500).json({ error: `Gagal memperbarui aset: ${err.message}` });
   }
-
-  db.prepare('UPDATE assets SET name = ?, path = ?, metadata_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-    .run(name, nextPath, writeJson(metadata), id);
 
   const updated = db.prepare('SELECT * FROM assets WHERE id = ?').get(id);
   res.json({ asset: serializeAsset(updated) });
@@ -293,7 +322,16 @@ assetsRouter.delete('/:id', asyncHandler(async (req, res) => {
   const row = db.prepare('SELECT * FROM assets WHERE id = ?').get(id);
   if (!row) return res.status(404).json({ error: 'Aset tidak ditemukan.' });
 
-  if (row.path && row.path.startsWith(config.uploadDir) && fs.existsSync(row.path)) fs.unlinkSync(row.path);
+  // Delete from DB first, then from disk
   db.prepare('DELETE FROM assets WHERE id = ?').run(id);
+
+  if (row.path && row.path.startsWith(config.uploadDir) && fs.existsSync(row.path)) {
+    try {
+      fs.unlinkSync(row.path);
+    } catch (e) {
+      logEvent('WARN', 'Aset', `Gagal menghapus file fisik ${row.path}: ${e.message}`);
+    }
+  }
+  
   res.json({ ok: true });
 }));

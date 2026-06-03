@@ -43,8 +43,23 @@ function pickRandomAsset(ids = [], type = 'Video') {
 
 // ── GET /streams ──────────────────────────────────────────────────────────────
 streamsRouter.get('/', asyncHandler(async (req, res) => {
-  const rows = db.prepare('SELECT * FROM streams ORDER BY created_at DESC LIMIT 100').all();
-  res.json({ streams: rows.map(serializeStream), running: listRunningStreams() });
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+  const offset = (page - 1) * limit;
+
+  const totalRow = db.prepare('SELECT COUNT(*) as total FROM streams').get();
+  const rows = db.prepare('SELECT * FROM streams ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit, offset);
+  
+  res.json({ 
+    streams: rows.map(serializeStream), 
+    running: listRunningStreams(),
+    pagination: {
+      page,
+      limit,
+      total: totalRow.total,
+      totalPages: Math.ceil(totalRow.total / limit)
+    }
+  });
 }));
 
 // ── GET /streams/running — hanya stream yang sedang Online ───────────────────
@@ -115,8 +130,9 @@ streamsRouter.post('/start-campaign', asyncHandler(async (req, res) => {
   if (thumbIds.length > 0) {
     const validThumbIds = thumbIds.map(Number).filter(Boolean);
     const placeholders  = validThumbIds.map(() => '?').join(', ');
+    // BUG-008 FIX: Filter tipe agar hanya Images/Thumbnail yang dikembalikan
     const thumbCandidates = db.prepare(
-      `SELECT * FROM assets WHERE id IN (${placeholders})`
+      `SELECT * FROM assets WHERE id IN (${placeholders}) AND type IN ('Images', 'Thumbnail')`
     ).all(...validThumbIds);
     if (thumbCandidates.length > 0) {
       chosenThumbnail = thumbCandidates[Math.floor(Math.random() * thumbCandidates.length)];

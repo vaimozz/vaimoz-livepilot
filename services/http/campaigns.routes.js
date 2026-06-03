@@ -82,7 +82,15 @@ campaignsRouter.patch('/:id', asyncHandler(async (req, res) => {
 
 // ── DELETE /campaigns/:id ─────────────────────────────────────────────────────
 campaignsRouter.delete('/:id', asyncHandler(async (req, res) => {
-  db.prepare('DELETE FROM campaigns WHERE id = ?').run(Number(req.params.id));
+  const id = Number(req.params.id);
+  // BUG-004 FIX: Stop any active stream before deleting the campaign
+  try {
+    const { stopActiveCampaignStream } = await import('../streamManager.js');
+    await stopActiveCampaignStream(id);
+  } catch (e) {
+    logEvent('WARN', 'Kampanye', `Gagal menghentikan stream sebelum hapus kampanye #${id}: ${e.message}`);
+  }
+  db.prepare('DELETE FROM campaigns WHERE id = ?').run(id);
   res.json({ ok: true });
 }));
 
@@ -295,7 +303,22 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
   db.prepare('UPDATE campaigns SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run('Aktif', id);
 
   // ── Start FFmpeg stream ──────────────────────────────────────────────────
+  // BUG-001 FIX: Kalkulasi durationMinutes dari config dan kirim ke FFmpeg
   const encoder = cfg.encoder || {};
+  const autoStopSetting2 = cfg.youtubeAutoStopEnabled ?? cfg.autoStopEnabled ?? true;
+  let durationMinutes = 0; // 0 = non-stop
+  if (autoStopSetting2) {
+    const dmode = cfg.durationMode || cfg.youtubeDurationMode || 'Tetap (Pilih Durasi Jam)';
+    if (dmode === 'Tetap (Pilih Durasi Jam)') {
+      durationMinutes = (parseInt(cfg.stopTime || cfg.youtubeStopTime || '0') || 0) * 60;
+    } else if (dmode === 'Acak (Random Range)') {
+      const minH = parseFloat(cfg.randomStopMin || '1') || 1;
+      const maxH = parseFloat(cfg.randomStopMax || '3') || 3;
+      durationMinutes = Math.floor(Math.random() * (maxH - minH + 1) + minH) * 60;
+    } else {
+      durationMinutes = parseInt(cfg.repeatLiveDuration || '60') || 60;
+    }
+  }
   const started = startFfmpegStream({
     campaignId: id,
     platform: 'YouTube API',
@@ -303,6 +326,7 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
     rtmpUrl,
     streamKey,
     encoder,
+    durationMinutes: durationMinutes > 0 ? durationMinutes : undefined,
   });
 
   // ── Save stream info with YouTube broadcast data ─────────────────────────
@@ -378,21 +402,32 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
     }
   }
 
-  // ── Transition broadcast to live (after a delay) ─────────────────────────
-  // Wait for FFmpeg to start streaming, then transition to live
-  setTimeout(async () => {
+  // ── Transition broadcast to live (with retry) ─────────────────────────
+  // We recreate the retry logic here or just do the loop
+  let attempt = 1;
+  const maxRetries = 6;
+  const delaySeconds = 10;
+  
+  const tryTransition = async () => {
     try {
       await transitionBroadcastToLive(youtubeChannelId, broadcastId);
-      logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} is now LIVE`);
-      
-      const watchUrl = `https://youtube.com/watch?v=${broadcastId}`;
-      notifyBroadcastLive({ campaignName: campaign.name, broadcastId, watchUrl, title: chosenTitle })
+      logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} is now LIVE (Attempt ${attempt})`);
+      const notifyWatchUrl = `https://www.youtube.com/watch?v=${broadcastId}`;
+      notifyBroadcastLive({ campaignName: campaign.name, broadcastId, watchUrl: notifyWatchUrl, title: chosenTitle })
         .catch(e => logEvent('ERROR', 'Telegram', e.message));
-        
     } catch (error) {
-      logEvent('ERROR', 'YouTube Live', `Failed to transition to live: ${error.message}`);
+      logEvent('WARN', 'YouTube Live', `Failed to transition to live (Attempt ${attempt}/${maxRetries}): ${error.message}`);
+      if (attempt < maxRetries) {
+        attempt++;
+        setTimeout(tryTransition, delaySeconds * 1000);
+      } else {
+        logEvent('ERROR', 'YouTube Live', `Failed to transition to live after ${maxRetries} attempts. Broadcast: ${broadcastId}`);
+      }
     }
-  }, 30000); // Wait 30 seconds for FFmpeg to connect
+  };
+
+  // Wait 10 seconds before first attempt to let FFmpeg connect
+  setTimeout(tryTransition, delaySeconds * 1000);
 
   logEvent('INFO', 'Kampanye', `Campaign #${id} "${campaign.name}" started with YouTube Live. Video: ${chosenVideo.name}, Broadcast: ${broadcastId}`);
 

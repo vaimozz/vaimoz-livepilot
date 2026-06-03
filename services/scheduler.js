@@ -66,6 +66,14 @@ function generateCronExpression(campaign) {
 
 function toCronTime(dateString, timeString) {
   const [hour = '0', minute = '0'] = String(timeString || '00:00').split(':');
+  if (!dateString) return `${Number(minute)} ${Number(hour)} * * *`;
+  // BUG-002 FIX: Pakai tanggal + bulan spesifik agar 'sekali jalan' tidak jalan tiap hari
+  const parts = String(dateString).split('-'); // YYYY-MM-DD
+  const month = parts[1] ? parseInt(parts[1], 10) : null;
+  const day = parts[2] ? parseInt(parts[2], 10) : null;
+  if (month && day) {
+    return `${Number(minute)} ${Number(hour)} ${day} ${month} *`;
+  }
   return `${Number(minute)} ${Number(hour)} * * *`;
 }
 
@@ -84,7 +92,8 @@ function getExecutionDuration(campaign) {
   
   switch (mode) {
     case 'fixed':
-      return campaign.recurring_duration_minutes || 60;
+      // BUG-010 FIX: Gunakan ?? bukan || agar 0 (non-stop) tidak dioverride menjadi 60
+      return campaign.recurring_duration_minutes ?? 60;
     
     case 'random': {
       const min = campaign.recurring_duration_min || 30;
@@ -163,6 +172,8 @@ function calculateNextExecution(campaign) {
   return next.toISOString();
 }
 
+const executingCampaigns = new Set(); // Lock untuk mencegah eksekusi beruntun pada waktu bersamaan
+
 /**
  * Execute campaign with recurring logic
  */
@@ -171,54 +182,61 @@ async function executeCampaign(campaignData) {
   const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(campaignData.id) || campaignData;
   const config = readJson(campaign.config_json, {});
   
-  // Check if should still execute
-  if (!shouldExecute(campaign)) {
-    logEvent('INFO', 'Scheduler', `Kampanye #${campaign.id} telah melewati end date, menghentikan schedule`);
-    stopScheduledCampaign(campaign.id);
-    db.prepare("UPDATE campaigns SET status = 'Completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(campaign.id);
+  // BUG-007 FIX: Prevent race condition (multiple cron triggers firing at once)
+  if (executingCampaigns.has(campaign.id)) {
+    logEvent('WARN', 'Scheduler', `Mencegah eksekusi berulang: Kampanye #${campaign.id} sedang dalam proses eksekusi (dikunci).`);
     return;
   }
-
-  // --- SMART HUMANIZER START DELAY ---
-  if (config.recurringHumanize) {
-     const maxMins = config.recurringHumanizeMaxMins || 10;
-     const randomDelayMins = Math.floor(Math.random() * maxMins) + 1;
-     logEvent('INFO', 'Scheduler', `Smart Humanizer: Menunda start kampanye #${campaign.id} selama ${randomDelayMins} menit agar terlihat natural.`);
-     await new Promise(resolve => setTimeout(resolve, randomDelayMins * 60000));
-     
-     // Re-fetch campaign after delay to ensure it wasn't paused/deleted
-     const checkCampaign = db.prepare('SELECT status FROM campaigns WHERE id = ?').get(campaign.id);
-     if (!checkCampaign || checkCampaign.status !== 'Scheduled') {
-        logEvent('INFO', 'Scheduler', `Kampanye #${campaign.id} dibatalkan selama masa tunda Humanizer.`);
-        return;
-     }
-  }
-  // -----------------------------------
-
-  logEvent('INFO', 'Scheduler', `Menjalankan kampanye #${campaign.id}: ${campaign.name}`);
-
-
-  // Ensure we don't pile up multiple streams for the same campaign (stop stuck ones)
-  try {
-    await stopActiveCampaignStream(campaign.id);
-  } catch (e) {
-    logEvent('WARN', 'Scheduler', `Gagal menghentikan stream sebelumnya untuk kampanye #${campaign.id}: ${e.message}`);
-  }
-  
-  // Get duration for this execution
-  let durationMinutes = getExecutionDuration(campaign);
-  
-  // --- SMART HUMANIZER DURATION VARIANCE ---
-  if (config.recurringHumanize && durationMinutes > 0) {
-      const maxMins = config.recurringHumanizeMaxMins || 10;
-      const variance = Math.floor(Math.random() * (maxMins * 2 + 1)) - maxMins; // e.g. -10 to +10
-      durationMinutes += variance;
-      if (durationMinutes < 1) durationMinutes = 1;
-      logEvent('INFO', 'Scheduler', `Smart Humanizer: Durasi disesuaikan menjadi ${durationMinutes} menit (variasi: ${variance > 0 ? '+' : ''}${variance} menit).`);
-  }
-  // -----------------------------------------
+  executingCampaigns.add(campaign.id);
   
   try {
+    // Check if should still execute
+    if (!shouldExecute(campaign)) {
+      logEvent('INFO', 'Scheduler', `Kampanye #${campaign.id} telah melewati end date, menghentikan schedule`);
+      stopScheduledCampaign(campaign.id);
+      db.prepare("UPDATE campaigns SET status = 'Completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(campaign.id);
+      return;
+    }
+
+    // --- SMART HUMANIZER START DELAY ---
+    if (config.recurringHumanize) {
+       const maxMins = config.recurringHumanizeMaxMins || 10;
+       const randomDelayMins = Math.floor(Math.random() * maxMins) + 1;
+       logEvent('INFO', 'Scheduler', `Smart Humanizer: Menunda start kampanye #${campaign.id} selama ${randomDelayMins} menit agar terlihat natural.`);
+       await new Promise(resolve => setTimeout(resolve, randomDelayMins * 60000));
+       
+       // Re-fetch campaign after delay to ensure it wasn't paused/deleted
+       const checkCampaign = db.prepare('SELECT status FROM campaigns WHERE id = ?').get(campaign.id);
+       if (!checkCampaign || checkCampaign.status !== 'Scheduled') {
+          logEvent('INFO', 'Scheduler', `Kampanye #${campaign.id} dibatalkan selama masa tunda Humanizer.`);
+          return;
+       }
+    }
+    // -----------------------------------
+
+    logEvent('INFO', 'Scheduler', `Menjalankan kampanye #${campaign.id}: ${campaign.name}`);
+
+
+    // Ensure we don't pile up multiple streams for the same campaign (stop stuck ones)
+    try {
+      await stopActiveCampaignStream(campaign.id);
+    } catch (e) {
+      logEvent('WARN', 'Scheduler', `Gagal menghentikan stream sebelumnya untuk kampanye #${campaign.id}: ${e.message}`);
+    }
+    
+    // Get duration for this execution
+    let durationMinutes = getExecutionDuration(campaign);
+    
+    // --- SMART HUMANIZER DURATION VARIANCE ---
+    if (config.recurringHumanize && durationMinutes > 0) {
+        const maxMins = config.recurringHumanizeMaxMins || 10;
+        const variance = Math.floor(Math.random() * (maxMins * 2 + 1)) - maxMins; // e.g. -10 to +10
+        durationMinutes += variance;
+        if (durationMinutes < 1) durationMinutes = 1;
+        logEvent('INFO', 'Scheduler', `Smart Humanizer: Durasi disesuaikan menjadi ${durationMinutes} menit (variasi: ${variance > 0 ? '+' : ''}${variance} menit).`);
+    }
+    // -----------------------------------------
+    
     const isYouTubeAPI = campaign.mode === 'YouTube API' || config.mode === 'YouTube API';
     let streamResult = null;
     
@@ -305,6 +323,8 @@ async function executeCampaign(campaignData) {
   } catch (error) {
     logEvent('ERROR', 'Scheduler', `Gagal menjalankan kampanye #${campaign.id}: ${error.message}`);
     recordExecution(campaign.id, 'failed', 0, error.message);
+  } finally {
+    executingCampaigns.delete(campaign.id);
   }
 }
 
@@ -357,11 +377,27 @@ export function setupAutoCleanup() {
       if (result.changes > 0) {
         logEvent('INFO', 'System', `Auto-cleanup: ${result.changes} riwayat stream (>14 hari) dihapus.`);
       }
+
+      // BUG-016 FIX: Bersihkan log lama (>30 hari) agar database tidak membengkak
+      const logResult = db.prepare(`
+        DELETE FROM logs WHERE created_at <= datetime('now', '-30 days')
+      `).run();
+      if (logResult.changes > 0) {
+        logEvent('INFO', 'System', `Auto-cleanup: ${logResult.changes} entri log (>30 hari) dihapus.`);
+      }
+
+      // Bersihkan riwayat eksekusi kampanye lama (>90 hari)
+      const histResult = db.prepare(`
+        DELETE FROM recurring_history WHERE executed_at <= datetime('now', '-90 days')
+      `).run();
+      if (histResult.changes > 0) {
+        logEvent('INFO', 'System', `Auto-cleanup: ${histResult.changes} riwayat eksekusi kampanye (>90 hari) dihapus.`);
+      }
     } catch (e) {
       logEvent('ERROR', 'System', `Gagal menjalankan auto-cleanup: ${e.message}`);
     }
   });
-  logEvent('INFO', 'System', 'Auto-cleanup stream (>14 hari) dijadwalkan berjalan setiap tengah malam.');
+  logEvent('INFO', 'System', 'Auto-cleanup stream (>14 hari), log (>30 hari), dan history (>90 hari) dijadwalkan setiap tengah malam.');
 }
 
 export function loadScheduledCampaigns() {

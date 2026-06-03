@@ -11,7 +11,8 @@ function getUserByUsername(username) {
   return db.prepare('SELECT * FROM users WHERE username = ?').get(username);
 }
 
-authRouter.post('/register', asyncHandler(async (req, res) => {
+// BUG-015 FIX: Endpoint register dilindungi — hanya admin yang sudah login yang bisa buat akun baru
+authRouter.post('/register', requireAuth, asyncHandler(async (req, res) => {
   const username = String(req.body.username || '').trim();
   const password = String(req.body.password || '');
   const displayName = String(req.body.displayName || username || 'Admin Vaimoz').trim();

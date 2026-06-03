@@ -14,22 +14,9 @@ import { google } from 'googleapis';
 import fs from 'node:fs';
 import { db, logEvent } from '../db/database.js';
 import { getOAuthClient, youtubeWithTokens } from './youtubeService.js';
+import { getChannelTokens } from './youtubeTokenUtils.js'; // BUG-020 FIX: Shared utility
 
-/**
- * Get tokens from youtube_channels table
- */
-function getChannelTokens(channelId) {
-  const row = db.prepare('SELECT * FROM youtube_channels WHERE id = ?').get(Number(channelId));
-  if (!row) throw new Error('YouTube channel tidak ditemukan.');
-  if (!row.access_token && !row.refresh_token) {
-    throw new Error('Channel belum punya OAuth token. Sambungkan channel dulu via Settings.');
-  }
-  return {
-    access_token: row.access_token,
-    refresh_token: row.refresh_token,
-    expiry_date: row.expires_at,
-  };
-}
+// getChannelTokens sekarang di youtubeTokenUtils.js (BUG-020 FIX)
 
 /**
  * Create YouTube live broadcast and stream
@@ -481,17 +468,34 @@ export async function startYoutubeLiveCampaign(campaignId, options = {}) {
     } catch (e) { logEvent('WARN', 'Scheduler', `Start chatbot gagal: ${e.message}`); }
   }
 
-  // ── Transisi ke LIVE setelah 30 detik ─────────────────────────────────────
-  setTimeout(async () => {
+// ── Helper: Retry transition to live ──────────────────────────────────────
+async function autoTransitionToLiveWithRetry(channelId, broadcastId, campaignName, watchUrl, title, maxRetries = 6, delaySeconds = 10) {
+  const { notifyBroadcastLive } = await import('./telegramService.js');
+  let attempt = 1;
+  
+  const tryTransition = async () => {
     try {
-      await transitionBroadcastToLive(youtubeChannelId, broadcastId);
-      logEvent('INFO', 'Scheduler', `Broadcast ${broadcastId} sekarang LIVE`);
-      notifyBroadcastLive({ campaignName: campaign.name, broadcastId, watchUrl, title: chosenTitle })
+      await transitionBroadcastToLive(channelId, broadcastId);
+      logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} sekarang LIVE (Attempt ${attempt})`);
+      notifyBroadcastLive({ campaignName, broadcastId, watchUrl, title })
         .catch(e => logEvent('ERROR', 'Telegram', e.message));
     } catch (e) {
-      logEvent('ERROR', 'Scheduler', `Transisi ke LIVE gagal: ${e.message}`);
+      logEvent('WARN', 'YouTube Live', `Transisi ke LIVE gagal (Attempt ${attempt}/${maxRetries}): ${e.message}`);
+      if (attempt < maxRetries) {
+        attempt++;
+        setTimeout(tryTransition, delaySeconds * 1000);
+      } else {
+        logEvent('ERROR', 'YouTube Live', `Gagal transisi ke LIVE setelah ${maxRetries} percobaan. Broadcast: ${broadcastId}`);
+      }
     }
-  }, 30000);
+  };
+
+  // Mulai mencoba setelah delay pertama (FFmpeg butuh waktu untuk connect)
+  setTimeout(tryTransition, delaySeconds * 1000);
+}
+
+  // ── Transisi ke LIVE dengan Retry Otomatis ───────────────────────────────
+  autoTransitionToLiveWithRetry(youtubeChannelId, broadcastId, campaign.name, watchUrl, chosenTitle, 6, 10);
 
   logEvent('INFO', 'Scheduler', `Kampanye #${campaignId} berhasil dimulai oleh scheduler. Broadcast: ${broadcastId}`);
   return { streamId: started.streamId, broadcastId, watchUrl };

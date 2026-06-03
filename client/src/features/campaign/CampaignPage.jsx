@@ -159,11 +159,16 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
 
 
 
-  const loadYoutubeChannels = async () => {
+  const loadYoutubeChannels = async (preserveChannelId = null) => {
     try {
       const result = await api.youtube.channels();
       const channels = (result.channels || []).map(normalizeYoutubeChannel);
       setYoutubeChannels(channels);
+      // BUG-011 FIX: Jangan timpa channel yang sedang diedit dari editCampaign
+      if (preserveChannelId) {
+        await loadYoutubePlaylists(preserveChannelId);
+        return;
+      }
       const defaultChannel = channels.find((channel) => channel.isDefault) || channels[0];
       if (defaultChannel) {
         setYoutubeChannelId(String(defaultChannel.id));
@@ -220,6 +225,7 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
 
   useEffect(() => {
     loadCampaignAssets();
+    // BUG-011: Channels akan dimuat ulang di useEffect editCampaign jika ada data edit
     loadYoutubeChannels();
   }, []);
 
@@ -247,15 +253,22 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
         setManualFps(config.encoder.fps || 'Ikuti sumber');
       }
     } else {
-      setYoutubeLiveTitles(config.liveTitles || '');
-      setYoutubeDescription(config.description || '');
-      setYoutubePrivacy(config.privacy || 'Publik');
-      setYoutubeThumbnailMode(config.thumbnailMode || 'Rotasi otomatis');
-      setYoutubeTags(config.tags || '');
-      setYoutubeCategoryId(config.categoryId || '10');
+      // BUG-005 FIX: Baca kedua key (liveTitles dan youtubeLiveTitles) untuk kompatibilitas
+      setYoutubeLiveTitles(config.youtubeLiveTitles || config.liveTitles || '');
+      setYoutubeDescription(config.youtubeDescription || config.description || '');
+      setYoutubePrivacy(config.youtubePrivacy || config.privacy || 'Publik');
+      setYoutubeThumbnailMode(config.youtubeThumbnailMode || config.thumbnailMode || 'Rotasi otomatis');
+      setYoutubeTags(config.youtubeTags || config.tags || '');
+      setYoutubeCategoryId(config.youtubeCategoryId || config.categoryId || '10');
       setYoutubeReplayPrivacy(config.replayPrivacy || 'Unlisted');
-      if (config.channelId) setYoutubeChannelId(config.channelId);
+      // BUG-011 FIX: Load channels dan preserve channel yang dipilih dari config
+      const savedChannelId = config.youtubeChannelId || config.channelId || '';
+      if (savedChannelId) {
+        setYoutubeChannelId(savedChannelId);
+        loadYoutubeChannels(savedChannelId);
+      }
       if (config.playlist?.id) setYoutubePlaylistId(config.playlist.id);
+      if (config.youtubePlaylistId) setYoutubePlaylistId(config.youtubePlaylistId);
       
       setYoutubeSelectedVideoNames(config.videoAssetIds ? config.videoAssetIds.map(String) : (config.videoNames || []));
       setYoutubeSelectedThumbnailNames(config.thumbnailAssetIds ? config.thumbnailAssetIds.map(String) : (config.thumbnailNames || []));
@@ -335,7 +348,7 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
   const saveManualDraft = async () => {
     setIsSavingDraft(true);
     try {
-      const result = await api.campaigns.create({
+      const payload = {
         name: manualCampaignName.trim() || `Manual RTMP ${new Date().toLocaleString('id-ID')}`,
         mode: 'Manual (RTMP)',
         status: 'Draft',
@@ -354,7 +367,15 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
           smartStopDelayMinutes,
           encoder: { mode: manualEncoderMode, resolution: manualResolution, bitrate: manualBitrate, fps: manualFps },
         },
-      });
+      };
+
+      // BUG-003 FIX: Update jika kampanye sudah ada, baru buat jika belum
+      let result;
+      if (lastCampaignIdRef.current) {
+        result = await api.campaigns.update(lastCampaignIdRef.current, payload);
+      } else {
+        result = await api.campaigns.create(payload);
+      }
       
       const isScheduled = !!manualStartTime;
       const autoRecurringSettings = {
@@ -370,7 +391,6 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
         recurringTimezone: 'Asia/Jakarta'
       };
 
-      // Save recurring settings if enabled and auto-schedule
       if (autoRecurringSettings.recurringEnabled && result.campaign?.id) {
         await apiRequest(`/scheduler/campaigns/${result.campaign.id}/recurring`, { 
           method: 'PUT', 
@@ -645,10 +665,14 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
         recurringDays: youtubeWeeklyDays || [],
         recurringTime: youtubeStartTime || '00:00',
         recurringDurationMode: youtubeDurationMode === 'Tetap (Pilih Durasi Jam)' ? 'fixed' :
-                               youtubeDurationMode === 'Acak' ? 'random' : 'pattern',
-        recurringDurationMinutes: !youtubeAutoStopEnabled ? 0 : (youtubeDurationMode === 'Tetap (Pilih Durasi Jam)' ? (parseInt(youtubeStopTime) || 1) * 60 : 60),
-        recurringDurationMin: 30,
-        recurringDurationMax: 120,
+                               youtubeDurationMode === 'Acak (Random Range)' ? 'random' : 'pattern',
+        // BUG-013 FIX: Baca nilai state yang benar untuk setiap mode durasi
+        recurringDurationMinutes: !youtubeAutoStopEnabled ? 0 :
+          youtubeDurationMode === 'Tetap (Pilih Durasi Jam)' ? (parseInt(youtubeStopTime) || 1) * 60 :
+          youtubeDurationMode === 'Acak (Random Range)' ? Math.floor((parseFloat(youtubeRandomStopMin) + parseFloat(youtubeRandomStopMax)) / 2 * 60) :
+          parseInt(youtubeRepeatLiveDuration) || 60,
+        recurringDurationMin: !youtubeAutoStopEnabled ? 0 : Math.floor(parseFloat(youtubeRandomStopMin || '1') * 60),
+        recurringDurationMax: !youtubeAutoStopEnabled ? 0 : Math.floor(parseFloat(youtubeRandomStopMax || '3') * 60),
         recurringEndDate: '', // Force empty so it repeats forever without expiring
         recurringTimezone: 'Asia/Jakarta'
       };

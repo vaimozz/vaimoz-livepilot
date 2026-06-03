@@ -158,6 +158,16 @@ export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP',
         notifyStreamReconnecting({ campaignName, attempt, maxRetries, delaySeconds })
           .catch(e => logEvent('ERROR', 'Telegram', e.message));
         
+        // BUG-009 FIX: Stop chatbot dan monitoring sebelum reconnect agar tidak kirim ke broadcast invalid
+        try {
+          const { stopChatbot } = await import('./youtubeChatService.js');
+          const { stopStreamMonitoring } = await import('./youtubeAnalyticsService.js');
+          stopChatbot(streamId);
+          stopStreamMonitoring(streamId);
+        } catch (err) {
+          logEvent('WARN', 'FFmpeg Server', `Gagal membersihkan service sebelum reconnect #${streamId}: ${err.message}`);
+        }
+
         setTimeout(() => {
            const currentStatus = db.prepare('SELECT status FROM streams WHERE id = ?').get(streamId);
            if (!currentStatus || currentStatus.status === 'Stopped' || currentStatus.status === 'Stopping') {
@@ -166,6 +176,7 @@ export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP',
            attempt++;
            spawnProcess();
         }, delaySeconds * 1000);
+
       } else {
         db.prepare('UPDATE streams SET status = ?, stopped_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
           .run('Error', new Date().toISOString(), streamId);
