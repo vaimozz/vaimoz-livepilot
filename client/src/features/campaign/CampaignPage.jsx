@@ -101,8 +101,8 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
   const [youtubeCategoryId, setYoutubeCategoryId] = useState('10');
   const [youtubeScheduleType, setYoutubeScheduleType] = useState('Harian');
   const [youtubeDurationMode, setYoutubeDurationMode] = useState('Tetap (Pilih Durasi Jam)');
-  const [youtubeRandomStopMin, setYoutubeRandomStopMin] = useState('19:00');
-  const [youtubeRandomStopMax, setYoutubeRandomStopMax] = useState('22:00');
+  const [youtubeRandomStopMin, setYoutubeRandomStopMin] = useState('1');
+  const [youtubeRandomStopMax, setYoutubeRandomStopMax] = useState('3');
   const [youtubeRepeatLiveDuration, setYoutubeRepeatLiveDuration] = useState('60');
   const [youtubeRepeatBreakDuration, setYoutubeRepeatBreakDuration] = useState('10');
   const [youtubeRepeatCount, setYoutubeRepeatCount] = useState('3');
@@ -282,8 +282,8 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
       
       setYoutubeDurationMode(config.durationMode === 'Tetap (Sesuai Jam Stop)' ? 'Tetap (Pilih Durasi Jam)' : (config.durationMode || 'Tetap (Pilih Durasi Jam)'));
       setYoutubeAutoStopEnabled(config.autoStopEnabled ?? true);
-      setYoutubeRandomStopMin(config.randomStopMin || '19:00');
-      setYoutubeRandomStopMax(config.randomStopMax || '22:00');
+      setYoutubeRandomStopMin(config.randomStopMin || '1');
+      setYoutubeRandomStopMax(config.randomStopMax || '3');
       setYoutubeRepeatLiveDuration(config.repeatLiveDuration || '60');
       setYoutubeRepeatBreakDuration(config.repeatBreakDuration || '10');
       setYoutubeRepeatCount(config.repeatCount || '3');

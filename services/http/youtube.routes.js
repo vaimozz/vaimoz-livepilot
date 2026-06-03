@@ -29,12 +29,14 @@ youtubeRouter.get('/callback', asyncHandler(async (req, res) => {
   const avatar = snippet.thumbnails?.default?.url || snippet.thumbnails?.medium?.url || snippet.thumbnails?.high?.url || title.split(/\s+/).slice(0, 2).map((item) => item[0]).join('').toUpperCase() || 'YT';
   const expiresAt = tokens.expiry_date || Date.now() + 3600 * 1000;
 
-  const exists = db.prepare('SELECT id FROM youtube_channels WHERE youtube_channel_id = ?').get(youtubeChannelId);
+  const exists = db.prepare('SELECT id, refresh_token FROM youtube_channels WHERE youtube_channel_id = ?').get(youtubeChannelId);
   if (exists) {
+    // BUG-023 FIX: Jangan timpa refresh_token jika Google tidak mengembalikannya di login ulang
+    const finalRefreshToken = tokens.refresh_token || exists.refresh_token || '';
     db.prepare(`
       UPDATE youtube_channels SET title = ?, access_token = ?, refresh_token = ?, expires_at = ?, avatar = ?, updated_at = CURRENT_TIMESTAMP
       WHERE youtube_channel_id = ?
-    `).run(title, tokens.access_token || '', tokens.refresh_token || '', expiresAt, avatar, youtubeChannelId);
+    `).run(title, tokens.access_token || '', finalRefreshToken, expiresAt, avatar, youtubeChannelId);
   } else {
     db.prepare(`
       INSERT INTO youtube_channels (youtube_channel_id, title, access_token, refresh_token, expires_at, avatar, is_default)

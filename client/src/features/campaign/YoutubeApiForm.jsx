@@ -255,9 +255,15 @@ export function YoutubeApiForm({ state, setters, youtubeChannels = [], available
               )}
               {state.youtubeDurationMode === 'Acak (Random Range)' && (
                 <div className="grid gap-3">
-                  <input type="time" value={state.youtubeRandomStopMin} onChange={(e) => setters.setYoutubeRandomStopMin(e.target.value)} className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white" />
-                  <input type="time" value={state.youtubeRandomStopMax} onChange={(e) => setters.setYoutubeRandomStopMax(e.target.value)} className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white" />
-                  <p className="text-[11px] italic text-slate-400">Sistem memilih waktu stop acak.</p>
+                  <div className="relative">
+                    <input type="number" min="0.5" step="0.5" value={state.youtubeRandomStopMin} onChange={(e) => setters.setYoutubeRandomStopMin(e.target.value)} className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white outline-none" placeholder="Minimal (Jam)" />
+                    <span className="absolute right-4 top-3 text-sm font-bold text-slate-500">Jam (Min)</span>
+                  </div>
+                  <div className="relative">
+                    <input type="number" min="1" step="0.5" value={state.youtubeRandomStopMax} onChange={(e) => setters.setYoutubeRandomStopMax(e.target.value)} className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white outline-none" placeholder="Maksimal (Jam)" />
+                    <span className="absolute right-4 top-3 text-sm font-bold text-slate-500">Jam (Maks)</span>
+                  </div>
+                  <p className="text-[11px] italic text-slate-400">Durasi live akan diacak di antara dua nilai ini.</p>
                 </div>
               )}
               {state.youtubeDurationMode === 'Pola (Berulang)' && (
