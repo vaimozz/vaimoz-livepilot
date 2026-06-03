@@ -1,4 +1,4 @@
-# Requirements Document: QA Testing Framework
+# Requirements Document
 
 ## Introduction
 
