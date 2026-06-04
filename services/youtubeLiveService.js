@@ -167,29 +167,53 @@ export async function transitionBroadcastToLive(channelId, broadcastId) {
 
   logEvent('INFO', 'YouTube Live', `Transitioning broadcast ${broadcastId} to live`);
 
+  // Get current status first to avoid invalid transition
+  const current = await getBroadcastStatus(channelId, broadcastId);
+  const currentStatus = current?.status?.lifeCycleStatus;
+
+  logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} current status: ${currentStatus}`);
+
   try {
-    // First transition to 'testing'
-    await youtube.liveBroadcasts.transition({
-      part: ['id', 'status'],
-      broadcastStatus: 'testing',
-      id: broadcastId,
-    });
+    // If already live, skip transition
+    if (currentStatus === 'live') {
+      logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} already live, skipping transition`);
+      return current;
+    }
 
-    logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} → testing`);
+    // Only attempt manual transition if NOT using autoStart (i.e. status is 'ready' or 'testing')
+    if (currentStatus === 'testing') {
+      // Already in testing, just go live
+      const response = await youtube.liveBroadcasts.transition({
+        part: ['id', 'status', 'snippet'],
+        broadcastStatus: 'live',
+        id: broadcastId,
+      });
+      logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} → live`);
+      return response.data;
+    }
 
-    // Wait a bit for YouTube to process
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    if (currentStatus === 'ready') {
+      // Go through testing first
+      await youtube.liveBroadcasts.transition({
+        part: ['id', 'status'],
+        broadcastStatus: 'testing',
+        id: broadcastId,
+      });
+      logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} → testing`);
+      await new Promise(resolve => setTimeout(resolve, 5000));
 
-    // Then transition to 'live'
-    const response = await youtube.liveBroadcasts.transition({
-      part: ['id', 'status', 'snippet'],
-      broadcastStatus: 'live',
-      id: broadcastId,
-    });
+      const response = await youtube.liveBroadcasts.transition({
+        part: ['id', 'status', 'snippet'],
+        broadcastStatus: 'live',
+        id: broadcastId,
+      });
+      logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} → live`);
+      return response.data;
+    }
 
-    logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} → live`);
+    // For any other status (created, liveStarting, etc.) — throw to caller
+    throw new Error(`Invalid transition: broadcast is in status '${currentStatus}', cannot transition to live yet`);
 
-    return response.data;
   } catch (error) {
     logEvent('ERROR', 'YouTube Live', `Failed to transition broadcast: ${error.message}`);
     throw error;
@@ -483,34 +507,50 @@ export async function startYoutubeLiveCampaign(campaignId, options = {}) {
     } catch (e) { logEvent('WARN', 'Scheduler', `Start chatbot gagal: ${e.message}`); }
   }
 
-// ── Helper: Retry transition to live ──────────────────────────────────────
-async function autoTransitionToLiveWithRetry(channelId, broadcastId, campaignName, watchUrl, title, maxRetries = 6, delaySeconds = 10) {
+// ── Helper: Poll broadcast status until LIVE (for enableAutoStart=true broadcasts) ──
+export async function pollUntilLiveAndNotify(channelId, broadcastId, campaignName, watchUrl, title, maxRetries = 12, intervalSeconds = 15) {
   const { notifyBroadcastLive } = await import('./telegramService.js');
-  let attempt = 1;
-  
-  const tryTransition = async () => {
+  let attempt = 0;
+
+  const poll = async () => {
+    attempt++;
     try {
-      await transitionBroadcastToLive(channelId, broadcastId);
-      logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} sekarang LIVE (Attempt ${attempt})`);
-      notifyBroadcastLive({ campaignName, broadcastId, watchUrl, title })
-        .catch(e => logEvent('ERROR', 'Telegram', e.message));
-    } catch (e) {
-      logEvent('WARN', 'YouTube Live', `Transisi ke LIVE gagal (Attempt ${attempt}/${maxRetries}): ${e.message}`);
-      if (attempt < maxRetries) {
-        attempt++;
-        setTimeout(tryTransition, delaySeconds * 1000);
-      } else {
-        logEvent('ERROR', 'YouTube Live', `Gagal transisi ke LIVE setelah ${maxRetries} percobaan. Broadcast: ${broadcastId}`);
+      const status = await getBroadcastStatus(channelId, broadcastId);
+      const lifeCycleStatus = status?.status?.lifeCycleStatus;
+
+      logEvent('INFO', 'YouTube Live', `Polling broadcast ${broadcastId} status: ${lifeCycleStatus} (${attempt}/${maxRetries})`);
+
+      if (lifeCycleStatus === 'live') {
+        logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} is now LIVE`);
+        notifyBroadcastLive({ campaignName, broadcastId, watchUrl, title })
+          .catch(e => logEvent('ERROR', 'Telegram', e.message));
+        return; // Done!
       }
+
+      if (lifeCycleStatus === 'complete' || lifeCycleStatus === 'revoked') {
+        logEvent('WARN', 'YouTube Live', `Broadcast ${broadcastId} ended unexpectedly: ${lifeCycleStatus}`);
+        return;
+      }
+
+      // If not live yet and still have retries, keep polling
+      if (attempt < maxRetries) {
+        setTimeout(poll, intervalSeconds * 1000);
+      } else {
+        logEvent('ERROR', 'YouTube Live', `Broadcast ${broadcastId} did not go LIVE after ${maxRetries} attempts. Final status: ${lifeCycleStatus}`);
+      }
+    } catch (e) {
+      logEvent('WARN', 'YouTube Live', `Poll broadcast status error (${attempt}/${maxRetries}): ${e.message}`);
+      if (attempt < maxRetries) setTimeout(poll, intervalSeconds * 1000);
     }
   };
 
-  // Mulai mencoba setelah delay pertama (FFmpeg butuh waktu untuk connect)
-  setTimeout(tryTransition, delaySeconds * 1000);
+  // Start polling after initial delay (wait for FFmpeg to connect + YouTube to detect stream)
+  logEvent('INFO', 'YouTube Live', `Starting live status polling for broadcast ${broadcastId} (enableAutoStart mode)`);
+  setTimeout(poll, 30 * 1000); // First check after 30s
 }
 
-  // ── Transisi ke LIVE dengan Retry Otomatis ───────────────────────────────
-  autoTransitionToLiveWithRetry(youtubeChannelId, broadcastId, campaign.name, watchUrl, chosenTitle, 6, 10);
+  // ── Pantau status broadcast hingga LIVE (enableAutoStart mode) ──────────
+  pollUntilLiveAndNotify(youtubeChannelId, broadcastId, campaign.name, watchUrl, chosenTitle, 12, 15);
 
   logEvent('INFO', 'Scheduler', `Kampanye #${campaignId} berhasil dimulai oleh scheduler. Broadcast: ${broadcastId}`);
   return { streamId: started.streamId, broadcastId, watchUrl };

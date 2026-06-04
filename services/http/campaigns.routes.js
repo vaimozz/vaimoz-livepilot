@@ -8,6 +8,7 @@ import { notifyBroadcastLive, notifyStreamError } from '../telegramService.js';
 import {
   createYoutubeLiveBroadcast,
   transitionBroadcastToLive,
+  pollUntilLiveAndNotify,
   uploadBroadcastThumbnail,
   addBroadcastToPlaylist,
   completeBroadcast,
@@ -402,37 +403,10 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
     }
   }
 
-  // ── Transition broadcast to live (with retry) ─────────────────────────
-  // We recreate the retry logic here or just do the loop
-  let attempt = 1;
-  const maxRetries = 6;
-  const delaySeconds = 10;
-  
-  const tryTransition = async () => {
-    try {
-      await transitionBroadcastToLive(youtubeChannelId, broadcastId);
-      logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} is now LIVE (Attempt ${attempt})`);
-      const notifyWatchUrl = `https://www.youtube.com/watch?v=${broadcastId}`;
-      notifyBroadcastLive({ campaignName: campaign.name, broadcastId, watchUrl: notifyWatchUrl, title: chosenTitle })
-        .catch(e => logEvent('ERROR', 'Telegram', e.message));
-    } catch (error) {
-      logEvent('WARN', 'YouTube Live', `Failed to transition to live (Attempt ${attempt}/${maxRetries}): ${error.message}`);
-      if (attempt < maxRetries) {
-        attempt++;
-        setTimeout(tryTransition, delaySeconds * 1000);
-      } else {
-        logEvent('ERROR', 'YouTube Live', `Failed to transition to live after ${maxRetries} attempts. Broadcast: ${broadcastId}`);
-        // BUG-006 FIX: Kirim notifikasi Telegram agar user tahu broadcast gagal go-live
-        notifyStreamError({
-          campaignName: campaign.name,
-          error: `YouTube broadcast ${broadcastId} gagal transition ke LIVE setelah ${maxRetries} percobaan. Broadcast mungkin masih dalam status 'testing'. Periksa YouTube Studio.`,
-        }).catch(e => logEvent('ERROR', 'Telegram', e.message));
-      }
-    }
-  };
-
-  // Wait 10 seconds before first attempt to let FFmpeg connect
-  setTimeout(tryTransition, delaySeconds * 1000);
+  // ── Pantau status broadcast hingga LIVE (enableAutoStart mode) ────────────
+  // enableAutoStart=true means YouTube transitions the broadcast automatically
+  // when it detects the RTMP stream. We just poll until it's live, then notify.
+  pollUntilLiveAndNotify(youtubeChannelId, broadcastId, campaign.name, `https://www.youtube.com/watch?v=${broadcastId}`, chosenTitle, 12, 15);
 
   logEvent('INFO', 'Kampanye', `Campaign #${id} "${campaign.name}" started with YouTube Live. Video: ${chosenVideo.name}, Broadcast: ${broadcastId}`);
 
