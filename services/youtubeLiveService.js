@@ -1,10 +1,10 @@
-/**
+﻿/**
  * YouTube Live Service
  * 
  * Service untuk mengelola lifecycle YouTube live broadcast:
  * - Create broadcast & stream
  * - Bind broadcast ke stream
- * - Transition broadcast status (testing → live)
+ * - Transition broadcast status (testing â†’ live)
  * - Upload thumbnail
  * - Add to playlist
  * - Stop broadcast
@@ -188,7 +188,7 @@ export async function transitionBroadcastToLive(channelId, broadcastId) {
         broadcastStatus: 'live',
         id: broadcastId,
       });
-      logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} → live`);
+      logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} â†’ live`);
       return response.data;
     }
 
@@ -199,7 +199,7 @@ export async function transitionBroadcastToLive(channelId, broadcastId) {
         broadcastStatus: 'testing',
         id: broadcastId,
       });
-      logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} → testing`);
+      logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} â†’ testing`);
       await new Promise(resolve => setTimeout(resolve, 5000));
 
       const response = await youtube.liveBroadcasts.transition({
@@ -207,11 +207,11 @@ export async function transitionBroadcastToLive(channelId, broadcastId) {
         broadcastStatus: 'live',
         id: broadcastId,
       });
-      logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} → live`);
+      logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} â†’ live`);
       return response.data;
     }
 
-    // For any other status (created, liveStarting, etc.) — throw to caller
+    // For any other status (created, liveStarting, etc.) â€” throw to caller
     throw new Error(`Invalid transition: broadcast is in status '${currentStatus}', cannot transition to live yet`);
 
   } catch (error) {
@@ -384,7 +384,7 @@ export async function startYoutubeLiveCampaign(campaignId, options = {}) {
   const youtubeChannelId = cfg.youtubeChannelId || cfg.channelId;
   if (!youtubeChannelId) throw new Error('YouTube channel belum dipilih di config kampanye.');
 
-  // ── Pilih VIDEO ────────────────────────────────────────────────────────────
+  // â”€â”€ Pilih VIDEO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const videoIds = Array.isArray(cfg.videoAssetIds) ? cfg.videoAssetIds.map(Number).filter(Boolean) : [];
   let chosenVideo = null;
   if (videoIds.length > 0) {
@@ -395,7 +395,7 @@ export async function startYoutubeLiveCampaign(campaignId, options = {}) {
   if (!chosenVideo) chosenVideo = db.prepare("SELECT * FROM assets WHERE type = 'Video' ORDER BY RANDOM() LIMIT 1").get();
   if (!chosenVideo) throw new Error('Tidak ada video di Pustaka Aset.');
 
-  // ── Pilih THUMBNAIL ────────────────────────────────────────────────────────
+  // â”€â”€ Pilih THUMBNAIL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const thumbIds = Array.isArray(cfg.thumbnailAssetIds) ? cfg.thumbnailAssetIds.map(Number).filter(Boolean) : [];
   let chosenThumbnail = null;
   if (thumbIds.length > 0) {
@@ -408,13 +408,13 @@ export async function startYoutubeLiveCampaign(campaignId, options = {}) {
     chosenThumbnail = db.prepare("SELECT * FROM assets WHERE type IN ('Images','Thumbnail') ORDER BY RANDOM() LIMIT 1").get() || null;
   }
 
-  // ── Pilih JUDUL ────────────────────────────────────────────────────────────
+  // â”€â”€ Pilih JUDUL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const titles = String(cfg.youtubeLiveTitles || cfg.liveTitles || '').split('\n').map(t => t.trim()).filter(Boolean);
   const chosenTitle = titles.length > 0 ? titles[Math.floor(Math.random() * titles.length)] : campaign.name;
 
-  // ── Auto Generate Gemini Thumbnail (dihapus sesuai permintaan pengguna) ──────
+  // â”€â”€ Auto Generate Gemini Thumbnail (dihapus sesuai permintaan pengguna) â”€â”€â”€â”€â”€â”€
 
-  // ── Buat broadcast YouTube ─────────────────────────────────────────────────
+  // â”€â”€ Buat broadcast YouTube â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   logEvent('INFO', 'Scheduler', `Scheduler memulai YouTube Live untuk kampanye #${campaignId}: ${chosenTitle}`);
 
   const privacySetting = cfg.youtubePrivacy || cfg.privacy || 'Publik';
@@ -452,23 +452,23 @@ export async function startYoutubeLiveCampaign(campaignId, options = {}) {
 
   const { rtmpUrl, streamKey, broadcastId, streamId, watchUrl } = broadcastData;
 
-  // ── Upload thumbnail ───────────────────────────────────────────────────────
+  // â”€â”€ Upload thumbnail â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (chosenThumbnail?.path) {
     try { await uploadBroadcastThumbnail(youtubeChannelId, broadcastId, chosenThumbnail.path); }
     catch (e) { logEvent('WARN', 'Scheduler', `Thumbnail upload gagal: ${e.message}`); }
   }
 
-  // ── Add ke playlist ────────────────────────────────────────────────────────
+  // â”€â”€ Add ke playlist â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const playlistId = cfg.youtubePlaylistId || cfg.playlist?.id;
   if (playlistId) {
     try { await addBroadcastToPlaylist(youtubeChannelId, broadcastId, playlistId); }
     catch (e) { logEvent('WARN', 'Scheduler', `Add to playlist gagal: ${e.message}`); }
   }
 
-  // ── Update status kampanye → Aktif ────────────────────────────────────────
+  // â”€â”€ Update status kampanye â†’ Aktif â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   db.prepare("UPDATE campaigns SET status = 'Aktif', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(campaignId);
 
-  // ── Start FFmpeg ───────────────────────────────────────────────────────────
+  // â”€â”€ Start FFmpeg â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const started = startFfmpegStream({
     campaignId,
     platform: 'YouTube API',
@@ -479,13 +479,13 @@ export async function startYoutubeLiveCampaign(campaignId, options = {}) {
     durationMinutes: options.durationMinutes,
   });
 
-  // ── Simpan data stream ─────────────────────────────────────────────────────
+  // â”€â”€ Simpan data stream â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   try {
     db.prepare(`UPDATE streams SET chosen_video_id=?, chosen_thumbnail_id=?, chosen_title=?, youtube_broadcast_id=?, youtube_stream_id=?, youtube_watch_url=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`)
       .run(chosenVideo.id ?? null, chosenThumbnail?.id ?? null, chosenTitle, broadcastId, streamId, watchUrl, started.streamId);
   } catch (e) { logEvent('WARN', 'Scheduler', `Simpan stream info gagal: ${e.message}`); }
 
-  // ── Live chat & monitoring ─────────────────────────────────────────────────
+  // â”€â”€ Live chat & monitoring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   let liveChatId = null;
   try {
     liveChatId = await getLiveChatId(youtubeChannelId, broadcastId);
@@ -507,7 +507,13 @@ export async function startYoutubeLiveCampaign(campaignId, options = {}) {
     } catch (e) { logEvent('WARN', 'Scheduler', `Start chatbot gagal: ${e.message}`); }
   }
 
-// ── Helper: Poll broadcast status until LIVE (for enableAutoStart=true broadcasts) ──
+  // â”€â”€ Pantau status broadcast hingga LIVE (enableAutoStart mode) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  pollUntilLiveAndNotify(youtubeChannelId, broadcastId, campaign.name, watchUrl, chosenTitle, 12, 15);
+
+  logEvent('INFO', 'Scheduler', `Kampanye #${campaignId} berhasil dimulai oleh scheduler. Broadcast: ${broadcastId}`);
+  return { streamId: started.streamId, broadcastId, watchUrl };
+}
+// â”€â”€ Helper: Poll broadcast status until LIVE (for enableAutoStart=true broadcasts) â”€â”€
 export async function pollUntilLiveAndNotify(channelId, broadcastId, campaignName, watchUrl, title, maxRetries = 12, intervalSeconds = 15) {
   const { notifyBroadcastLive } = await import('./telegramService.js');
   let attempt = 0;
@@ -549,9 +555,3 @@ export async function pollUntilLiveAndNotify(channelId, broadcastId, campaignNam
   setTimeout(poll, 30 * 1000); // First check after 30s
 }
 
-  // ── Pantau status broadcast hingga LIVE (enableAutoStart mode) ──────────
-  pollUntilLiveAndNotify(youtubeChannelId, broadcastId, campaign.name, watchUrl, chosenTitle, 12, 15);
-
-  logEvent('INFO', 'Scheduler', `Kampanye #${campaignId} berhasil dimulai oleh scheduler. Broadcast: ${broadcastId}`);
-  return { streamId: started.streamId, broadcastId, watchUrl };
-}
