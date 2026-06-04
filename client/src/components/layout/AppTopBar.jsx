@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Bell, MonitorPlay, Palette, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
+import { Card } from '@/components/ui/card.jsx';
 import { ThemeSwitcher } from '@/components/shared/ThemeSwitcher.jsx';
 import { formatTopbarDate, formatTopbarTime } from '@/lib/formatters.js';
 import { canUpdateAccount } from '@/lib/validation.js';
