@@ -4,7 +4,7 @@ import { requireAuth } from '../../middleware/auth.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { serializeCampaign, serializeStream } from '../../utils/serializers.js';
 import { startFfmpegStream, stopFfmpegStream } from '../ffmpegRunner.js';
-import { notifyBroadcastLive } from '../telegramService.js';
+import { notifyBroadcastLive, notifyStreamError } from '../telegramService.js';
 import {
   createYoutubeLiveBroadcast,
   transitionBroadcastToLive,
@@ -422,6 +422,11 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
         setTimeout(tryTransition, delaySeconds * 1000);
       } else {
         logEvent('ERROR', 'YouTube Live', `Failed to transition to live after ${maxRetries} attempts. Broadcast: ${broadcastId}`);
+        // BUG-006 FIX: Kirim notifikasi Telegram agar user tahu broadcast gagal go-live
+        notifyStreamError({
+          campaignName: campaign.name,
+          error: `YouTube broadcast ${broadcastId} gagal transition ke LIVE setelah ${maxRetries} percobaan. Broadcast mungkin masih dalam status 'testing'. Periksa YouTube Studio.`,
+        }).catch(e => logEvent('ERROR', 'Telegram', e.message));
       }
     }
   };

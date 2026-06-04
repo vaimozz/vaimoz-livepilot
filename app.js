@@ -3,7 +3,7 @@ import path from 'node:path';
 import express from 'express';
 import cors from 'cors';
 import { config } from './utils/config.js';
-import { initDatabase, logEvent } from './db/database.js';
+import { db, initDatabase, logEvent } from './db/database.js';
 import { authRouter } from './services/http/auth.routes.js';
 import { assetsRouter } from './services/http/assets.routes.js';
 import { playlistsRouter } from './services/http/playlists.routes.js';
@@ -18,7 +18,6 @@ import { loadScheduledCampaigns, setupAutoCleanup } from './services/scheduler.j
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 initDatabase();
-import { db } from './db/database.js';
 try {
   // Kill orphaned FFmpeg processes to prevent zombie streams
   const activeStreams = db.prepare(`SELECT id, pid FROM streams WHERE status IN ('Online', 'Starting')`).all();

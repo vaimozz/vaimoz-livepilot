@@ -6,6 +6,7 @@
 export const themes = {
   cyberpunk: {
     name: 'Set And Forget Dark',
+    icon: '🌑',
     colors: {
       '--bg-primary': '#0A0A0A',
       '--bg-secondary': '#121212',
@@ -27,6 +28,7 @@ export const themes = {
   },
   slate: {
     name: 'Classic Slate',
+    icon: '🌊',
     colors: {
       '--bg-primary': '#020617',
       '--bg-secondary': '#0f172a',
@@ -48,6 +50,7 @@ export const themes = {
   },
   light: {
     name: 'Clean White',
+    icon: '☀️',
     colors: {
       '--bg-primary': '#ffffff',
       '--bg-secondary': '#f8fafc',

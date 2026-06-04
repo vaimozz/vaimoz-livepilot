@@ -32,7 +32,7 @@ import {
 
 export function runUiSmokeTests() {
   console.assert(defaultActivePage === 'Dasbor', 'Halaman default aplikasi harus Dasbor');
-  console.assert(menuItems.length === 6, 'Sidebar harus berisi 6 halaman');
+  console.assert(menuItems.length === 7, 'Sidebar harus berisi 7 halaman');
   console.assert(campaigns.length === 0, 'Tidak boleh ada campaign dummy di frontend');
   console.assert(schedules.length === 0, 'Tidak boleh ada schedule dummy di frontend');
   console.assert(initialYoutubeChannels.length === 0, 'Tidak boleh ada channel YouTube palsu');
@@ -70,7 +70,7 @@ export function runUiSmokeTests() {
   console.assert(!canRegister('admin', 'password', 'beda'), 'Register harus menolak konfirmasi password berbeda');
   console.assert(canUpdateAccount('Admin', 'secret1', 'secret1'), 'Profil akun harus bisa ganti password valid');
   console.assert(youtubeCategoryOptions.some((category) => category.id === '10' && category.label === 'Music'), 'Kategori Music harus tersedia dengan ID 10');
-  console.assert(youtubeScheduleTypes.length === 3, 'YouTube API harus punya tipe jadwal');
+  console.assert(youtubeScheduleTypes.length === 4, 'YouTube API harus punya 4 tipe jadwal');
   console.assert(youtubeDurationModes.includes('Acak (Random Range)'), 'YouTube API harus punya mode durasi acak');
   console.assert(formatYoutubeScheduleMode('Harian', 'Tetap (Sesuai Jam Stop)').includes('Harian'), 'Ringkasan YouTube harus memuat tipe jadwal');
   console.assert(getAnalyticsData().length === 0, 'Analytics default harus kosong sampai API asli tersedia');

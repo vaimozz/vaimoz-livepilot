@@ -1,20 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bell, MonitorPlay, Palette, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import { Card } from '@/components/ui/card.jsx';
 import { ThemeSwitcher } from '@/components/shared/ThemeSwitcher.jsx';
 import { formatTopbarDate, formatTopbarTime } from '@/lib/formatters.js';
 import { canUpdateAccount } from '@/lib/validation.js';
-import { api } from '@/lib/api.js';
+import { api, setToken } from '@/lib/api.js';
 
 export function AppTopBar({ now }) {
   const [isThemeSwitcherOpen, setIsThemeSwitcherOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [accountName, setAccountName] = useState('Akun');
   const [draftAccountName, setDraftAccountName] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [accountMessage, setAccountMessage] = useState('Profil akun lokal siap diperbarui.');
+  const [notifications, setNotifications] = useState([]);
+  const [notifCount, setNotifCount] = useState(0);
+  const notifRef = useRef(null);
 
   const loadAccount = async () => {
     try {
@@ -28,8 +32,43 @@ export function AppTopBar({ now }) {
     }
   };
 
+  const loadNotifications = async () => {
+    try {
+      const result = await api.monitor.logs({ limit: 20 });
+      const logs = (result.logs || []).filter(
+        (l) => l.level === 'ERROR' || l.level === 'WARN' || (l.level === 'INFO' && l.message?.includes('Stream'))
+      ).slice(0, 10).map((l) => ({
+        title: l.level === 'ERROR' ? '⛔ Error' : l.level === 'WARN' ? '⚠️ Peringatan' : 'ℹ️ Info',
+        message: l.message || '-',
+        time: l.timestamp ? new Date(l.timestamp).toLocaleTimeString('id-ID') : '-',
+        type: l.level === 'ERROR' ? 'error' : l.level === 'WARN' ? 'warn' : 'info',
+      }));
+      setNotifications(logs);
+      setNotifCount(logs.filter((l) => l.type === 'error' || l.type === 'warn').length);
+    } catch {
+      setNotifications([]);
+    }
+  };
+
+  const handleLogout = () => {
+    setToken(null);
+    window.dispatchEvent(new CustomEvent('vaimoz:unauthorized'));
+  };
+
+  // Close notif panel when clicking outside
+  useEffect(() => {
+    const handler = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setIsNotifOpen(false);
+      }
+    };
+    if (isNotifOpen) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isNotifOpen]);
+
   useEffect(() => {
     loadAccount();
+    loadNotifications();
   }, []);
 
   const openAccountModal = () => {
@@ -119,14 +158,48 @@ export function AppTopBar({ now }) {
             </span>
           </button>
           
-          <button 
-            type="button" 
-            className="rounded-lg p-1.5 transition" 
-            style={{ color: 'var(--text-muted)' }}
-            aria-label="Notifikasi"
-          >
-            <Bell className="h-4 w-4" />
-          </button>
+          {/* Bell Notification Button */}
+          <div className="relative" ref={notifRef}>
+            <button 
+              type="button" 
+              onClick={() => setIsNotifOpen((v) => !v)}
+              className="rounded-lg p-1.5 transition hover:scale-110 relative"
+              style={{ color: isNotifOpen ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+              aria-label="Notifikasi"
+            >
+              <Bell className="h-4 w-4" />
+              {notifCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ backgroundColor: 'var(--error)' }}>
+                  {notifCount > 9 ? '9+' : notifCount}
+                </span>
+              )}
+            </button>
+            {isNotifOpen && (
+              <div className="absolute right-0 top-full z-[70] mt-2 w-80 rounded-2xl border shadow-2xl shadow-black/50 overflow-hidden" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}>
+                <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: 'var(--border-primary)' }}>
+                  <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Notifikasi Sistem</span>
+                  <button type="button" onClick={() => setIsNotifOpen(false)} className="text-lg hover:opacity-70" style={{ color: 'var(--text-muted)' }}>×</button>
+                </div>
+                <div className="max-h-72 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+                      <Bell className="h-6 w-6 mx-auto mb-2 opacity-40" />
+                      Tidak ada notifikasi baru
+                    </div>
+                  ) : notifications.map((n, i) => (
+                    <div key={i} className="border-b px-4 py-3 last:border-0" style={{ borderColor: 'var(--border-primary)', backgroundColor: i === 0 ? 'color-mix(in srgb, var(--accent-primary) 5%, transparent)' : 'transparent' }}>
+                      <p className="text-xs font-semibold" style={{ color: n.type === 'error' ? 'var(--error)' : n.type === 'warn' ? 'var(--warning)' : 'var(--text-primary)' }}>{n.title}</p>
+                      <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>{n.message}</p>
+                      <p className="mt-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>{n.time}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t px-4 py-2 text-center text-[10px]" style={{ borderColor: 'var(--border-primary)', color: 'var(--text-muted)' }}>
+                  Notifikasi dari log backend real-time
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -190,18 +263,27 @@ export function AppTopBar({ now }) {
                 {accountMessage}
               </div>
             </div>
-            <div className="flex justify-end gap-3 border-t px-6 py-5" style={{ borderColor: 'var(--border-primary)' }}>
+            <div className="flex justify-between gap-3 border-t px-6 py-5" style={{ borderColor: 'var(--border-primary)' }}>
               <Button 
-                variant="outline" 
-                onClick={() => setIsAccountOpen(false)}
+                variant="outline"
+                onClick={handleLogout}
+                style={{ color: 'var(--error)', borderColor: 'var(--error)' }}
               >
-                Batal
+                Keluar
               </Button>
-              <Button 
-                onClick={saveAccountProfile}
-              >
-                Simpan
-              </Button>
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsAccountOpen(false)}
+                >
+                  Batal
+                </Button>
+                <Button 
+                  onClick={saveAccountProfile}
+                >
+                  Simpan
+                </Button>
+              </div>
             </div>
           </Card>
         </div>

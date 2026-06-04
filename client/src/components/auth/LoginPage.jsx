@@ -159,26 +159,26 @@ export function LoginPage({ onLogin, onRegister }) {
         <div className="mt-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
           {isRegisterMode ? (
             <>
-              <p>Already have an account?</p>
+              <p>Sudah punya akun?</p>
               <button 
                 type="button" 
                 onClick={() => switchAuthMode('login')} 
                 className="mt-1 font-semibold transition hover:underline"
                 style={{ color: 'var(--accent-primary)' }}
               >
-                Login here
+                Masuk di sini
               </button>
             </>
           ) : (
             <>
-              <p>Don't have an account?</p>
+              <p>Belum punya akun?</p>
               <button 
                 type="button" 
                 onClick={() => switchAuthMode('register')} 
                 className="mt-1 font-semibold transition hover:underline"
                 style={{ color: 'var(--accent-primary)' }}
               >
-                Register here
+                Daftar di sini
               </button>
             </>
           )}
