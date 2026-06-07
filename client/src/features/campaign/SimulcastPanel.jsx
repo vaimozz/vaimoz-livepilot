@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Radio, Tv2, Youtube, Facebook } from 'lucide-react';
+import { Plus, Trash2, Radio, Tv2, PlayCircle, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import { cx } from '@/lib/cn.js';
 import { api } from '@/lib/api.js';
@@ -7,14 +7,14 @@ import { api } from '@/lib/api.js';
 const PLATFORM_PRESETS = [
   {
     name: 'YouTube',
-    icon: Youtube,
+    icon: PlayCircle,
     color: 'text-red-400',
     rtmpUrl: 'rtmp://a.rtmp.youtube.com/live2',
     streamKey: '',
   },
   {
     name: 'Facebook Live',
-    icon: Facebook,
+    icon: Share2,
     color: 'text-blue-400',
     rtmpUrl: 'rtmps://live-api-s.facebook.com:443/rtmp/',
     streamKey: '',
