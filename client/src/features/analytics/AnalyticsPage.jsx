@@ -13,7 +13,8 @@ import {
   ChevronRight,
   TrendingUp,
   Share2,
-  Users
+  Users,
+  Download
 } from 'lucide-react';
 import { 
   Area, 
@@ -70,6 +71,30 @@ export function AnalyticsPage() {
   const [selectedChannelId, setSelectedChannelId] = useState('all');
   const [channelAnalytics, setChannelAnalytics] = useState(null);
   const [isLoadingChannelAnalytics, setIsLoadingChannelAnalytics] = useState(false);
+  const [isExportingCsv, setIsExportingCsv] = useState(false);
+
+  // Kumpulkan filter aktif untuk export CSV
+  const getActiveFilters = () => {
+    const params = {};
+    if (selectedCampaign !== 'Semua Kampanye') {
+      const found = analyticsData?.campaignsList?.find(c => c.name === selectedCampaign);
+      if (found) params.campaignId = found.id;
+    }
+    if (selectedPlatform !== 'Semua Platform') params.platform = selectedPlatform;
+    if (selectedPeriod !== 'Semua Waktu') params.period = selectedPeriod;
+    return params;
+  };
+
+  const exportCsv = async () => {
+    setIsExportingCsv(true);
+    try {
+      await api.analytics.exportCsv(getActiveFilters());
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Gagal mengekspor CSV.');
+    } finally {
+      setIsExportingCsv(false);
+    }
+  };
 
   // 1. Fetch data analitik dari backend
   const fetchAnalytics = async () => {
@@ -210,6 +235,15 @@ export function AnalyticsPage() {
               className="h-12 w-full xl:w-auto rounded-xl border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-6 text-sm font-bold text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]"
             >
               <RefreshCw className={cx("mr-2 h-4 w-4", isLoading && "animate-spin")} /> Segarkan Data
+            </Button>
+            <Button
+              variant="outline"
+              onClick={exportCsv}
+              disabled={isExportingCsv}
+              className="h-12 w-full xl:w-auto rounded-xl border-emerald-500/30 bg-emerald-500/10 px-6 text-sm font-bold text-emerald-300 hover:bg-emerald-500/20"
+            >
+              <Download className={cx("mr-2 h-4 w-4", isExportingCsv && "animate-pulse")} />
+              {isExportingCsv ? 'Mengekspor...' : 'Export CSV'}
             </Button>
           </div>
           {errorMessage && (

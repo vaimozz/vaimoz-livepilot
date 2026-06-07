@@ -299,6 +299,38 @@ function runMigrations() {
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // ── FITUR 7: Webhook Outbound ─────────────────────────────────────────────
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS webhooks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        url TEXT NOT NULL,
+        events_json TEXT NOT NULL DEFAULT '[]',
+        secret TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        last_triggered_at TEXT,
+        last_status INTEGER,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // ── FITUR 10: API Key Management ──────────────────────────────────────────
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS api_keys (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        key_hash TEXT NOT NULL UNIQUE,
+        key_prefix TEXT NOT NULL,
+        permissions_json TEXT NOT NULL DEFAULT '["read"]',
+        last_used_at TEXT,
+        expires_at TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
   });
 
   // Jalankan seluruh migrasi dalam satu transaction atomik

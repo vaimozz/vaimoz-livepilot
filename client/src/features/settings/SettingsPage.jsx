@@ -5,6 +5,8 @@ import { Card, CardContent } from '@/components/ui/card.jsx';
 import { cx } from '@/lib/cn.js';
 import { facebookIntegrationChecklist } from '@/data/integrations.js';
 import { api } from '@/lib/api.js';
+import { WebhookSettings } from './WebhookSettings.jsx';
+import { ApiKeySettings } from './ApiKeySettings.jsx';
 
 function channelInitial(ch) {
   return ch.avatar || ch.title?.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'YT';
@@ -560,6 +562,12 @@ export function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Webhook Outbound */}
+      <WebhookSettings onMessage={setSettingsMessage} />
+
+      {/* API Key Management */}
+      <ApiKeySettings onMessage={setSettingsMessage} />
 
       {/* Backup & Restore */}
       <Card className="rounded-3xl border-slate-800 bg-slate-900/70 shadow-xl">

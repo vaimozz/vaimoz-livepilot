@@ -19,6 +19,8 @@ import { healthRouter } from './services/http/health.routes.js';
 import { backupRouter } from './services/http/backup.routes.js';
 import { templatesRouter } from './services/http/templates.routes.js';
 import { notificationsRouter } from './services/http/notifications.routes.js';
+import { webhooksRouter } from './services/http/webhooks.routes.js';
+import { apikeysRouter } from './services/http/apikeys.routes.js';
 import { loadScheduledCampaigns, setupAutoCleanup } from './services/scheduler.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
@@ -77,6 +79,8 @@ app.use('/api/health', healthRouter);
 app.use('/api/backup', backupRouter);
 app.use('/api/templates', templatesRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/webhooks', webhooksRouter);
+app.use('/api/apikeys', apikeysRouter);
 
 const frontendDir = path.resolve(process.cwd(), 'public/frontend');
 if (fs.existsSync(path.join(frontendDir, 'index.html'))) {

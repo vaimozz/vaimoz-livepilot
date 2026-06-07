@@ -2,10 +2,18 @@ import { useState } from 'react';
 import { Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent } from '@/components/ui/card.jsx';
-import { themes, applyTheme as setGlobalTheme } from '@/lib/themeManager.js';
+import {
+  themes,
+  applyTheme as setGlobalTheme,
+  applyAutoTheme,
+  setupAutoThemeListener,
+  removeAutoThemeListener,
+  AUTO_THEME_KEY,
+} from '@/lib/themeManager.js';
 
 // Deskripsi singkat per tema untuk UI
 const themeDescriptions = {
+  auto:       'Otomatis gelap/terang sesuai OS',
   cyberpunk:  'Pure hitam, aksen hijau neon',
   slate:      'Dark navy, aksen biru cyan',
   light:      'Putih bersih, aksen biru',
@@ -23,7 +31,13 @@ export function ThemeSwitcher({ isOpen, onClose }) {
   });
 
   const applyTheme = (themeKey) => {
-    setGlobalTheme(themeKey);
+    if (themeKey === AUTO_THEME_KEY) {
+      applyAutoTheme();
+      setupAutoThemeListener();
+    } else {
+      removeAutoThemeListener();
+      setGlobalTheme(themeKey);
+    }
     setCurrentTheme(themeKey);
   };
 
@@ -68,54 +82,98 @@ export function ThemeSwitcher({ isOpen, onClose }) {
 
           {/* Theme Grid — 3 kolom */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto pr-1">
-            {Object.entries(themes).map(([key, theme]) => (
-              <button
-                key={key}
-                onClick={() => applyTheme(key)}
-                className="relative p-4 rounded-2xl border-2 transition-all duration-200 text-left hover:scale-[1.03]"
-                style={{
-                  borderColor: currentTheme === key ? theme.colors['--accent-primary'] : 'var(--border-primary)',
-                  backgroundColor: currentTheme === key
-                    ? `color-mix(in srgb, ${theme.colors['--accent-primary']} 12%, ${theme.colors['--bg-tertiary']})`
-                    : theme.colors['--bg-tertiary'],
-                }}
-              >
-                {/* Centang aktif */}
-                {currentTheme === key && (
-                  <div
-                    className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+            {Object.entries(themes).map(([key, theme]) => {
+              const isAuto = key === AUTO_THEME_KEY;
+              const isActive = currentTheme === key;
+
+              // Kartu auto: gradient setengah gelap setengah terang
+              if (isAuto) {
+                return (
+                  <button
+                    key={key}
+                    onClick={() => applyTheme(key)}
+                    className="relative p-4 rounded-2xl border-2 transition-all duration-200 text-left hover:scale-[1.03]"
                     style={{
-                      backgroundColor: theme.colors['--accent-primary'],
-                      color: theme.colors['--bg-primary'],
+                      borderColor: isActive ? '#00E599' : 'var(--border-primary)',
+                      background: isActive
+                        ? 'linear-gradient(135deg, color-mix(in srgb, #00E599 12%, #1A1A1A) 50%, color-mix(in srgb, #00E599 12%, #f8fafc) 50%)'
+                        : 'linear-gradient(135deg, #1A1A1A 50%, #f8fafc 50%)',
                     }}
                   >
-                    ✓
+                    {isActive && (
+                      <div
+                        className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+                        style={{ backgroundColor: '#00E599', color: '#0A0A0A' }}
+                      >
+                        ✓
+                      </div>
+                    )}
+                    <div className="text-3xl mb-2 leading-none">{theme.icon || '🖥️'}</div>
+                    <p className="font-bold text-sm leading-tight mb-1" style={{ color: 'var(--text-primary)' }}>
+                      {theme.name}
+                    </p>
+                    <p className="text-[11px] leading-tight mb-3" style={{ color: 'var(--text-muted)' }}>
+                      {themeDescriptions[key]}
+                    </p>
+                    {/* Preview bar: setengah gelap setengah terang */}
+                    <div className="flex gap-1.5">
+                      <div className="h-4 flex-1 rounded-md" style={{ background: 'linear-gradient(to right, #0A0A0A 50%, #ffffff 50%)' }} />
+                      <div className="h-4 flex-1 rounded-md" style={{ background: 'linear-gradient(to right, #00E599 50%, #3b82f6 50%)' }} />
+                      <div className="h-4 flex-1 rounded-md" style={{ background: 'linear-gradient(to right, #1A1A1A 50%, #f1f5f9 50%)' }} />
+                    </div>
+                  </button>
+                );
+              }
+
+              return (
+                <button
+                  key={key}
+                  onClick={() => applyTheme(key)}
+                  className="relative p-4 rounded-2xl border-2 transition-all duration-200 text-left hover:scale-[1.03]"
+                  style={{
+                    borderColor: isActive ? theme.colors['--accent-primary'] : 'var(--border-primary)',
+                    backgroundColor: isActive
+                      ? `color-mix(in srgb, ${theme.colors['--accent-primary']} 12%, ${theme.colors['--bg-tertiary']})`
+                      : theme.colors['--bg-tertiary'],
+                  }}
+                >
+                  {/* Centang aktif */}
+                  {isActive && (
+                    <div
+                      className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+                      style={{
+                        backgroundColor: theme.colors['--accent-primary'],
+                        color: theme.colors['--bg-primary'],
+                      }}
+                    >
+                      ✓
+                    </div>
+                  )}
+
+                  {/* Emoji + nama */}
+                  <div className="text-3xl mb-2 leading-none">{theme.icon || '🎨'}</div>
+                  <p
+                    className="font-bold text-sm leading-tight mb-1"
+                    style={{ color: theme.colors['--text-primary'] }}
+                  >
+                    {theme.name}
+                  </p>
+                  <p
+                    className="text-[11px] leading-tight mb-3"
+                    style={{ color: theme.colors['--text-muted'] }}
+                  >
+                    {themeDescriptions[key] || ''}
+                  </p>
+
+                  {/* Preview 3 warna aksen */}
+                  <div className="flex gap-1.5">
+                    <div className="h-4 flex-1 rounded-md" style={{ backgroundColor: theme.colors['--accent-primary'] }} />
+                    <div className="h-4 flex-1 rounded-md" style={{ backgroundColor: theme.colors['--accent-secondary'] }} />
+                    <div className="h-4 flex-1 rounded-md" style={{ backgroundColor: theme.colors['--accent-tertiary'] }} />
                   </div>
-                )}
-
-                {/* Emoji + nama */}
-                <div className="text-3xl mb-2 leading-none">{theme.icon || '🎨'}</div>
-                <p
-                  className="font-bold text-sm leading-tight mb-1"
-                  style={{ color: theme.colors['--text-primary'] }}
-                >
-                  {theme.name}
-                </p>
-                <p
-                  className="text-[11px] leading-tight mb-3"
-                  style={{ color: theme.colors['--text-muted'] }}
-                >
-                  {themeDescriptions[key] || ''}
-                </p>
-
-                {/* Preview 3 warna aksen */}
-                <div className="flex gap-1.5">
-                  <div className="h-4 flex-1 rounded-md" style={{ backgroundColor: theme.colors['--accent-primary'] }} />
-                  <div className="h-4 flex-1 rounded-md" style={{ backgroundColor: theme.colors['--accent-secondary'] }} />
-                  <div className="h-4 flex-1 rounded-md" style={{ backgroundColor: theme.colors['--accent-tertiary'] }} />
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
 
           {/* Footer hint */}
@@ -132,4 +190,3 @@ export function ThemeSwitcher({ isOpen, onClose }) {
     </div>
   );
 }
-

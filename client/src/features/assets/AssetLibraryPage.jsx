@@ -12,6 +12,7 @@ import {
 import { api } from '@/lib/api.js';
 import { AssetMediaCard } from './AssetMediaCard.jsx';
 import { GDriveModal } from './GDriveModal.jsx';
+import { AssetPreviewModal } from './AssetPreviewModal.jsx';
 
 function getErrorMessage(error) {
   return error instanceof Error ? error.message : 'Terjadi kesalahan tidak dikenal.';
@@ -38,6 +39,7 @@ export function AssetLibraryPage() {
   const [playlists, setPlaylists] = useState([]);
   const [playlistName, setPlaylistName] = useState('');
   const [productionJobs, setProductionJobs] = useState([]);
+  const [previewAsset, setPreviewAsset] = useState(null);
   
   // States untuk form Produksi Album
   const [prodName, setProdName] = useState('');
@@ -434,6 +436,7 @@ export function AssetLibraryPage() {
                   onEditNameChange={setEditingAssetName}
                   onSaveRename={saveEditAsset}
                   onCancelRename={cancelEditAsset}
+                  onPreview={(item) => setPreviewAsset(item)}
                 />
               ))}
             </div>
@@ -605,6 +608,9 @@ export function AssetLibraryPage() {
             setAssetTab(assetTabFromType(asset.type));
           }}
         />
+      )}
+      {previewAsset && (
+        <AssetPreviewModal item={previewAsset} onClose={() => setPreviewAsset(null)} />
       )}
     </div>
   );

@@ -530,6 +530,11 @@ export async function pollUntilLiveAndNotify(channelId, broadcastId, campaignNam
         logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} is now LIVE`);
         notifyBroadcastLive({ campaignName, broadcastId, watchUrl, title })
           .catch(e => logEvent('ERROR', 'Telegram', e.message));
+        // Fitur 7: Webhook outbound — broadcast.live
+        try {
+          const { triggerWebhooks } = await import('./webhookService.js');
+          triggerWebhooks('broadcast.live', { broadcastId, campaignName, watchUrl, title });
+        } catch { /* abaikan jika webhookService belum tersedia */ }
         return; // Done!
       }
 

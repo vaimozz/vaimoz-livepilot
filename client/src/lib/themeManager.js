@@ -3,7 +3,16 @@
  * Handles theme initialization and application
  */
 
+export const AUTO_THEME_KEY = 'auto';
+
 export const themes = {
+  auto: {
+    name: 'Ikuti Sistem',
+    icon: '🖥️',
+    description: 'Otomatis gelap/terang sesuai OS',
+    colors: {},
+    gradient: 'none',
+  },
   cyberpunk: {
     name: 'Set And Forget Dark',
     icon: '🌑',
@@ -205,13 +214,17 @@ export const themes = {
 };
 
 /**
- * Apply theme to document
+ * Apply theme to document.
+ * @param {string} themeKey
+ * @param {boolean} [skipSave=false] - Jangan simpan ke localStorage (digunakan saat mode auto aktif)
  */
-export function applyTheme(themeKey) {
+export function applyTheme(themeKey, skipSave = false) {
   const theme = themes[themeKey];
-  if (!theme) {
-    console.warn(`Theme "${themeKey}" not found, using default`);
-    return applyTheme('cyberpunk');
+  if (!theme || themeKey === AUTO_THEME_KEY) {
+    if (themeKey !== AUTO_THEME_KEY) {
+      console.warn(`Theme "${themeKey}" not found, using default`);
+    }
+    return applyTheme('cyberpunk', skipSave);
   }
 
   const root = document.documentElement;
@@ -234,8 +247,10 @@ export function applyTheme(themeKey) {
     root.classList.add('dark');
   }
   
-  // Save to localStorage
-  localStorage.setItem('theme', themeKey);
+  // Save to localStorage hanya jika tidak di-skip
+  if (!skipSave) {
+    localStorage.setItem('theme', themeKey);
+  }
   
   return theme;
 }
@@ -248,11 +263,61 @@ export function getCurrentTheme() {
 }
 
 /**
+ * Apply the auto theme based on OS preference.
+ * Dark OS → cyberpunk, Light OS → light.
+ * localStorage tetap menyimpan 'auto'.
+ */
+export function applyAutoTheme() {
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(prefersDark ? 'cyberpunk' : 'light', /* skipSave= */ true);
+  // Tetap simpan 'auto' agar pilihan mode auto tidak hilang
+  localStorage.setItem('theme', AUTO_THEME_KEY);
+}
+
+// Internal reference untuk media query listener
+let _autoThemeMediaQuery = null;
+
+function _handleAutoThemeChange(e) {
+  if (localStorage.getItem('theme') === AUTO_THEME_KEY) {
+    applyTheme(e.matches ? 'cyberpunk' : 'light', /* skipSave= */ true);
+    localStorage.setItem('theme', AUTO_THEME_KEY); // tetap simpan 'auto'
+  }
+}
+
+/**
+ * Pasang listener perubahan prefers-color-scheme.
+ * Dipanggil saat pengguna memilih tema 'auto'.
+ */
+export function setupAutoThemeListener() {
+  removeAutoThemeListener(); // bersihkan listener lama jika ada
+  _autoThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  _autoThemeMediaQuery.addEventListener('change', _handleAutoThemeChange);
+}
+
+/**
+ * Lepas listener prefers-color-scheme.
+ * Dipanggil saat pengguna memilih tema selain 'auto'.
+ */
+export function removeAutoThemeListener() {
+  if (_autoThemeMediaQuery) {
+    _autoThemeMediaQuery.removeEventListener('change', _handleAutoThemeChange);
+    _autoThemeMediaQuery = null;
+  }
+}
+
+/**
  * Initialize theme on app load
  */
 export function initializeTheme() {
   const savedTheme = getCurrentTheme();
-  applyTheme(savedTheme);
+
+  if (savedTheme === AUTO_THEME_KEY) {
+    applyAutoTheme();
+    setupAutoThemeListener();
+  } else {
+    applyTheme(savedTheme);
+  }
+
   return savedTheme;
 }
 

@@ -183,3 +183,109 @@ analyticsRouter.get('/', asyncHandler(async (req, res) => {
     streams: rows.map(serializeStream),
   });
 }));
+
+// ── GET /api/analytics/export ─────────────────────────────────────────────────
+// Query parameter sama dengan endpoint analytics utama.
+analyticsRouter.get('/export', asyncHandler(async (req, res) => {
+  const { format = 'csv', campaignId, platform, period } = req.query;
+
+  if (format !== 'csv') {
+    return res.status(400).json({ error: 'Format tidak didukung. Gunakan ?format=csv' });
+  }
+
+  let sql = `
+    SELECT s.*, c.name as campaign_name
+    FROM streams s
+    LEFT JOIN campaigns c ON s.campaign_id = c.id
+  `;
+  const conditions = [];
+  const queryParams = [];
+
+  if (campaignId) {
+    conditions.push('s.campaign_id = ?');
+    queryParams.push(Number(campaignId));
+  }
+  if (platform && platform !== 'Semua Platform') {
+    conditions.push('s.platform = ?');
+    queryParams.push(platform);
+  }
+  if (period) {
+    if (period === '7 Hari Terakhir') {
+      conditions.push("s.created_at >= datetime('now', '-7 days')");
+    } else if (period === '28 Hari Terakhir') {
+      conditions.push("s.created_at >= datetime('now', '-28 days')");
+    } else if (period === '90 Hari Terakhir') {
+      conditions.push("s.created_at >= datetime('now', '-90 days')");
+    } else if (period === '12 Bulan Terakhir') {
+      conditions.push("s.created_at >= datetime('now', '-1 year')");
+    }
+  }
+  if (conditions.length > 0) {
+    sql += ' WHERE ' + conditions.join(' AND ');
+  }
+  sql += ' ORDER BY s.created_at DESC';
+
+  const rows = db.prepare(sql).all(...queryParams);
+
+  // Helper: escape nilai CSV yang mengandung koma, kutip, atau newline
+  function escapeCell(value) {
+    if (value === null || value === undefined) return '';
+    const str = String(value);
+    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  }
+
+  // Header CSV
+  const headers = [
+    'ID',
+    'Judul',
+    'Kampanye',
+    'Platform',
+    'Status',
+    'Mulai',
+    'Selesai',
+    'Durasi (menit)',
+    'Views',
+    'Puncak Penonton',
+    'Likes',
+    'Komentar',
+    'Broadcast ID',
+  ];
+
+  const csvRows = rows.map((s) => {
+    let durationMinutes = '';
+    if (s.started_at) {
+      const start = new Date(s.started_at).getTime();
+      const end = s.stopped_at ? new Date(s.stopped_at).getTime() : Date.now();
+      const diff = Math.round((end - start) / 60000);
+      if (diff >= 0) durationMinutes = diff;
+    }
+    return [
+      s.id,
+      s.chosen_title || '',
+      s.campaign_name || '',
+      s.platform || '',
+      s.status || '',
+      s.started_at || '',
+      s.stopped_at || '',
+      durationMinutes,
+      s.youtube_total_views || 0,
+      s.youtube_concurrent_viewers || 0,
+      s.youtube_likes || 0,
+      s.youtube_comments || 0,
+      s.youtube_broadcast_id || '',
+    ].map(escapeCell);
+  });
+
+  const csvContent = [
+    headers.join(','),
+    ...csvRows.map((row) => row.join(',')),
+  ].join('\n');
+
+  const dateStr = new Date().toISOString().slice(0, 10);
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="vaimoz-analytics-${dateStr}.csv"`);
+  res.send('\uFEFF' + csvContent); // BOM agar Excel baca UTF-8 dengan benar
+}));

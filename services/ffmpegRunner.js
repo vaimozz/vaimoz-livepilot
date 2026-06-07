@@ -85,6 +85,7 @@ function buildFfmpegArgs({ inputPath, outputUrl, encoder = {} }) {
 
 import { notifyStreamStarted, notifyStreamStopped, notifyStreamError, notifyStreamReconnecting } from './telegramService.js';
 import { createNotification } from './notificationService.js';
+import { triggerWebhooks } from './webhookService.js';
 
 export function listRunningStreams() {
   return [...runningProcesses.entries()].map(([streamId, item]) => ({ streamId, pid: item.process.pid, startedAt: item.startedAt }));
@@ -137,6 +138,8 @@ export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP',
 
       // Fitur 5: Notifikasi in-app
       createNotification('stream_start', 'Stream Dimulai', `Campaign "${campaignName}" mulai live di ${platform}.`, { streamId, campaignName, platform });
+      // Fitur 7: Webhook outbound
+      triggerWebhooks('stream.start', { streamId, campaignName, platform });
     }
 
     child.stdout.on('data', (buffer) => {
@@ -185,6 +188,8 @@ export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP',
         notifyStreamStopped({ campaignName, streamId }).catch(e => logEvent('ERROR', 'Telegram', e.message));
         // Fitur 5: Notifikasi in-app stream stop
         createNotification('stream_stop', 'Stream Dihentikan', `Campaign "${campaignName}" telah selesai streaming.`, { streamId, campaignName });
+        // Fitur 7: Webhook outbound
+        triggerWebhooks('stream.stop', { streamId, campaignName });
         return;
       }
 
@@ -243,6 +248,8 @@ export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP',
 
         // Fitur 5: Notifikasi in-app stream error
         createNotification('stream_error', 'Stream Error', `Campaign "${campaignName}" gagal reconnect setelah ${maxRetries} percobaan.`, { streamId, campaignName, code, signal });
+        // Fitur 7: Webhook outbound
+        triggerWebhooks('stream.error', { streamId, campaignName, code, signal });
       }
     });
 

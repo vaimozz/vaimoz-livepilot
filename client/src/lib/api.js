@@ -191,6 +191,29 @@ export const api = {
       const search = new URLSearchParams(params).toString();
       return apiRequest(`/analytics${search ? `?${search}` : ''}`);
     },
+    exportCsv: (params = {}) => {
+      const token = getToken();
+      const search = new URLSearchParams({ ...params, format: 'csv' }).toString();
+      return fetch(`${API_BASE}/analytics/export?${search}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }).then(async (res) => {
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(errText || 'Gagal mengekspor data.');
+        }
+        const blob = await res.blob();
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `vaimoz-analytics-${dateStr}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return { ok: true };
+      });
+    },
   },
   production: {
     jobs: () => apiRequest('/production/jobs'),
@@ -274,6 +297,19 @@ export const api = {
     markAllRead: () => apiRequest('/notifications/read-all', { method: 'POST' }),
     remove: (id) => apiRequest(`/notifications/${id}`, { method: 'DELETE' }),
     clear: () => apiRequest('/notifications', { method: 'DELETE' }),
+  },
+  webhooks: {
+    list: () => apiRequest('/webhooks'),
+    create: (payload) => apiRequest('/webhooks', { method: 'POST', body: JSON.stringify(payload) }),
+    update: (id, payload) => apiRequest(`/webhooks/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+    remove: (id) => apiRequest(`/webhooks/${id}`, { method: 'DELETE' }),
+    test: (id) => apiRequest(`/webhooks/${id}/test`, { method: 'POST' }),
+  },
+  apiKeys: {
+    list: () => apiRequest('/apikeys'),
+    create: (payload) => apiRequest('/apikeys', { method: 'POST', body: JSON.stringify(payload) }),
+    update: (id, payload) => apiRequest(`/apikeys/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+    revoke: (id) => apiRequest(`/apikeys/${id}`, { method: 'DELETE' }),
   },
   streamHealth: {
     streams: () => apiRequest('/health/streams'),

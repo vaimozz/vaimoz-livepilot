@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Activity, FileVideo, Image as ImageIcon, Trash2, Music2 } from 'lucide-react';
+import { Activity, FileVideo, Image as ImageIcon, Trash2, Music2, Eye } from 'lucide-react';
 import { AssetNameEditor } from './AssetNameEditor.jsx';
 import { cx } from '@/lib/cn.js';
 
@@ -57,7 +57,7 @@ function MediaPreview({ item }) {
   );
 }
 
-export function AssetMediaCard({ item, isSelected, onToggleSelect, onDelete, viewMode, isEditing, editName, onStartEdit, onEditNameChange, onSaveRename, onCancelRename }) {
+export function AssetMediaCard({ item, isSelected, onToggleSelect, onDelete, viewMode, isEditing, editName, onStartEdit, onEditNameChange, onSaveRename, onCancelRename, onPreview }) {
   const isVideo = item.type === 'Video';
   const isAudio = item.type === 'Audio';
   const isImage = item.type === 'Images';
@@ -82,6 +82,7 @@ export function AssetMediaCard({ item, isSelected, onToggleSelect, onDelete, vie
         <div className="col-span-2 text-slate-300">{item.size}</div>
         <div className="col-span-2 text-slate-300">{item.resolution || item.duration || '-'}</div>
         <div className="col-span-1 flex justify-end gap-2">
+          <button type="button" onClick={() => onPreview?.(item)} className="rounded-lg p-2 text-slate-400 hover:bg-cyan-500/10 hover:text-cyan-300" title="Preview"><Eye className="h-4 w-4" /></button>
           <button type="button" onClick={() => onStartEdit(item)} className="rounded-lg p-2 text-slate-400 hover:bg-cyan-500/10 hover:text-cyan-300">✎</button>
           <button type="button" onClick={() => onDelete(item.id)} className="rounded-lg p-2 text-slate-400 hover:bg-red-500/10 hover:text-red-300"><Trash2 className="h-4 w-4" /></button>
         </div>
@@ -120,6 +121,7 @@ export function AssetMediaCard({ item, isSelected, onToggleSelect, onDelete, vie
             : <p className="truncate text-sm font-bold text-white">{item.name}</p>
           }
           <div className="flex shrink-0 items-center gap-1 opacity-0 transition group-hover:opacity-100">
+            <button type="button" onClick={() => onPreview?.(item)} className="rounded-lg p-1 text-slate-500 hover:bg-cyan-500/10 hover:text-cyan-300" title="Preview"><Eye className="h-4 w-4" /></button>
             <button type="button" onClick={() => onStartEdit(item)} className="rounded-lg p-1 text-slate-500 hover:bg-cyan-500/10 hover:text-cyan-300">✎</button>
             <button type="button" onClick={() => onDelete(item.id)} className="rounded-lg p-1 text-slate-500 hover:bg-red-500/10 hover:text-red-300"><Trash2 className="h-4 w-4" /></button>
           </div>
