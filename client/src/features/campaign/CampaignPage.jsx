@@ -27,6 +27,8 @@ import { AssetSelectorPanel, EncoderPanel } from './AssetRunnerPanel.jsx';
 import { YoutubePlaylistModal } from './YoutubePlaylistModal.jsx';
 import { YoutubeLiveControls } from './YoutubeLiveControls.jsx';
 import { YoutubeLiveStats } from './YoutubeLiveStats.jsx';
+import { SimulcastPanel } from './SimulcastPanel.jsx';
+import { TemplateModal } from './TemplateModal.jsx';
 
 function todayString() {
   return new Date().toISOString().slice(0, 10);
@@ -156,6 +158,9 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
   const campaignThumbnailAssets = campaignAssets.filter((item) => item.type === 'Images' || item.type === 'Thumbnail');
   const availableYoutubePlaylists = youtubePlaylists.filter((playlist) => String(playlist.channelId) === String(youtubeChannelId));
   const selectedYoutubePlaylist = availableYoutubePlaylists.find((playlist) => String(playlist.id) === String(youtubePlaylistId)) || availableYoutubePlaylists[0] || null;
+
+  // Fitur 4: Template Modal state
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
 
 
@@ -700,7 +705,18 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
 
   return (
     <>
-      <header className="mb-8 flex flex-col justify-between gap-4 lg:flex-row lg:items-center"><SectionTitle eyebrow="Kampanye Live" title="Form Kampanye Baru" description="Pilih mode live: Manual RTMP atau YouTube API otomatis penuh." /></header>
+      <header className="mb-8 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+        <SectionTitle eyebrow="Kampanye Live" title="Form Kampanye Baru" description="Pilih mode live: Manual RTMP atau YouTube API otomatis penuh." />
+        {/* Fitur 4: Tombol Template */}
+        <button
+          type="button"
+          onClick={() => setIsTemplateModalOpen(true)}
+          className="flex items-center gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-400 hover:bg-amber-500/20 transition"
+        >
+          <Radio className="h-4 w-4" />
+          Template Kampanye
+        </button>
+      </header>
       <CampaignModeSelector campaignMode={campaignMode} setCampaignMode={setCampaignMode} setCampaignMessage={setCampaignMessage} />
       <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm text-slate-300">{campaignMessage}</section>
       
@@ -749,6 +765,12 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
            </CardContent>
          </Card>
         {showAssetRunner ? <Card className="rounded-3xl border-slate-800 bg-slate-900/70"><CardContent className="p-5"><h3 className="mb-1 text-lg font-bold text-white">FFmpeg Runner</h3><p className="mb-5 text-sm text-slate-400">Pengaturan proses encoding.</p><EncoderPanel state={youtubeState} setters={setters} saveCampaignDraft={saveCampaignDraft} /></CardContent></Card> : null}
+
+        {/* Fitur 3: Simulcast Panel */}
+        <SimulcastPanel
+          campaignId={lastCampaignIdRef.current}
+          onMessage={setCampaignMessage}
+        />
       </section>
       
       {showRecurringHistory && lastCampaignIdRef.current && (
@@ -758,6 +780,17 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
       )}
       
       <YoutubePlaylistModal open={isYoutubePlaylistModalOpen} onClose={() => setIsYoutubePlaylistModalOpen(false)} value={newYoutubePlaylistName} setValue={setNewYoutubePlaylistName} onCreate={createYoutubePlaylist} channelName={youtubeChannels.find((channel) => String(channel.id) === String(youtubeChannelId))?.name || 'Channel YouTube'} />
+
+      {/* Fitur 4: Template Modal */}
+      <TemplateModal
+        isOpen={isTemplateModalOpen}
+        onClose={() => setIsTemplateModalOpen(false)}
+        onApply={(campaign) => {
+          setCampaignMessage(`✅ Kampanye "${campaign.name}" dibuat dari template. Silakan edit dan mulai live.`);
+        }}
+        currentCampaignId={lastCampaignIdRef.current}
+        currentCampaignName={isManualMode ? manualCampaignName : youtubeCampaignName}
+      />
     </>
   );
 }

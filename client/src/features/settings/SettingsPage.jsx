@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bell, KeyRound, RefreshCw, Save, Send, Server, ShieldCheck, Trash2 } from 'lucide-react';
+import { Bell, Database, Download, KeyRound, RefreshCw, Save, Send, Server, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent } from '@/components/ui/card.jsx';
 import { cx } from '@/lib/cn.js';
@@ -50,7 +50,17 @@ export function SettingsPage() {
   const [facebookPageToken, setFacebookPageToken] = useState('');
   const [facebookStatus, setFacebookStatus] = useState('Belum dikonfigurasi');
 
-  const loadSettings = async () => {
+  // Backup & Restore
+  const [backupStatus, setBackupStatus] = useState(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+
+  const loadBackupStatus = async () => {
+    try {
+      const result = await api.backup.status();
+      setBackupStatus(result);
+    } catch { /* ok */ }
+  };
     try {
       const [sr, pr] = await Promise.all([api.settings.get(), api.settings.getNotifPrefs()]);
       const s = sr.settings || {};
@@ -76,7 +86,7 @@ export function SettingsPage() {
     } finally { setIsLoadingChannels(false); }
   };
 
-  useEffect(() => { loadChannels(); loadSettings(); }, []);
+  useEffect(() => { loadChannels(); loadSettings(); loadBackupStatus(); }, []);
 
   const addChannel = async () => {
     try {
@@ -208,6 +218,40 @@ export function SettingsPage() {
       setFacebookStatus('Belum lengkap'); setSettingsMessage('Lengkapi semua field Facebook.'); return;
     }
     setFacebookStatus('Tersimpan lokal'); setSettingsMessage('Konfigurasi Facebook disimpan lokal.');
+  };
+
+  const exportBackup = async () => {
+    setIsExporting(true);
+    setSettingsMessage('Menyiapkan file backup...');
+    try {
+      await api.backup.export();
+      setSettingsMessage('✅ Backup berhasil diunduh.');
+    } catch (err) {
+      setSettingsMessage(`❌ Gagal export backup: ${err instanceof Error ? err.message : 'Error.'}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const importBackup = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!window.confirm('Import backup akan menimpa data campaign, playlist, dan settings yang ada (dengan nama sama). Lanjutkan?')) {
+      e.target.value = '';
+      return;
+    }
+    setIsImporting(true);
+    setSettingsMessage('Memproses file backup...');
+    try {
+      const result = await api.backup.import(file);
+      setSettingsMessage(`✅ Backup berhasil dipulihkan! ${result.imported.campaigns} campaign, ${result.imported.playlists} playlist, ${result.imported.settings} settings.`);
+      await loadBackupStatus();
+    } catch (err) {
+      setSettingsMessage(`❌ Gagal import: ${err instanceof Error ? err.message : 'Error.'}`);
+    } finally {
+      setIsImporting(false);
+      e.target.value = '';
+    }
   };
 
   const youtubeStatus = connectedChannels.length > 0 ? 'Terhubung' : 'Belum terhubung';
@@ -512,6 +556,68 @@ export function SettingsPage() {
               </tbody>
             </table>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Backup & Restore */}
+      <Card className="rounded-3xl border-slate-800 bg-slate-900/70 shadow-xl">
+        <CardContent className="p-6">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-500/10 ring-1 ring-purple-500/20">
+              <Database className="h-5 w-5 text-purple-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">Backup & Restore</h3>
+              <p className="text-sm text-slate-400">Ekspor dan impor konfigurasi aplikasi</p>
+            </div>
+          </div>
+
+          {/* Stats */}
+          {backupStatus && (
+            <div className="mb-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: 'Campaign', value: backupStatus.counts.campaigns },
+                { label: 'Playlist', value: backupStatus.counts.playlists },
+                { label: 'Settings', value: backupStatus.counts.settings },
+                { label: 'Database', value: `${backupStatus.dbSizeMb} MB` },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-2xl bg-slate-800/50 border border-slate-700 p-3 text-center">
+                  <p className="text-lg font-bold text-white">{stat.value}</p>
+                  <p className="text-xs text-slate-500">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              onClick={exportBackup}
+              disabled={isExporting}
+              className="flex-1 gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              <Download className="h-4 w-4" />
+              {isExporting ? 'Mengekspor...' : 'Export Backup'}
+            </Button>
+            <label className={cx(
+              'flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition cursor-pointer',
+              isImporting
+                ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                : 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700'
+            )}>
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={importBackup}
+                disabled={isImporting}
+              />
+              <Upload className="h-4 w-4" />
+              {isImporting ? 'Mengimpor...' : 'Import Backup'}
+            </label>
+          </div>
+          <p className="mt-3 text-xs text-slate-500">
+            Backup mengekspor campaign, playlist, dan settings (kecuali token sensitif). Impor akan melakukan UPSERT berdasarkan nama.
+          </p>
         </CardContent>
       </Card>
     </div>

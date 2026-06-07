@@ -267,6 +267,38 @@ function runMigrations() {
         FOREIGN KEY (result_asset_id) REFERENCES assets(id) ON DELETE SET NULL
       );
     `);
+
+    // ── FITUR 3: Simulcast — tambah kolom ke streams ──────────────────────────
+    if (!streamCols.includes('simulcast_targets_json')) {
+      db.exec('ALTER TABLE streams ADD COLUMN simulcast_targets_json TEXT');
+    }
+
+    // ── FITUR 4: Campaign Templates ───────────────────────────────────────────
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS campaign_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        mode TEXT NOT NULL,
+        config_json TEXT NOT NULL DEFAULT '{}',
+        is_default INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // ── FITUR 5: Notifikasi In-App ────────────────────────────────────────────
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        data_json TEXT DEFAULT '{}',
+        is_read INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
   });
 
   // Jalankan seluruh migrasi dalam satu transaction atomik

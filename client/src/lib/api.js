@@ -156,6 +156,8 @@ export const api = {
     remove: (id) => apiRequest(`/campaigns/${id}`, { method: 'DELETE' }),
     start:  (id, payload = {}) => apiRequest(`/campaigns/${id}/start`, { method: 'POST', body: JSON.stringify(payload) }),
     startYoutubeLive: (id, payload = {}) => apiRequest(`/campaigns/${id}/start-youtube-live`, { method: 'POST', body: JSON.stringify(payload) }),
+    startSimulcast: (id, targets, durationMinutes) => apiRequest(`/campaigns/${id}/start-simulcast`, { method: 'POST', body: JSON.stringify({ targets, durationMinutes }) }),
+    saveAsTemplate: (campaignId, name, description) => apiRequest(`/campaigns/${campaignId}/save-as-template`, { method: 'POST', body: JSON.stringify({ name, description }) }),
     stop:   (id) => apiRequest(`/campaigns/${id}/stop`, { method: 'POST' }),
   },
   streams: {
@@ -218,6 +220,100 @@ export const api = {
     saveGemini: (apiKey, apiUrl) => apiRequest('/settings/gemini/save', { method: 'POST', body: JSON.stringify({ apiKey, apiUrl }) }),
     deleteGemini: () => apiRequest('/settings/gemini', { method: 'DELETE' }),
     generateGeminiMetadata: (topic) => apiRequest('/settings/gemini/generate-metadata', { method: 'POST', body: JSON.stringify({ topic }) }),
+  },
+  backup: {
+    export: () => {
+      const token = getToken();
+      return fetch(`${API_BASE}/backup/export`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }).then(async (res) => {
+        if (!res.ok) throw new Error('Gagal mengunduh backup.');
+        const blob = await res.blob();
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `vaimoz-backup-${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return { ok: true };
+      });
+    },
+    import: (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            const json = JSON.parse(e.target.result);
+            const result = await apiRequest('/backup/import', { method: 'POST', body: JSON.stringify(json) });
+            resolve(result);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = () => reject(new Error('Gagal membaca file backup.'));
+        reader.readAsText(file);
+      });
+    },
+    status: () => apiRequest('/backup/status'),
+  },
+  templates: {
+    list: () => apiRequest('/templates'),
+    create: (payload) => apiRequest('/templates', { method: 'POST', body: JSON.stringify(payload) }),
+    update: (id, payload) => apiRequest(`/templates/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+    remove: (id) => apiRequest(`/templates/${id}`, { method: 'DELETE' }),
+    apply: (id, name) => apiRequest(`/templates/${id}/apply`, { method: 'POST', body: JSON.stringify({ name }) }),
+    saveFromCampaign: (campaignId, name, description) => apiRequest(`/campaigns/${campaignId}/save-as-template`, { method: 'POST', body: JSON.stringify({ name, description }) }),
+  },
+  notifications: {
+    list: (params = {}) => apiRequest(`/notifications?${new URLSearchParams(params)}`),
+    count: () => apiRequest('/notifications/count'),
+    markRead: (id) => apiRequest(`/notifications/${id}/read`, { method: 'PATCH' }),
+    markAllRead: () => apiRequest('/notifications/read-all', { method: 'POST' }),
+    remove: (id) => apiRequest(`/notifications/${id}`, { method: 'DELETE' }),
+    clear: () => apiRequest('/notifications', { method: 'DELETE' }),
+  },
+  streamHealth: {
+    streams: () => apiRequest('/health/streams'),
+    // SSE — gunakan fetch dengan header Authorization
+    // Kembalikan controller untuk bisa dibatalkan
+    subscribe: (streamId, onMessage, onError) => {
+      const token = getToken();
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      let active = true;
+
+      fetch(`${API_BASE}/health/stream/${streamId}`, { headers })
+        .then((res) => {
+          if (!res.ok) throw new Error(`SSE error: ${res.status}`);
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          function read() {
+            if (!active) return;
+            reader.read().then(({ done, value }) => {
+              if (done || !active) return;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop();
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  try { onMessage(JSON.parse(line.slice(6))); } catch { /* skip */ }
+                }
+              }
+              read();
+            }).catch((err) => { if (active && onError) onError(err); });
+          }
+          read();
+        })
+        .catch((err) => { if (active && onError) onError(err); });
+
+      // Kembalikan cancel function
+      return () => { active = false; };
+    },
   },
   // Helper methods to match Axios-like requests used by some scheduler components
   get: (path, options = {}) => {

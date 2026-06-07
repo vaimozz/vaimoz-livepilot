@@ -105,6 +105,8 @@ export function serializeStream(row) {
     // Smart stop info
     smartStopDelayedUntil: row.smart_stop_delayed_until ?? null,
     smartStopReason: row.smart_stop_reason ?? null,
+    // Simulcast targets
+    simulcastTargets: (() => { try { return row.simulcast_targets_json ? JSON.parse(row.simulcast_targets_json) : null; } catch { return null; } })(),
     startedAt: row.started_at,
     stoppedAt: row.stopped_at,
     // Aset yang dipilih acak saat stream dimulai

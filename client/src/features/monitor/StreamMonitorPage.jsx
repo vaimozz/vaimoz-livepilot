@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { RefreshCw, Search, Trash2, Radio, Square } from 'lucide-react';
+import { RefreshCw, Search, Trash2, Radio, Square, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent } from '@/components/ui/card.jsx';
 import { SectionTitle } from '@/components/shared/SectionTitle.jsx';
 import { ActiveLiveStreamsWidget } from '@/components/shared/ActiveLiveStreamsWidget.jsx';
+import { StreamHealthCard } from './StreamHealthCard.jsx';
 import { cx } from '@/lib/cn.js';
 import { getLogLevelClass } from '@/lib/styleUtils.js';
 import { api } from '@/lib/api.js';
@@ -290,6 +291,27 @@ export function StreamMonitorPage() {
       {activeTab === 'streams' && (
         <div className="space-y-8">
           <ActiveLiveStreamsWidget />
+
+          {/* Stream Health Monitor — tampil untuk stream Online/Starting */}
+          {runningStreams.length > 0 && (
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <Activity className="h-4 w-4 text-cyan-400" />
+                <h3 className="text-sm font-bold text-slate-100">Stream Health Monitor</h3>
+                <span className="text-xs text-slate-500">(realtime • update setiap 2 detik)</span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {runningStreams.map((s) => (
+                  <StreamHealthCard
+                    key={s.streamId}
+                    streamId={s.streamId}
+                    campaignName={s.campaignName}
+                    platform={s.platform}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
           
           <Card className="rounded-3xl border-slate-800 bg-slate-900/70 shadow-xl shadow-black/10">
             <CardContent className="p-5">

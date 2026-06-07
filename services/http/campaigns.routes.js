@@ -3,7 +3,7 @@ import { db, writeJson, logEvent } from '../../db/database.js';
 import { requireAuth } from '../../middleware/auth.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { serializeCampaign, serializeStream } from '../../utils/serializers.js';
-import { startFfmpegStream, stopFfmpegStream } from '../ffmpegRunner.js';
+import { startFfmpegStream, stopFfmpegStream, startSimulcastStream } from '../ffmpegRunner.js';
 import { notifyBroadcastLive, notifyStreamError } from '../telegramService.js';
 import {
   createYoutubeLiveBroadcast,
@@ -427,9 +427,103 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
 }));
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// POST /campaigns/:id/stop
-// Hentikan stream aktif milik campaign ini
+// POST /campaigns/:id/start-simulcast
+// Start kampanye dengan simulcast ke banyak platform sekaligus
 // ═══════════════════════════════════════════════════════════════════════════════
+campaignsRouter.post('/:id/start-simulcast', asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(id);
+  if (!campaign) return res.status(404).json({ error: 'Kampanye tidak ditemukan.' });
+
+  const targets = req.body.targets;
+  if (!Array.isArray(targets) || targets.length < 2) {
+    return res.status(400).json({ error: 'Simulcast membutuhkan minimal 2 target platform.' });
+  }
+  if (targets.length > 5) {
+    return res.status(400).json({ error: 'Simulcast maksimal 5 target platform.' });
+  }
+
+  // Validasi setiap target
+  for (const t of targets) {
+    if (!t.rtmpUrl) return res.status(400).json({ error: `Target "${t.name || '?'}" tidak memiliki RTMP URL.` });
+  }
+
+  let cfg = {};
+  try { cfg = JSON.parse(campaign.config_json || '{}'); } catch { cfg = {}; }
+
+  // Pilih video acak
+  const videoIds = Array.isArray(cfg.videoAssetIds) ? cfg.videoAssetIds.map(Number).filter(Boolean) : [];
+  let chosenVideo = null;
+  if (videoIds.length > 0) {
+    const pl = videoIds.map(() => '?').join(', ');
+    const candidates = db.prepare(`SELECT * FROM assets WHERE id IN (${pl}) AND type = 'Video'`).all(...videoIds);
+    if (candidates.length > 0) chosenVideo = candidates[Math.floor(Math.random() * candidates.length)];
+  }
+  if (!chosenVideo) {
+    chosenVideo = db.prepare("SELECT * FROM assets WHERE type = 'Video' ORDER BY RANDOM() LIMIT 1").get();
+  }
+  if (!chosenVideo) return res.status(400).json({ error: 'Tidak ada video di Pustaka Aset. Upload video sebelum live.' });
+  if (!chosenVideo.path) return res.status(400).json({ error: `Path file tidak ditemukan untuk: ${chosenVideo.name}` });
+
+  const encoder = cfg.encoder || {};
+  const durationMinutes = req.body.durationMinutes || undefined;
+
+  db.prepare('UPDATE campaigns SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run('Aktif', id);
+
+  const started = startSimulcastStream({
+    campaignId: id,
+    platform: `Simulcast (${targets.map((t) => t.name).join(', ')})`,
+    inputPath: chosenVideo.path,
+    targets,
+    encoder,
+    durationMinutes,
+  });
+
+  logEvent('INFO', 'Kampanye', `Campaign #${id} simulcast dimulai ke ${targets.length} platform. Stream #${started.streamId}`);
+
+  res.status(201).json({
+    ok: true,
+    streamId: started.streamId,
+    pid: started.pid,
+    chosenVideo: { id: chosenVideo.id, name: chosenVideo.name },
+    targets: targets.map((t) => ({ name: t.name, rtmpUrl: String(t.rtmpUrl).slice(0, 30) + '...' })),
+  });
+}));
+
+// ── POST /campaigns/:id/save-as-template ──────────────────────────────────────
+campaignsRouter.post('/:id/save-as-template', asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(id);
+  if (!campaign) return res.status(404).json({ error: 'Kampanye tidak ditemukan.' });
+
+  const name = String(req.body.name || campaign.name).trim();
+  const description = String(req.body.description || '').trim();
+
+  const result = db.prepare(`
+    INSERT INTO campaign_templates (name, description, mode, config_json)
+    VALUES (?, ?, ?, ?)
+  `).run(name, description, campaign.mode, campaign.config_json);
+
+  const template = db.prepare('SELECT * FROM campaign_templates WHERE id = ?').get(result.lastInsertRowid);
+  logEvent('INFO', 'Template', `Template "${name}" dibuat dari kampanye #${id}.`);
+  res.status(201).json({ ok: true, template: serializeTemplate(template) });
+}));
+
+function serializeTemplate(row) {
+  if (!row) return null;
+  let config = {};
+  try { config = JSON.parse(row.config_json || '{}'); } catch { config = {}; }
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    mode: row.mode,
+    config,
+    isDefault: Boolean(row.is_default),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
 campaignsRouter.post('/:id/stop', asyncHandler(async (req, res) => {
   const result = await stopActiveCampaignStream(req.params.id);
   if (!result.ok) {

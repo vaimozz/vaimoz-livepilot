@@ -15,6 +15,10 @@ import { schedulerRouter } from './services/http/scheduler.routes.js';
 import { settingsRouter } from './services/http/settings.routes.js';
 import { analyticsRouter } from './services/http/analytics.routes.js';
 import { productionRouter } from './services/http/production.routes.js';
+import { healthRouter } from './services/http/health.routes.js';
+import { backupRouter } from './services/http/backup.routes.js';
+import { templatesRouter } from './services/http/templates.routes.js';
+import { notificationsRouter } from './services/http/notifications.routes.js';
 import { loadScheduledCampaigns, setupAutoCleanup } from './services/scheduler.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
@@ -69,6 +73,10 @@ app.use('/api/scheduler', schedulerRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/production', productionRouter);
+app.use('/api/health', healthRouter);
+app.use('/api/backup', backupRouter);
+app.use('/api/templates', templatesRouter);
+app.use('/api/notifications', notificationsRouter);
 
 const frontendDir = path.resolve(process.cwd(), 'public/frontend');
 if (fs.existsSync(path.join(frontendDir, 'index.html'))) {
