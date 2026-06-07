@@ -52,9 +52,10 @@ settingsRouter.get('/', asyncHandler(async (req, res) => {
 }));
 
 // ── POST /api/settings ────────────────────────────────────────────────────────
-// BUG-L1 FIX: Gunakan allowlist untuk key yang boleh ditulis via endpoint generik.
-// Key sensitif (token, secret) hanya bisa diubah via endpoint spesifik masing-masing.
+// BUG-L1 update: Perluas allowlist dengan key Google OAuth dan Gemini
+// yang perlu disimpan via endpoint generik (sebagai komplemen endpoint spesifik)
 const SETTINGS_ALLOWLIST = new Set([
+  // Notification preferences
   'notify_stream_start',
   'notify_stream_stop',
   'notify_stream_error',
@@ -62,8 +63,16 @@ const SETTINGS_ALLOWLIST = new Set([
   'notify_smart_stop',
   'notify_broadcast_live',
   'viewer_milestone_threshold',
+  // Telegram (via generic — dedicated endpoint juga ada)
   'telegram_chat_id',
+  // Google OAuth credentials (sensitif tapi perlu disimpan via UI settings)
+  'google_client_id',
+  'google_client_secret',
   'google_redirect_uri',
+  // Gemini AI
+  'gemini_api_key',
+  'gemini_api_url',
+  // App preferences
   'app_theme',
   'app_language',
   'default_encoder_mode',
@@ -178,4 +187,55 @@ settingsRouter.post('/gemini/generate-metadata', asyncHandler(async (req, res) =
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+}));
+
+// ── POST /api/settings/google/save ───────────────────────────────────────────
+// Endpoint khusus untuk menyimpan Google OAuth credentials (Client ID & Secret)
+settingsRouter.post('/google/save', asyncHandler(async (req, res) => {
+  const clientId     = String(req.body.clientId     || '').trim();
+  const clientSecret = String(req.body.clientSecret || '').trim();
+  const redirectUri  = String(req.body.redirectUri  || '').trim();
+
+  if (!clientId && !clientSecret) {
+    return res.status(400).json({ error: 'Client ID atau Client Secret wajib diisi.' });
+  }
+
+  if (clientId)     setSetting('google_client_id', clientId);
+  if (clientSecret) setSetting('google_client_secret', clientSecret);
+  if (redirectUri)  setSetting('google_redirect_uri', redirectUri);
+
+  logEvent('INFO', 'Settings', 'Google OAuth credentials disimpan ke database.');
+  res.json({ ok: true, message: 'Google OAuth credentials berhasil disimpan.' });
+}));
+
+// ── DELETE /api/settings/google ───────────────────────────────────────────────
+settingsRouter.delete('/google', asyncHandler(async (req, res) => {
+  db.prepare("DELETE FROM settings WHERE key IN ('google_client_id', 'google_client_secret')").run();
+  logEvent('INFO', 'Settings', 'Google OAuth credentials dihapus dari database.');
+  res.json({ ok: true });
+}));
+
+// ── POST /api/settings/gemini/save ───────────────────────────────────────────
+// Endpoint khusus untuk menyimpan Gemini API Key
+settingsRouter.post('/gemini/save', asyncHandler(async (req, res) => {
+  const apiKey = String(req.body.apiKey || '').trim();
+  const apiUrl = String(req.body.apiUrl || '').trim();
+
+  if (!apiKey) {
+    return res.status(400).json({ error: 'Gemini API Key wajib diisi.' });
+  }
+
+  setSetting('gemini_api_key', apiKey);
+  if (apiUrl) setSetting('gemini_api_url', apiUrl);
+  else db.prepare("DELETE FROM settings WHERE key = 'gemini_api_url'").run();
+
+  logEvent('INFO', 'Settings', 'Gemini API Key disimpan ke database.');
+  res.json({ ok: true, message: 'Gemini API Key berhasil disimpan.' });
+}));
+
+// ── DELETE /api/settings/gemini ───────────────────────────────────────────────
+settingsRouter.delete('/gemini', asyncHandler(async (req, res) => {
+  db.prepare("DELETE FROM settings WHERE key IN ('gemini_api_key', 'gemini_api_url')").run();
+  logEvent('INFO', 'Settings', 'Gemini API Key dihapus dari database.');
+  res.json({ ok: true });
 }));

@@ -342,6 +342,7 @@ export function StreamMonitorPage() {
                       <th className="px-4 py-4 text-center">Puncak Penonton</th>
                       <th className="px-4 py-4 text-center">Likes/Comments</th>
                       <th className="px-5 py-4 text-center">Status</th>
+                      <th className="px-4 py-4 text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800 text-slate-300">
@@ -414,6 +415,19 @@ export function StreamMonitorPage() {
                                     {isOnline && <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />}
                                     {s.status === 'Online' ? 'LIVE' : s.status === 'Starting' ? 'STARTING' : 'OFFLINE'}
                                   </span>
+                                </td>
+                                <td className="px-4 py-4 text-center">
+                                  {isOnline && (
+                                    <button
+                                      type="button"
+                                      onClick={() => stopStream(s.id, s.campaignId)}
+                                      title="Stop stream ini"
+                                      className="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-bold text-rose-400 transition hover:bg-rose-500/20"
+                                    >
+                                      <Square className="h-3 w-3 fill-current" />
+                                      Stop
+                                    </button>
+                                  )}
                                 </td>
                               </tr>
                             );

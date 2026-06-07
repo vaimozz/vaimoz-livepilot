@@ -106,16 +106,12 @@ export function SettingsPage() {
   const saveGoogleApi = async () => {
     setIsSavingGoogle(true);
     try {
-      const payload = {};
-      if (googleClientId.trim()) payload.google_client_id = googleClientId.trim();
-      if (googleClientSecret.trim()) payload.google_client_secret = googleClientSecret.trim();
-
-      // Auto-save frontend redirect URI to sync backend so OAuth URL points to correct domain
-      payload.google_redirect_uri = redirectUri;
-
-      if (Object.keys(payload).length > 0) {
-        await api.settings.save(payload);
-      }
+      // Gunakan endpoint khusus /settings/google/save agar tidak terkena allowlist filter
+      await api.settings.saveGoogle(
+        googleClientId.trim() || undefined,
+        googleClientSecret.trim() || undefined,
+        redirectUri
+      );
       setSettingsMessage('✅ Kredensial Google API disimpan.');
       await loadSettings();
       setGoogleClientId('');
@@ -154,14 +150,11 @@ export function SettingsPage() {
   const saveGeminiApi = async () => {
     setIsSavingGemini(true);
     try {
-      const payload = {};
-      if (geminiApiKey.trim()) payload.gemini_api_key = geminiApiKey.trim();
-      if (geminiApiUrl.trim()) payload.gemini_api_url = geminiApiUrl.trim();
-      else payload.gemini_api_url = ''; // to clear it
-
-      if (Object.keys(payload).length > 0) {
-        await api.settings.save(payload);
-      }
+      // Gunakan endpoint khusus /settings/gemini/save agar tidak terkena allowlist filter
+      await api.settings.saveGemini(
+        geminiApiKey.trim(),
+        geminiApiUrl.trim()
+      );
       setSettingsMessage('✅ Konfigurasi Gemini API disimpan.');
       await loadSettings();
       setGeminiApiKey('');

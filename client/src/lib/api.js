@@ -211,6 +211,12 @@ export const api = {
     deleteTelegram: () => apiRequest('/settings/telegram', { method: 'DELETE' }),
     getNotifPrefs: () => apiRequest('/settings/notifications/prefs'),
     saveNotifPrefs: (prefs) => apiRequest('/settings/notifications', { method: 'POST', body: JSON.stringify(prefs) }),
+    // Google OAuth credentials
+    saveGoogle: (clientId, clientSecret, redirectUri) => apiRequest('/settings/google/save', { method: 'POST', body: JSON.stringify({ clientId, clientSecret, redirectUri }) }),
+    deleteGoogle: () => apiRequest('/settings/google', { method: 'DELETE' }),
+    // Gemini AI
+    saveGemini: (apiKey, apiUrl) => apiRequest('/settings/gemini/save', { method: 'POST', body: JSON.stringify({ apiKey, apiUrl }) }),
+    deleteGemini: () => apiRequest('/settings/gemini', { method: 'DELETE' }),
     generateGeminiMetadata: (topic) => apiRequest('/settings/gemini/generate-metadata', { method: 'POST', body: JSON.stringify({ topic }) }),
   },
   // Helper methods to match Axios-like requests used by some scheduler components

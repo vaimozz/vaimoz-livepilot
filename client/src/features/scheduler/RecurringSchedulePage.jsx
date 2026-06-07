@@ -10,7 +10,7 @@ import {
 } from '@/lib/campaignUtils.js';
 import api from '@/lib/api.js';
 
-export function RecurringSchedulePage() {
+export function RecurringSchedulePage({ setActivePage }) {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -110,7 +110,7 @@ export function RecurringSchedulePage() {
               Refresh
             </Button>
             <Button
-              onClick={() => window.location.href = '/campaign'}
+              onClick={() => setActivePage?.('Kampanye Live')}
               className="bg-cyan-500 hover:bg-cyan-600"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -258,7 +258,7 @@ export function RecurringSchedulePage() {
                 Buat campaign baru dan atur recurring schedule untuk memulai
               </p>
               <Button
-                onClick={() => window.location.href = '/campaign'}
+                onClick={() => setActivePage?.('Kampanye Live')}
                 className="bg-cyan-500 hover:bg-cyan-600"
               >
                 <Plus className="h-4 w-4 mr-2" />

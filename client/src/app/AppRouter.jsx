@@ -7,11 +7,11 @@ import { StreamMonitorPage } from '@/features/monitor/StreamMonitorPage.jsx';
 import { SettingsPage } from '@/features/settings/SettingsPage.jsx';
 
 export function renderPage(activePage, selectedPlatform, setSelectedPlatform, setActivePage, editCampaign, setEditCampaign) {
-  if (activePage === 'Kampanye Live') return <CampaignPage editCampaign={editCampaign} setEditCampaign={setEditCampaign} />;
-  if (activePage === 'Recurring Schedule') return <RecurringSchedulePage />;
+  if (activePage === 'Kampanye Live') return <CampaignPage editCampaign={editCampaign} setEditCampaign={setEditCampaign} setActivePage={setActivePage} />;
+  if (activePage === 'Recurring Schedule') return <RecurringSchedulePage setActivePage={setActivePage} />;
   if (activePage === 'Pustaka Aset') return <AssetLibraryPage />;
   if (activePage === 'Analytics') return <AnalyticsPage />;
-  if (activePage === 'Monitor Stream') return <StreamMonitorPage />;
+  if (activePage === 'Monitor Stream') return <StreamMonitorPage setActivePage={setActivePage} />;
   if (activePage === 'Pengaturan') return <SettingsPage />;
   return <DashboardPage selectedPlatform={selectedPlatform} setSelectedPlatform={setSelectedPlatform} setActivePage={setActivePage} setEditCampaign={setEditCampaign} />;
 }
