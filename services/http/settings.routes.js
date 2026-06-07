@@ -52,19 +52,48 @@ settingsRouter.get('/', asyncHandler(async (req, res) => {
 }));
 
 // ── POST /api/settings ────────────────────────────────────────────────────────
+// BUG-L1 FIX: Gunakan allowlist untuk key yang boleh ditulis via endpoint generik.
+// Key sensitif (token, secret) hanya bisa diubah via endpoint spesifik masing-masing.
+const SETTINGS_ALLOWLIST = new Set([
+  'notify_stream_start',
+  'notify_stream_stop',
+  'notify_stream_error',
+  'notify_viewer_milestone',
+  'notify_smart_stop',
+  'notify_broadcast_live',
+  'viewer_milestone_threshold',
+  'telegram_chat_id',
+  'google_redirect_uri',
+  'app_theme',
+  'app_language',
+  'default_encoder_mode',
+  'default_resolution',
+]);
+
 settingsRouter.post('/', asyncHandler(async (req, res) => {
   const updates = req.body;
   if (!updates || typeof updates !== 'object') {
     return res.status(400).json({ error: 'Body harus berupa object { key: value }.' });
   }
   const saved = [];
+  const rejected = [];
   for (const [key, value] of Object.entries(updates)) {
     if (typeof key !== 'string' || key.startsWith('_')) continue;
+    // BUG-L1 FIX: Hanya izinkan key yang ada dalam allowlist
+    if (!SETTINGS_ALLOWLIST.has(key)) {
+      rejected.push(key);
+      continue;
+    }
     setSetting(key, value);
     saved.push(key);
   }
-  logEvent('INFO', 'Settings', `Updated: ${saved.join(', ')}`);
-  res.json({ ok: true, saved });
+  if (saved.length > 0) {
+    logEvent('INFO', 'Settings', `Updated: ${saved.join(', ')}`);
+  }
+  if (rejected.length > 0) {
+    logEvent('WARN', 'Settings', `Ditolak (tidak ada di allowlist): ${rejected.join(', ')}`);
+  }
+  res.json({ ok: true, saved, rejected: rejected.length > 0 ? rejected : undefined });
 }));
 
 // ── POST /api/settings/telegram/test ─────────────────────────────────────────

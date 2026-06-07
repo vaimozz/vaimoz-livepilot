@@ -89,6 +89,14 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: { fileSize: MAX_UPLOAD_BYTES, files: 20 },
+  // BUG-M3 FIX: Filter file berdasarkan ekstensi server-side (tidak hanya MIME dari client)
+  fileFilter(req, file, cb) {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (!ext || !ALLOWED_EXTENSIONS.has(ext)) {
+      return cb(new Error(`Ekstensi file "${ext || '(tidak ada)'}" tidak diizinkan. Hanya video, audio, dan gambar yang diperbolehkan.`));
+    }
+    cb(null, true);
+  },
 });
 
 function sanitizeFileName(name) {
@@ -110,14 +118,28 @@ function detectType(file) {
   return detectTypeFromMime(file.mimetype || '');
 }
 
+// BUG-M2 FIX: Tambahkan batas maksimum iterasi agar loop tidak berjalan selamanya
+// BUG-M3 FIX: Tambahkan validasi ekstensi file yang diizinkan (server-side)
+const ALLOWED_EXTENSIONS = new Set([
+  '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.ts',  // Video
+  '.mp3', '.wav', '.aac', '.flac', '.ogg', '.m4a',                           // Audio
+  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff',                  // Image
+]);
+
 function getAvailablePath(directory, filename) {
   const safeName = sanitizeFileName(filename) || `asset-${Date.now()}`;
   const parsed = path.parse(safeName);
   let candidate = path.join(directory, safeName);
   let counter = 1;
-  while (fs.existsSync(candidate)) {
+  // BUG-M2 FIX: Batasi maksimum 9999 iterasi untuk mencegah infinite loop
+  const MAX_ITERATIONS = 9999;
+  while (fs.existsSync(candidate) && counter <= MAX_ITERATIONS) {
     candidate = path.join(directory, `${parsed.name}-${counter}${parsed.ext}`);
     counter += 1;
+  }
+  // Jika masih ada konflik setelah MAX_ITERATIONS, tambahkan timestamp unik
+  if (fs.existsSync(candidate)) {
+    candidate = path.join(directory, `${parsed.name}-${Date.now()}${parsed.ext}`);
   }
   return candidate;
 }
@@ -142,14 +164,23 @@ function getFilenameFromDisposition(header, fallback) {
   return fallback;
 }
 
+// BUG-M1 FIX: Tambahkan timeout 30 detik pada setiap fetch GDrive agar tidak hang selamanya
+const GDRIVE_FETCH_TIMEOUT_MS = 30_000;
+
 async function fetchGoogleDrivePublicFile(fileId) {
   const HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36',
   };
 
+  function fetchWithTimeout(url, opts = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), GDRIVE_FETCH_TIMEOUT_MS);
+    return fetch(url, { ...opts, signal: controller.signal }).finally(() => clearTimeout(timer));
+  }
+
   // URL baru resmi Google Drive (lebih andal untuk file publik)
   const primaryUrl = `https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&authuser=0&confirm=t`;
-  let response = await fetch(primaryUrl, { redirect: 'follow', headers: HEADERS });
+  let response = await fetchWithTimeout(primaryUrl, { redirect: 'follow', headers: HEADERS });
   let contentType = response.headers.get('content-type') || '';
 
   // Jika sudah berhasil mendapat file langsung, kembalikan
@@ -159,7 +190,7 @@ async function fetchGoogleDrivePublicFile(fileId) {
 
   // Fallback: coba URL lama dengan confirm=t (bypass virus-scan warning)
   const fallbackUrl = `https://drive.google.com/uc?export=download&confirm=t&id=${encodeURIComponent(fileId)}`;
-  response = await fetch(fallbackUrl, { redirect: 'follow', headers: HEADERS });
+  response = await fetchWithTimeout(fallbackUrl, { redirect: 'follow', headers: HEADERS });
   contentType = response.headers.get('content-type') || '';
 
   // Jika masih HTML, coba parsing token konfirmasi dari halaman
@@ -184,7 +215,7 @@ async function fetchGoogleDrivePublicFile(fileId) {
 
     if (confirmToken) {
       const confirmUrl = `https://drive.google.com/uc?export=download&confirm=${encodeURIComponent(confirmToken)}&id=${encodeURIComponent(fileId)}${uuid ? `&uuid=${encodeURIComponent(uuid)}` : ''}`;
-      response = await fetch(confirmUrl, { redirect: 'follow', headers: HEADERS });
+      response = await fetchWithTimeout(confirmUrl, { redirect: 'follow', headers: HEADERS });
       contentType = response.headers.get('content-type') || '';
     }
 

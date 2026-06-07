@@ -22,29 +22,29 @@
     "clean:data": "node scripts/reset-data.js"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
-    "vite": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "lucide-react": "latest",
-    "framer-motion": "latest",
-    "recharts": "latest",
-    "express": "latest",
-    "cors": "latest",
-    "multer": "latest",
-    "better-sqlite3": "latest",
-    "bcryptjs": "latest",
-    "jsonwebtoken": "latest",
-    "dotenv": "latest",
-    "googleapis": "latest",
-    "node-cron": "latest"
+    "@vitejs/plugin-react": "6.0.2",
+    "vite": "8.0.13",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "lucide-react": "1.16.0",
+    "framer-motion": "12.39.0",
+    "recharts": "3.8.1",
+    "express": "5.2.1",
+    "cors": "2.8.6",
+    "multer": "2.1.1",
+    "better-sqlite3": "12.10.0",
+    "bcryptjs": "3.0.3",
+    "jsonwebtoken": "9.0.3",
+    "dotenv": "17.4.2",
+    "googleapis": "171.4.0",
+    "node-cron": "4.2.1"
   },
   "devDependencies": {
-    "tailwindcss": "latest",
-    "postcss": "latest",
-    "autoprefixer": "latest",
-    "concurrently": "latest",
-    "nodemon": "latest",
-    "@tailwindcss/postcss": "latest"
+    "tailwindcss": "4.3.0",
+    "postcss": "8.5.14",
+    "autoprefixer": "10.5.0",
+    "concurrently": "9.2.1",
+    "nodemon": "3.1.14",
+    "@tailwindcss/postcss": "4.3.0"
   }
 }

@@ -84,7 +84,7 @@ analyticsRouter.get('/', asyncHandler(async (req, res) => {
       }
     }
 
-    const config = s.campaign_config ? JSON.parse(s.campaign_config) : {};
+    const config = s.campaign_config ? (() => { try { return JSON.parse(s.campaign_config); } catch { return {}; } })() : {};
     s.channelName = config.youtubeChannelId ? channelMap[config.youtubeChannelId] || 'Channel Tidak Dikenal' : 'Platform Lain';
   });
 

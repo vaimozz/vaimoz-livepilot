@@ -38,6 +38,33 @@ export function AssetLibraryPage() {
   const [playlists, setPlaylists] = useState([]);
   const [playlistName, setPlaylistName] = useState('');
   const [productionJobs, setProductionJobs] = useState([]);
+  
+  // States untuk form Produksi Album
+  const [prodName, setProdName] = useState('');
+  const [prodDuration, setProdDuration] = useState(60);
+  const [prodResolution, setProdResolution] = useState('1080p Full HD');
+  const [prodShuffle, setProdShuffle] = useState(false);
+
+  const selectedVideos = mediaFiles.filter((item) => selectedIds.includes(item.id) && (item.type === 'Video' || item.type === 'Images'));
+  const selectedAudios = mediaFiles.filter((item) => selectedIds.includes(item.id) && item.type === 'Audio');
+
+  const loadProductionJobs = async () => {
+    try {
+      const res = await api.production.jobs();
+      setProductionJobs(res.jobs || []);
+    } catch (e) {
+      console.error('Gagal memuat job produksi', e);
+    }
+  };
+
+  useEffect(() => {
+    let interval;
+    if (mainTab === 'Produksi Album') {
+      loadProductionJobs();
+      interval = setInterval(loadProductionJobs, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [mainTab]);
 
   const loadAssets = async (nextMessage = '') => {
     setIsLoadingAssets(true);
@@ -193,10 +220,36 @@ export function AssetLibraryPage() {
     setStatusMessage(`${cleanName} berhasil dibuat. Tahap berikutnya bisa disambungkan ke API playlist.`);
   };
 
-  const createProductionJob = () => {
-    const job = { id: Date.now(), name: `Job Produksi ${new Date().toLocaleString('id-ID')}`, mode: 'Batch', albums: 1, status: 'Menunggu' };
-    setProductionJobs((items) => [job, ...items]);
-    setStatusMessage('Produksi batch berhasil masuk antrian. Tahap berikutnya bisa disambungkan ke backend job produksi.');
+  const createProductionJob = async () => {
+    if (!prodName.trim()) return setStatusMessage('Nama album wajib diisi.');
+    if (selectedVideos.length === 0) return setStatusMessage('Pilih minimal 1 background (Video/Gambar) dari File Media terlebih dahulu.');
+    
+    setStatusMessage('Memulai produksi album...');
+    try {
+      await api.production.start({
+        name: prodName.trim(),
+        backgrounds: selectedVideos.map(v => v.id),
+        audios: selectedAudios.map(a => a.id),
+        shuffleAudio: prodShuffle,
+        duration: prodDuration,
+        resolution: prodResolution
+      });
+      setStatusMessage('Job produksi berhasil masuk antrian.');
+      setProdName('');
+      loadProductionJobs();
+    } catch (e) {
+      setStatusMessage(`Gagal memulai produksi: ${getErrorMessage(e)}`);
+    }
+  };
+
+  const deleteJob = async (id) => {
+    if (!window.confirm('Hapus job ini?')) return;
+    try {
+      await api.production.remove(id);
+      loadProductionJobs();
+    } catch (e) {
+      setStatusMessage(`Gagal menghapus job: ${getErrorMessage(e)}`);
+    }
   };
 
   return (
@@ -385,23 +438,90 @@ export function AssetLibraryPage() {
         <div className="grid gap-6 xl:grid-cols-2">
           <div className="rounded-2xl border border-slate-700 bg-slate-900/80 p-6">
             <h3 className="text-xl font-bold text-white">Produksi Album</h3>
-            <p className="mt-2 text-sm text-slate-300">Buat batch album dari pool audio & footage.</p>
-            <Button className="mt-6 h-12 w-full rounded-xl bg-purple-600 text-white hover:bg-purple-500" onClick={createProductionJob}>⊙ Mulai Produksi Album</Button>
-          </div>
-          <div className="rounded-2xl border border-slate-700 bg-slate-900/80 p-6">
-            <h3 className="text-lg font-bold text-white">Antrian Job</h3>
-            {productionJobs.length ? (
-              <div className="mt-4 space-y-3">
-                {productionJobs.map((job) => (
-                  <div key={job.id} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-                    <p className="font-bold text-white">{job.name}</p>
-                    <p className="mt-1 text-xs text-slate-400">{job.mode} • {job.albums} album</p>
-                  </div>
-                ))}
+            <p className="mt-2 text-sm text-slate-300 mb-6">Pilih file media dari tab "File Media" terlebih dahulu untuk menjadikannya background dan audio.</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-400">Nama Album</label>
+                <input value={prodName} onChange={(e) => setProdName(e.target.value)} className="mt-1 h-11 w-full rounded-lg border border-slate-600 bg-slate-800 px-4 text-sm text-white outline-none" placeholder="Contoh: Album Lo-Fi Relax" />
               </div>
-            ) : (
-              <p className="mt-12 text-center text-sm text-slate-400">Belum ada job produksi.</p>
-            )}
+
+              <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-4">
+                <p className="text-sm font-semibold text-slate-200">Media Terpilih</p>
+                <div className="mt-2 flex gap-4 text-sm">
+                  <span className={selectedVideos.length > 0 ? "text-emerald-400" : "text-slate-500"}>{selectedVideos.length} Background</span>
+                  <span className={selectedAudios.length > 0 ? "text-blue-400" : "text-slate-500"}>{selectedAudios.length} Audio</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-400">Durasi (Menit)</label>
+                  <input type="number" min="1" value={prodDuration} onChange={(e) => setProdDuration(Number(e.target.value))} className="mt-1 h-11 w-full rounded-lg border border-slate-600 bg-slate-800 px-4 text-sm text-white outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-400">Resolusi</label>
+                  <select value={prodResolution} onChange={(e) => setProdResolution(e.target.value)} className="mt-1 h-11 w-full rounded-lg border border-slate-600 bg-slate-800 px-4 text-sm text-white outline-none">
+                    <option>1080p Full HD</option>
+                    <option>720p HD</option>
+                    <option>1440p 2K</option>
+                    <option>Original</option>
+                  </select>
+                </div>
+              </div>
+
+              <label className="flex items-center gap-3 cursor-pointer mt-2">
+                <input type="checkbox" checked={prodShuffle} onChange={(e) => setProdShuffle(e.target.checked)} className="h-5 w-5 rounded border-slate-600 bg-slate-800 accent-purple-500" />
+                <span className="text-sm font-semibold text-slate-300">Acak Urutan Audio</span>
+              </label>
+
+              <Button className="mt-6 h-12 w-full rounded-xl bg-purple-600 text-white hover:bg-purple-500 disabled:opacity-50" onClick={createProductionJob} disabled={selectedVideos.length === 0 || !prodName.trim()}>⊙ Mulai Produksi Album</Button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-700 bg-slate-900/80 p-6 flex flex-col h-full max-h-[600px] overflow-hidden">
+            <h3 className="text-lg font-bold text-white mb-4 shrink-0">Antrian Job</h3>
+            <div className="overflow-y-auto space-y-3 pr-2 flex-1 custom-scrollbar">
+              {productionJobs.length ? (
+                productionJobs.map((job) => (
+                  <div key={job.id} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 relative group">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-bold text-white">{job.name}</p>
+                        <p className="mt-1 text-xs text-slate-400">Status: <span className={
+                          job.status === 'Selesai' ? 'text-emerald-400' :
+                          job.status === 'Gagal' ? 'text-red-400' :
+                          job.status === 'Memproses' ? 'text-yellow-400' : 'text-slate-300'
+                        }>{job.status}</span></p>
+                      </div>
+                      {(job.status !== 'Memproses') && (
+                        <button onClick={() => deleteJob(job.id)} className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                    
+                    {job.status === 'Memproses' && (
+                      <div className="mt-3">
+                        <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+                          <span>Progress</span>
+                          <span>{job.progress}%</span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                          <div className="h-full bg-yellow-400 transition-all duration-300" style={{ width: `${job.progress}%` }} />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {job.error_message && (
+                      <p className="mt-2 text-xs text-red-400 bg-red-400/10 p-2 rounded">{job.error_message}</p>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="mt-12 text-center text-sm text-slate-400">Belum ada antrian job.</p>
+              )}
+            </div>
           </div>
         </div>
       )}

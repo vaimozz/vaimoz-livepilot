@@ -162,14 +162,76 @@ function recordExecution(campaignId, status, durationMinutes, errorMessage = nul
 }
 
 /**
- * Calculate next execution time
+ * BUG-M5 FIX: Kalkulasi waktu eksekusi berikutnya berdasarkan cron expression yang sebenarnya,
+ * bukan selalu "+24 jam" yang tidak akurat.
+ * Menggunakan logika parsing sederhana tanpa dependensi eksternal.
  */
 function calculateNextExecution(campaign) {
   const expression = generateCronExpression(campaign);
-  // This is a simplified calculation - in production you'd use a proper cron parser
+  const tz = campaign.recurring_timezone || 'Asia/Jakarta';
   const now = new Date();
-  const next = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Simplified: next day
-  return next.toISOString();
+
+  try {
+    // Parse cron expression: "minute hour dayOfMonth month dayOfWeek"
+    const parts = expression.trim().split(/\s+/);
+    if (parts.length !== 5) {
+      return new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+    }
+
+    const [minutePart, hourPart, domPart, monthPart, dowPart] = parts;
+
+    // Untuk 'once' dengan tanggal spesifik (format: min hour DOM MONTH *)
+    const isSpecificDate = domPart !== '*' && monthPart !== '*';
+    if (isSpecificDate) {
+      const year = now.getFullYear();
+      const month = parseInt(monthPart, 10);
+      const day = parseInt(domPart, 10);
+      const hour = parseInt(hourPart, 10);
+      const minute = parseInt(minutePart, 10);
+      // Coba tahun ini dulu, jika sudah lewat coba tahun depan
+      let next = new Date(year, month - 1, day, hour, minute, 0, 0);
+      if (next <= now) next = new Date(year + 1, month - 1, day, hour, minute, 0, 0);
+      return next.toISOString();
+    }
+
+    const hour = parseInt(hourPart, 10);
+    const minute = parseInt(minutePart, 10);
+
+    // Untuk daily/weekly: cari tanggal berikutnya yang cocok
+    const nextDate = new Date(now);
+    nextDate.setSeconds(0, 0);
+    nextDate.setHours(hour, minute);
+
+    // Jika waktu hari ini sudah lewat, mulai dari besok
+    if (nextDate <= now) {
+      nextDate.setDate(nextDate.getDate() + 1);
+    }
+
+    // Untuk weekly: cari hari berikutnya yang cocok
+    if (dowPart !== '*') {
+      const targetDays = dowPart.split(',').map(Number);
+      for (let i = 0; i < 8; i++) {
+        const dayOfWeek = nextDate.getDay();
+        if (targetDays.includes(dayOfWeek)) break;
+        nextDate.setDate(nextDate.getDate() + 1);
+      }
+    }
+
+    // Untuk monthly: cari bulan berikutnya jika tanggal sudah lewat
+    if (domPart !== '*' && monthPart === '*') {
+      const targetDay = parseInt(domPart, 10);
+      nextDate.setDate(targetDay);
+      if (nextDate <= now) {
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        nextDate.setDate(targetDay);
+      }
+    }
+
+    return nextDate.toISOString();
+  } catch (e) {
+    // Fallback jika parsing gagal
+    return new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  }
 }
 
 const executingCampaigns = new Set(); // Lock untuk mencegah eksekusi beruntun pada waktu bersamaan

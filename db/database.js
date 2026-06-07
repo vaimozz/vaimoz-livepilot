@@ -105,6 +105,19 @@ export function initDatabase() {
       message TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS production_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'Menunggu',
+      progress INTEGER NOT NULL DEFAULT 0,
+      config_json TEXT NOT NULL DEFAULT '{}',
+      error_message TEXT,
+      result_asset_id INTEGER,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (result_asset_id) REFERENCES assets(id) ON DELETE SET NULL
+    );
   `);
 
   seedAdmin();
@@ -112,130 +125,152 @@ export function initDatabase() {
   runMigrations();
 }
 
+// BUG-M7 FIX: Bungkus semua ALTER TABLE dalam satu transaction agar migrasi parsial tidak terjadi
 // ── Migrasi aman: tambahkan kolom baru tanpa merusak data lama ────────────────
 function runMigrations() {
-  const streamCols = db.prepare("PRAGMA table_info(streams)").all().map((c) => c.name);
+  const migrate = db.transaction(() => {
+    const streamCols = db.prepare("PRAGMA table_info(streams)").all().map((c) => c.name);
 
-  if (!streamCols.includes('chosen_video_id')) {
-    db.exec('ALTER TABLE streams ADD COLUMN chosen_video_id INTEGER');
-  }
-  if (!streamCols.includes('chosen_thumbnail_id')) {
-    db.exec('ALTER TABLE streams ADD COLUMN chosen_thumbnail_id INTEGER');
-  }
-  if (!streamCols.includes('chosen_title')) {
-    db.exec('ALTER TABLE streams ADD COLUMN chosen_title TEXT');
-  }
-  if (!streamCols.includes('youtube_broadcast_id')) {
-    db.exec('ALTER TABLE streams ADD COLUMN youtube_broadcast_id TEXT');
-  }
-  if (!streamCols.includes('youtube_stream_id')) {
-    db.exec('ALTER TABLE streams ADD COLUMN youtube_stream_id TEXT');
-  }
-  if (!streamCols.includes('youtube_watch_url')) {
-    db.exec('ALTER TABLE streams ADD COLUMN youtube_watch_url TEXT');
-  }
-  
-  // Chatbot columns
-  if (!streamCols.includes('youtube_live_chat_id')) {
-    db.exec('ALTER TABLE streams ADD COLUMN youtube_live_chat_id TEXT');
-  }
-  if (!streamCols.includes('chatbot_status')) {
-    db.exec('ALTER TABLE streams ADD COLUMN chatbot_status TEXT DEFAULT "inactive"');
-  }
-  if (!streamCols.includes('chatbot_started_at')) {
-    db.exec('ALTER TABLE streams ADD COLUMN chatbot_started_at TEXT');
-  }
-  if (!streamCols.includes('chatbot_stopped_at')) {
-    db.exec('ALTER TABLE streams ADD COLUMN chatbot_stopped_at TEXT');
-  }
-  if (!streamCols.includes('chatbot_message_count')) {
-    db.exec('ALTER TABLE streams ADD COLUMN chatbot_message_count INTEGER DEFAULT 0');
-  }
-  if (!streamCols.includes('chatbot_last_message')) {
-    db.exec('ALTER TABLE streams ADD COLUMN chatbot_last_message TEXT');
-  }
-  
-  // Analytics columns
-  if (!streamCols.includes('youtube_concurrent_viewers')) {
-    db.exec('ALTER TABLE streams ADD COLUMN youtube_concurrent_viewers INTEGER DEFAULT 0');
-  }
-  if (!streamCols.includes('youtube_total_views')) {
-    db.exec('ALTER TABLE streams ADD COLUMN youtube_total_views INTEGER DEFAULT 0');
-  }
-  if (!streamCols.includes('youtube_likes')) {
-    db.exec('ALTER TABLE streams ADD COLUMN youtube_likes INTEGER DEFAULT 0');
-  }
-  if (!streamCols.includes('youtube_comments')) {
-    db.exec('ALTER TABLE streams ADD COLUMN youtube_comments INTEGER DEFAULT 0');
-  }
-  if (!streamCols.includes('youtube_stats_updated_at')) {
-    db.exec('ALTER TABLE streams ADD COLUMN youtube_stats_updated_at TEXT');
-  }
-  
-  // Smart stop columns
-  if (!streamCols.includes('smart_stop_delayed_until')) {
-    db.exec('ALTER TABLE streams ADD COLUMN smart_stop_delayed_until TEXT');
-  }
-  if (!streamCols.includes('smart_stop_reason')) {
-    db.exec('ALTER TABLE streams ADD COLUMN smart_stop_reason TEXT');
-  }
+    if (!streamCols.includes('chosen_video_id')) {
+      db.exec('ALTER TABLE streams ADD COLUMN chosen_video_id INTEGER');
+    }
+    if (!streamCols.includes('chosen_thumbnail_id')) {
+      db.exec('ALTER TABLE streams ADD COLUMN chosen_thumbnail_id INTEGER');
+    }
+    if (!streamCols.includes('chosen_title')) {
+      db.exec('ALTER TABLE streams ADD COLUMN chosen_title TEXT');
+    }
+    if (!streamCols.includes('youtube_broadcast_id')) {
+      db.exec('ALTER TABLE streams ADD COLUMN youtube_broadcast_id TEXT');
+    }
+    if (!streamCols.includes('youtube_stream_id')) {
+      db.exec('ALTER TABLE streams ADD COLUMN youtube_stream_id TEXT');
+    }
+    if (!streamCols.includes('youtube_watch_url')) {
+      db.exec('ALTER TABLE streams ADD COLUMN youtube_watch_url TEXT');
+    }
+    
+    // Chatbot columns
+    if (!streamCols.includes('youtube_live_chat_id')) {
+      db.exec('ALTER TABLE streams ADD COLUMN youtube_live_chat_id TEXT');
+    }
+    if (!streamCols.includes('chatbot_status')) {
+      db.exec('ALTER TABLE streams ADD COLUMN chatbot_status TEXT DEFAULT "inactive"');
+    }
+    if (!streamCols.includes('chatbot_started_at')) {
+      db.exec('ALTER TABLE streams ADD COLUMN chatbot_started_at TEXT');
+    }
+    if (!streamCols.includes('chatbot_stopped_at')) {
+      db.exec('ALTER TABLE streams ADD COLUMN chatbot_stopped_at TEXT');
+    }
+    if (!streamCols.includes('chatbot_message_count')) {
+      db.exec('ALTER TABLE streams ADD COLUMN chatbot_message_count INTEGER DEFAULT 0');
+    }
+    if (!streamCols.includes('chatbot_last_message')) {
+      db.exec('ALTER TABLE streams ADD COLUMN chatbot_last_message TEXT');
+    }
+    
+    // Analytics columns
+    if (!streamCols.includes('youtube_concurrent_viewers')) {
+      db.exec('ALTER TABLE streams ADD COLUMN youtube_concurrent_viewers INTEGER DEFAULT 0');
+    }
+    if (!streamCols.includes('youtube_total_views')) {
+      db.exec('ALTER TABLE streams ADD COLUMN youtube_total_views INTEGER DEFAULT 0');
+    }
+    if (!streamCols.includes('youtube_likes')) {
+      db.exec('ALTER TABLE streams ADD COLUMN youtube_likes INTEGER DEFAULT 0');
+    }
+    if (!streamCols.includes('youtube_comments')) {
+      db.exec('ALTER TABLE streams ADD COLUMN youtube_comments INTEGER DEFAULT 0');
+    }
+    if (!streamCols.includes('youtube_stats_updated_at')) {
+      db.exec('ALTER TABLE streams ADD COLUMN youtube_stats_updated_at TEXT');
+    }
+    
+    // Smart stop columns
+    if (!streamCols.includes('smart_stop_delayed_until')) {
+      db.exec('ALTER TABLE streams ADD COLUMN smart_stop_delayed_until TEXT');
+    }
+    if (!streamCols.includes('smart_stop_reason')) {
+      db.exec('ALTER TABLE streams ADD COLUMN smart_stop_reason TEXT');
+    }
 
-  // Recurring schedule columns for campaigns
-  const campaignCols = db.prepare("PRAGMA table_info(campaigns)").all().map((c) => c.name);
-  
-  if (!campaignCols.includes('recurring_enabled')) {
-    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_enabled INTEGER DEFAULT 0');
-  }
-  if (!campaignCols.includes('recurring_type')) {
-    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_type TEXT DEFAULT "once"');
-  }
-  if (!campaignCols.includes('recurring_days_json')) {
-    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_days_json TEXT DEFAULT "[]"');
-  }
-  if (!campaignCols.includes('recurring_time')) {
-    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_time TEXT');
-  }
-  if (!campaignCols.includes('recurring_duration_mode')) {
-    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_duration_mode TEXT DEFAULT "fixed"');
-  }
-  if (!campaignCols.includes('recurring_duration_minutes')) {
-    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_duration_minutes INTEGER');
-  }
-  if (!campaignCols.includes('recurring_duration_min')) {
-    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_duration_min INTEGER');
-  }
-  if (!campaignCols.includes('recurring_duration_max')) {
-    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_duration_max INTEGER');
-  }
-  if (!campaignCols.includes('recurring_end_date')) {
-    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_end_date TEXT');
-  }
-  if (!campaignCols.includes('recurring_timezone')) {
-    db.exec('ALTER TABLE campaigns ADD COLUMN recurring_timezone TEXT DEFAULT "Asia/Jakarta"');
-  }
-  if (!campaignCols.includes('last_executed_at')) {
-    db.exec('ALTER TABLE campaigns ADD COLUMN last_executed_at TEXT');
-  }
-  if (!campaignCols.includes('next_execution_at')) {
-    db.exec('ALTER TABLE campaigns ADD COLUMN next_execution_at TEXT');
-  }
-  if (!campaignCols.includes('execution_count')) {
-    db.exec('ALTER TABLE campaigns ADD COLUMN execution_count INTEGER DEFAULT 0');
-  }
+    // Recurring schedule columns for campaigns
+    const campaignCols = db.prepare("PRAGMA table_info(campaigns)").all().map((c) => c.name);
+    
+    if (!campaignCols.includes('recurring_enabled')) {
+      db.exec('ALTER TABLE campaigns ADD COLUMN recurring_enabled INTEGER DEFAULT 0');
+    }
+    if (!campaignCols.includes('recurring_type')) {
+      db.exec('ALTER TABLE campaigns ADD COLUMN recurring_type TEXT DEFAULT "once"');
+    }
+    if (!campaignCols.includes('recurring_days_json')) {
+      db.exec('ALTER TABLE campaigns ADD COLUMN recurring_days_json TEXT DEFAULT "[]"');
+    }
+    if (!campaignCols.includes('recurring_time')) {
+      db.exec('ALTER TABLE campaigns ADD COLUMN recurring_time TEXT');
+    }
+    if (!campaignCols.includes('recurring_duration_mode')) {
+      db.exec('ALTER TABLE campaigns ADD COLUMN recurring_duration_mode TEXT DEFAULT "fixed"');
+    }
+    if (!campaignCols.includes('recurring_duration_minutes')) {
+      db.exec('ALTER TABLE campaigns ADD COLUMN recurring_duration_minutes INTEGER');
+    }
+    if (!campaignCols.includes('recurring_duration_min')) {
+      db.exec('ALTER TABLE campaigns ADD COLUMN recurring_duration_min INTEGER');
+    }
+    if (!campaignCols.includes('recurring_duration_max')) {
+      db.exec('ALTER TABLE campaigns ADD COLUMN recurring_duration_max INTEGER');
+    }
+    if (!campaignCols.includes('recurring_end_date')) {
+      db.exec('ALTER TABLE campaigns ADD COLUMN recurring_end_date TEXT');
+    }
+    if (!campaignCols.includes('recurring_timezone')) {
+      db.exec('ALTER TABLE campaigns ADD COLUMN recurring_timezone TEXT DEFAULT "Asia/Jakarta"');
+    }
+    if (!campaignCols.includes('last_executed_at')) {
+      db.exec('ALTER TABLE campaigns ADD COLUMN last_executed_at TEXT');
+    }
+    if (!campaignCols.includes('next_execution_at')) {
+      db.exec('ALTER TABLE campaigns ADD COLUMN next_execution_at TEXT');
+    }
+    if (!campaignCols.includes('execution_count')) {
+      db.exec('ALTER TABLE campaigns ADD COLUMN execution_count INTEGER DEFAULT 0');
+    }
 
-  // Create recurring_history table if not exists
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS recurring_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      campaign_id INTEGER NOT NULL,
-      executed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      status TEXT NOT NULL DEFAULT 'success',
-      duration_minutes INTEGER,
-      error_message TEXT,
-      stream_id INTEGER,
-      FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
-    );
-  `);
+    // Create recurring_history table if not exists
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS recurring_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        campaign_id INTEGER NOT NULL,
+        executed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        status TEXT NOT NULL DEFAULT 'success',
+        duration_minutes INTEGER,
+        error_message TEXT,
+        stream_id INTEGER,
+        FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
+      );
+    `);
+
+    // Create production_jobs table if not exists (for migration of existing dbs)
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS production_jobs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'Menunggu',
+        progress INTEGER NOT NULL DEFAULT 0,
+        config_json TEXT NOT NULL DEFAULT '{}',
+        error_message TEXT,
+        result_asset_id INTEGER,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (result_asset_id) REFERENCES assets(id) ON DELETE SET NULL
+      );
+    `);
+  });
+
+  // Jalankan seluruh migrasi dalam satu transaction atomik
+  migrate();
 }
 
 function seedAdmin() {

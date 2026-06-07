@@ -30,7 +30,10 @@ export function getOAuthClient(tokens = null) {
       const rt = newTokens.refresh_token || tokens.refresh_token;
       if (rt) {
         try {
-          db.prepare(`
+          // BUG-H5 FIX: Update menggunakan access_token lama sebagai identifikasi fallback
+          // agar baris tetap ditemukan meski refresh_token sudah dirotasi oleh Google
+          const oldAccessToken = tokens.access_token || '';
+          const result = db.prepare(`
             UPDATE youtube_channels 
             SET access_token = ?, 
                 refresh_token = ?, 
@@ -43,8 +46,25 @@ export function getOAuthClient(tokens = null) {
             newTokens.expiry_date || (Date.now() + 3600 * 1000),
             rt
           );
+          // BUG-H5 FIX: Jika tidak ada baris yang ter-update (token sudah berubah),
+          // coba update menggunakan access_token lama sebagai identifikasi
+          if (result.changes === 0 && oldAccessToken) {
+            db.prepare(`
+              UPDATE youtube_channels 
+              SET access_token = ?, 
+                  refresh_token = ?, 
+                  expires_at = ?,
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE access_token = ?
+            `).run(
+              newTokens.access_token || tokens.access_token || '',
+              rt,
+              newTokens.expiry_date || (Date.now() + 3600 * 1000),
+              oldAccessToken
+            );
+          }
         } catch (e) {
-          // ignore error if DB is locked or refresh_token doesn't match
+          // ignore error if DB is locked
         }
       }
     });

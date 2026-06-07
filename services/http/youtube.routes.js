@@ -15,13 +15,58 @@ function tokenFromChannel(row) {
   };
 }
 
+// BUG-H3 FIX: Validasi OAuth state parameter untuk mencegah CSRF attack
+// State di-generate saat auth-url dibuat, dan diverifikasi saat callback
+// Gunakan simple lookup map dengan TTL 10 menit
+const oauthStateMap = new Map();
+const OAUTH_STATE_TTL_MS = 10 * 60 * 1000; // 10 menit
+
+function generateOAuthState(userId) {
+  const state = `${userId}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  oauthStateMap.set(state, { userId, createdAt: Date.now() });
+  // Bersihkan state lama
+  for (const [k, v] of oauthStateMap.entries()) {
+    if (Date.now() - v.createdAt > OAUTH_STATE_TTL_MS) oauthStateMap.delete(k);
+  }
+  return state;
+}
+
+function consumeOAuthState(state) {
+  const entry = oauthStateMap.get(state);
+  if (!entry) return null;
+  oauthStateMap.delete(state);
+  if (Date.now() - entry.createdAt > OAUTH_STATE_TTL_MS) return null;
+  return entry;
+}
+
 youtubeRouter.get('/auth-url', requireAuth, asyncHandler(async (req, res) => {
-  res.json({ url: makeAuthUrl(String(req.user.id)) });
+  // BUG-H3 FIX: Buat state unik yang bisa diverifikasi di callback
+  const state = generateOAuthState(req.user.id);
+  const client = (await import('../youtubeService.js').then(m => m.getOAuthClient))();
+  const { getYouTubeScopes } = await import('../youtubeService.js');
+  const url = client.generateAuthUrl({
+    access_type: 'offline',
+    prompt: 'consent',
+    scope: getYouTubeScopes(),
+    state,
+  });
+  res.json({ url });
 }));
 
 youtubeRouter.get('/callback', asyncHandler(async (req, res) => {
   const code = String(req.query.code || '');
   if (!code) return res.status(400).send('Kode OAuth tidak ditemukan.');
+
+  // BUG-H3 FIX: Validasi state parameter untuk mencegah CSRF attack
+  const state = String(req.query.state || '');
+  if (!state) {
+    return res.status(400).send('Parameter state OAuth tidak ditemukan. Kemungkinan CSRF attack.');
+  }
+  const stateEntry = consumeOAuthState(state);
+  if (!stateEntry) {
+    // State tidak valid atau sudah expired — tolak callback
+    return res.status(400).send('State OAuth tidak valid atau sudah kedaluwarsa. Silakan coba sambungkan YouTube lagi dari halaman Pengaturan.');
+  }
   const { tokens, channel } = await exchangeCode(code);
   const snippet = channel?.snippet || {};
   const youtubeChannelId = channel?.id || '';

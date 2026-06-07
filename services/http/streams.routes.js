@@ -214,8 +214,13 @@ streamsRouter.post('/delete', asyncHandler(async (req, res) => {
   if (!Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ error: 'Berikan array id stream yang ingin dihapus.' });
   }
-  const placeholders = ids.map(() => '?').join(', ');
-  const info = db.prepare(`DELETE FROM streams WHERE id IN (${placeholders})`).run(...ids);
+  // BUG-M4 FIX: Validasi bahwa semua id adalah integer positif sebelum query ke DB
+  const validIds = ids.map(Number).filter(id => Number.isInteger(id) && id > 0);
+  if (validIds.length === 0) {
+    return res.status(400).json({ error: 'ID stream tidak valid. Semua ID harus berupa integer positif.' });
+  }
+  const placeholders = validIds.map(() => '?').join(', ');
+  const info = db.prepare(`DELETE FROM streams WHERE id IN (${placeholders})`).run(...validIds);
   res.json({ message: `${info.changes} riwayat stream berhasil dihapus.` });
 }));
 

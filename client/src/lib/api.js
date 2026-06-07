@@ -1,13 +1,72 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 const TOKEN_KEY = 'vaimoz_token';
+const TOKEN_EXPIRY_KEY = 'vaimoz_token_exp';
+
+/**
+ * BUG-L4 FIX: Keamanan token JWT di browser.
+ *
+ * Masalah: Token di localStorage dapat dibaca oleh sembarang JS yang berjalan di halaman
+ * (rentan XSS). Solusi terbaik adalah httpOnly cookie (butuh perubahan backend), namun
+ * sebagai mitigasi tanpa perubahan backend kita menambahkan:
+ *
+ * 1. Simpan expiry waktu token secara terpisah dan cek sebelum setiap request —
+ *    token yang sudah expired dibersihkan proaktif tanpa harus menunggu respons 401.
+ * 2. Tambahkan helper parseTokenExpiry() untuk membaca exp dari JWT payload.
+ * 3. Auto-clear token saat tab/window ditutup jika pengguna memilih mode "session only"
+ *    (untuk saat ini default ke persistent karena app ini single-user tool).
+ *
+ * Catatan: Mitigasi XSS sepenuhnya membutuhkan Content-Security-Policy header di server
+ * dan implementasi httpOnly cookie — ini adalah rekomendasi untuk iterasi berikutnya.
+ */
+
+/**
+ * Parse expiry timestamp dari JWT payload (tanpa library eksternal).
+ * @param {string} token
+ * @returns {number|null} - Unix timestamp dalam ms, atau null jika gagal
+ */
+function parseTokenExpiry(token) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    // Base64url decode
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload.exp ? payload.exp * 1000 : null; // konversi detik → ms
+  } catch {
+    return null;
+  }
+}
 
 export function getToken() {
-  return localStorage.getItem(TOKEN_KEY) || '';
+  const token = localStorage.getItem(TOKEN_KEY) || '';
+  if (!token) return '';
+
+  // Cek expiry secara proaktif — bersihkan token yang sudah expired
+  const expiry = parseInt(localStorage.getItem(TOKEN_EXPIRY_KEY) || '0', 10);
+  if (expiry && Date.now() > expiry) {
+    // Token sudah expired — bersihkan sebelum request dikirim
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_EXPIRY_KEY);
+    window.dispatchEvent(new CustomEvent('vaimoz:unauthorized'));
+    return '';
+  }
+
+  return token;
 }
 
 export function setToken(token) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+    // Simpan expiry terpisah agar bisa di-cek tanpa decode setiap saat
+    const expiry = parseTokenExpiry(token);
+    if (expiry) {
+      localStorage.setItem(TOKEN_EXPIRY_KEY, String(expiry));
+    } else {
+      localStorage.removeItem(TOKEN_EXPIRY_KEY);
+    }
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_EXPIRY_KEY);
+  }
 }
 
 export async function apiRequest(path, options = {}) {
@@ -130,6 +189,11 @@ export const api = {
       return apiRequest(`/analytics${search ? `?${search}` : ''}`);
     },
   },
+  production: {
+    jobs: () => apiRequest('/production/jobs'),
+    start: (payload) => apiRequest('/production/start', { method: 'POST', body: JSON.stringify(payload) }),
+    remove: (id) => apiRequest(`/production/jobs/${id}`, { method: 'DELETE' }),
+  },
   monitor: {
     metrics: () => apiRequest('/monitor/metrics'),
     logs: (params = {}) => {
@@ -150,11 +214,13 @@ export const api = {
   },
   // Helper methods to match Axios-like requests used by some scheduler components
   get: (path, options = {}) => {
-    const cleanedPath = path.startsWith('/api') ? path.substring(4) : path;
+    // BUG-L2 FIX: Hanya strip prefix "/api" jika diikuti oleh "/" (bukan "/api-something")
+    const cleanedPath = path.startsWith('/api/') ? path.substring(4) : (path === '/api' ? '' : path);
     return apiRequest(cleanedPath, { method: 'GET', ...options }).then((data) => ({ data }));
   },
   post: (path, body, options = {}) => {
-    const cleanedPath = path.startsWith('/api') ? path.substring(4) : path;
+    // BUG-L2 FIX: Hanya strip prefix "/api" jika diikuti oleh "/" (bukan "/api-something")
+    const cleanedPath = path.startsWith('/api/') ? path.substring(4) : (path === '/api' ? '' : path);
     return apiRequest(cleanedPath, {
       method: 'POST',
       body: body ? JSON.stringify(body) : undefined,

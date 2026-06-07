@@ -197,17 +197,31 @@ export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP',
 }
 
 export function stopFfmpegStream(streamId) {
-  const item = runningProcesses.get(Number(streamId));
+  const numericId = Number(streamId);
+  const item = runningProcesses.get(numericId);
   if (!item) {
     db.prepare('UPDATE streams SET status = ?, stopped_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-      .run('Stopped', new Date().toISOString(), Number(streamId));
+      .run('Stopped', new Date().toISOString(), numericId);
     return { stopped: false, message: 'Process tidak aktif, status database diset berhenti.' };
   }
 
-  item.process.kill('SIGTERM');
-  runningProcesses.delete(Number(streamId));
+  // BUG-M6 FIX: Tandai stream sebagai 'Stopping' di DB SEBELUM mengirim SIGTERM.
+  // Ini memastikan bahwa saat handler exit berjalan, pengecekan status DB menunjukkan
+  // 'Stopping' sehingga logika reconnect tidak akan melanjutkan spawn process baru.
   db.prepare('UPDATE streams SET status = ?, stopped_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-    .run('Stopping', new Date().toISOString(), Number(streamId));
-  logEvent('INFO', 'FFmpeg Server', `Perintah stop dikirim ke stream #${streamId}`);
+    .run('Stopping', new Date().toISOString(), numericId);
+  
+  // Hapus dari map SEBELUM kill agar handler exit tidak menemukan entry di runningProcesses
+  runningProcesses.delete(numericId);
+  
+  // Kirim sinyal stop
+  try {
+    item.process.kill('SIGTERM');
+  } catch (e) {
+    // Process mungkin sudah mati — abaikan error ini
+    logEvent('WARN', 'FFmpeg Server', `Gagal mengirim SIGTERM ke stream #${numericId}: ${e.message}`);
+  }
+  
+  logEvent('INFO', 'FFmpeg Server', `Perintah stop dikirim ke stream #${numericId}`);
   return { stopped: true };
 }

@@ -1,1054 +1,632 @@
 # Vaimoz LivePilot
 
 [![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](https://github.com/vaimozz/vaimoz-livepilot/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/vaimozz/vaimoz-livepilot/blob/main/LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/vaimozz/vaimoz-livepilot/blob/main/CONTRIBUTING.md)
-[![GitHub Stars](https://img.shields.io/github/stars/vaimozz/vaimoz-livepilot?style=social)](https://github.com/vaimozz/vaimoz-livepilot/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/vaimozz/vaimoz-livepilot?style=social)](https://github.com/vaimozz/vaimoz-livepilot/network/members)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-v18%2B-339933?logo=node.js)](https://nodejs.org)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/vaimozz/vaimoz-livepilot/pulls)
 
-**Vaimoz LivePilot** adalah platform live streaming automation berbasis web yang powerful dan mudah digunakan. Streaming otomatis 24/7 ke YouTube dengan integrasi penuh YouTube API, chatbot automation, real-time analytics, dan Telegram notifications untuk pengalaman streaming yang profesional.
+Platform live streaming automation berbasis web untuk konten creator. Streaming otomatis 24/7 ke YouTube dengan FFmpeg, integrasi YouTube Data API v3, chatbot otomatis, real-time analytics, penjadwalan fleksibel, dan notifikasi Telegram.
 
-[🚀 Quick Start](#-quick-installation) • [📖 Documentation](#-manual-installation) • [🐳 Docker](#-docker-deployment) • [🪛 Troubleshooting](#-troubleshooting) • [💬 Community](https://github.com/vaimozz/vaimoz-livepilot/discussions)
-
----
-
-## ✨ Fitur Utama
-
-### 🎥 **Asset Management**
-- **Upload Video & Thumbnail** - Upload dari local storage atau import langsung dari Google Drive
-- **Asset Library** - Kelola koleksi video dan thumbnail dengan antarmuka yang intuitif
-- **Playlist Management** - Organisir assets ke dalam playlist untuk streaming sequential
-- **Asset Metadata** - Track usage count, file size, dan metadata lengkap
-
-### 📡 **Campaign & Streaming**
-- **YouTube Live Integration** - Start live broadcast otomatis via YouTube Data API v3
-- **Manual RTMP Mode** - Streaming ke platform RTMP custom (Facebook, Twitch, dll)
-- **Auto Video Selection** - Pilih video dan thumbnail secara otomatis atau manual
-- **Smart Stop** - Hentikan stream otomatis berdasarkan jumlah penonton
-- **FFmpeg Streaming** - Video processing dan streaming dengan FFmpeg
-
-### 🤖 **Automation & Intelligence**
-- **YouTube Live Chatbot** - Kirim pesan otomatis ke live chat dengan interval custom
-- **Scheduled Streaming** - Jadwalkan campaign dengan pengaturan waktu fleksibel (node-cron)
-- **Auto-Start Broadcast** - Buat dan start YouTube broadcast otomatis
-- **Smart Stop Logic** - Tunda stop otomatis jika penonton di atas threshold
-
-### 📊 **Analytics & Monitoring**
-- **Real-time YouTube Stats** - Concurrent viewers, total views, likes, comments
-- **Stream Monitor** - Monitor status FFmpeg, PID, duration, dan YouTube broadcast
-- **Activity Logs** - Track semua event aplikasi dengan level (INFO, WARN, ERROR)
-- **Dashboard Overview** - Lihat semua campaign aktif dan statistik real-time
-
-### 🔔 **Notifications**
-- **Telegram Integration** - 6 jenis notifikasi otomatis:
-  - Stream Started
-  - Stream Stopped
-  - Stream Error
-  - Broadcast Live
-  - Viewer Milestone
-  - Smart Stop Delayed
-- **Notification Preferences** - Kontrol notifikasi mana yang aktif
-- **Custom Threshold** - Set milestone viewer untuk notifikasi
-
-### ⚙️ **Settings & Configuration**
-- **YouTube OAuth** - Connect multiple YouTube channels
-- **Default Channel** - Set channel default untuk streaming
-- **Telegram Setup** - Configure bot token dan chat ID via UI
-- **System Status** - Monitor status integrasi dan koneksi
+**[⚡ Quick Start](#-quick-start) · [🐳 Docker](#-docker) · [📡 API](#-api-reference) · [🔧 Troubleshooting](#-troubleshooting)**
 
 ---
 
-## 💻 System Requirements
+## Fitur
 
-- **Node.js** v18 atau versi terbaru (recommended: v22)
-- **FFmpeg** untuk video processing dan streaming
-- **SQLite3** (sudah termasuk dalam package: better-sqlite3)
-- **VPS/Server** dengan minimal 1 Core CPU & 2GB RAM
-- **Port** 8787 (backend) dan 5173 (frontend dev) - dapat disesuaikan di `.env`
-- **Google Cloud Console** - OAuth credentials untuk YouTube API
-- **Telegram Bot** (optional) - Untuk notifikasi
+| Kategori | Fitur |
+|---|---|
+| **Streaming** | FFmpeg streaming, YouTube Live API, Manual RTMP, auto-reconnect (3x retry) |
+| **Aset** | Upload lokal, import Google Drive, library management, metadata otomatis |
+| **Campaign** | YouTube API mode, Manual RTMP mode, rotasi video/thumbnail acak |
+| **Otomasi** | Scheduler recurring (harian/mingguan/bulanan), Smart Stop, Smart Humanizer |
+| **Chatbot** | Kirim pesan ke live chat otomatis, interval custom, mode sequential/random |
+| **Analytics** | Concurrent viewers, total views, likes, comments, grafik harian |
+| **Notifikasi** | Telegram: stream start/stop/error, broadcast live, viewer milestone |
+| **Produksi** | Gabung video + audio jadi satu file MP4 dengan FFmpeg |
+| **Monitoring** | Server metrics (CPU, RAM, disk, network), activity logs real-time |
 
 ---
 
-## ⚡ Quick Installation
+## Persyaratan Sistem
 
-### 1. Clone Repository
+- **Node.js** v18+ (disarankan v22 LTS)
+- **FFmpeg** di PATH sistem atau path custom via `FFMPEG_PATH`
+- RAM minimal **1 GB**, disarankan 2 GB untuk streaming aktif
+- **Google Cloud Project** dengan YouTube Data API v3 diaktifkan (untuk mode YouTube API)
+- **Telegram Bot** opsional, untuk notifikasi
+
+---
+
+## Quick Start
+
+### 1. Clone dan Install
 
 ```bash
 git clone https://github.com/vaimozz/vaimoz-livepilot.git
 cd vaimoz-livepilot
-```
-
-### 2. Install Dependencies
-
-```bash
 npm install
 ```
 
-### 3. Setup Environment
+### 2. Konfigurasi Environment
 
 ```bash
 cp .env.example .env
-node scripts/generate-secret.js
+node scripts/generate-secret.js   # generate JWT_SECRET
 ```
 
-Edit `.env` dan isi:
-- `JWT_SECRET` (dari generate-secret.js)
-- `GOOGLE_CLIENT_ID` (dari Google Cloud Console)
-- `GOOGLE_CLIENT_SECRET` (dari Google Cloud Console)
+Edit `.env` — minimal yang harus diisi:
 
-### 4. Run Development
+```env
+JWT_SECRET=hasil_dari_generate_secret_di_atas
+ADMIN_PASSWORD=passwordkuat123   # ganti dari default!
+
+# Untuk mode YouTube API (opsional jika hanya pakai Manual RTMP)
+GOOGLE_CLIENT_ID=your_client_id
+GOOGLE_CLIENT_SECRET=your_client_secret
+GOOGLE_REDIRECT_URI=http://localhost:8787/api/youtube/callback
+```
+
+> **Penting:** Jangan gunakan password default `admin123` — server akan menampilkan peringatan saat startup.
+
+### 3. Jalankan
 
 ```bash
+# Development (frontend + backend berjalan bersamaan)
 npm run dev
 ```
 
-Akses aplikasi:
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:8787
+| URL | Keterangan |
+|---|---|
+| http://localhost:5173 | Frontend (Vite dev server) |
+| http://localhost:8787 | Backend API |
 
-**Login Default:**
-```
-Username: admin
-Password: admin123
+Login pertama: username `admin`, password sesuai `ADMIN_PASSWORD` di `.env`.
+
+### 4. Build Production
+
+```bash
+npm run build   # build frontend ke public/frontend/
+npm start       # jalankan server production
 ```
 
 ---
 
-## 📧 Manual Installation
+## Instalasi di VPS/Server
 
-### 1. Persiapan Server
+### Install Dependencies
 
-Update sistem operasi:
 ```bash
-sudo apt update && sudo apt upgrade -y
-```
-
-Install Node.js (v22):
-```bash
+# Node.js v22 LTS
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
-```
 
-Verifikasi instalasi Node.js:
-```bash
-node --version  # v22.x.x
-npm --version   # 10.x.x
-```
-
-Install FFmpeg:
-```bash
+# FFmpeg
 sudo apt install ffmpeg -y
+
+# Verifikasi
+node --version && ffmpeg -version
 ```
 
-Verifikasi instalasi FFmpeg:
-```bash
-ffmpeg -version
-```
+### Setup Project
 
-Install Git:
-```bash
-sudo apt install git -y
-```
-
-### 2. Setup Project Vaimoz LivePilot
-
-Clone repository:
 ```bash
 git clone https://github.com/vaimozz/vaimoz-livepilot.git
-```
-
-Masuk ke direktori project:
-```bash
 cd vaimoz-livepilot
-```
-
-Install dependencies:
-```bash
 npm install
-```
-
-Generate JWT Secret:
-```bash
-node scripts/generate-secret.js
-```
-
-Copy dan edit environment variables:
-```bash
 cp .env.example .env
-nano .env
-```
-
-**Konfigurasi `.env` minimal:**
-```env
-# App
-NODE_ENV=production
-PORT=8787 # Ganti dengan port pilihan Anda jika diperlukan
-
-# Frontend
-CLIENT_ORIGIN=http://YOUR_SERVER_IP:8787
-APP_BASE_URL=http://YOUR_SERVER_IP:8787
-
-# Security
-JWT_SECRET=your_generated_secret_here
-
-# Google / YouTube OAuth
-GOOGLE_CLIENT_ID=your_client_id_here
-GOOGLE_CLIENT_SECRET=your_client_secret_here
-GOOGLE_REDIRECT_URI=http://YOUR_SERVER_IP:8787/api/youtube/callback
-
-# Telegram (optional)
-TELEGRAM_BOT_TOKEN=your_bot_token_here
-TELEGRAM_CHAT_ID=your_chat_id_here
-```
-
-Build frontend:
-```bash
+node scripts/generate-secret.js
+nano .env   # isi JWT_SECRET, ADMIN_PASSWORD, Google OAuth, dll
 npm run build
 ```
 
-### 3. Konfigurasi Nginx & Domain (Sangat Direkomendasikan)
+### Konfigurasi `.env` untuk Production
 
-Agar aplikasi dapat diakses secara profesional menggunakan HTTPS (wajib untuk integrasi Google), konfigurasikan Nginx sebagai reverse proxy.
+```env
+NODE_ENV=production
+PORT=8787
+CLIENT_ORIGIN=https://domainanda.com
+APP_BASE_URL=https://domainanda.com
 
-1. Install Nginx dan Certbot:
+JWT_SECRET=secret_panjang_yang_aman_minimal_32_karakter
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=passwordkuatanda
+
+GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-xxx
+GOOGLE_REDIRECT_URI=https://domainanda.com/api/youtube/callback
+
+# Opsional
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+FFMPEG_PATH=ffmpeg
+```
+
+### Jalankan dengan PM2
+
+```bash
+sudo npm install -g pm2
+
+pm2 start app.js --name vaimoz-livepilot
+pm2 save
+pm2 startup   # ikuti instruksi yang muncul untuk auto-start saat reboot
+```
+
+Perintah PM2 yang sering dipakai:
+
+```bash
+pm2 status                        # lihat status
+pm2 logs vaimoz-livepilot         # lihat logs real-time
+pm2 restart vaimoz-livepilot      # restart
+pm2 stop vaimoz-livepilot         # stop
+```
+
+### Nginx Reverse Proxy (disarankan)
+
 ```bash
 sudo apt install nginx certbot python3-certbot-nginx -y
-```
-
-2. Buat konfigurasi Nginx:
-```bash
 sudo nano /etc/nginx/sites-available/livepilot
 ```
-Isi dengan konfigurasi berikut (ganti `domainanda.com` dengan domain asli Anda):
+
 ```nginx
 server {
     listen 80;
     server_name domainanda.com;
 
+    client_max_body_size 5G;   # izinkan upload file besar
+
     location / {
-        proxy_pass http://localhost:8787; # Sesuaikan dengan PORT di file .env Anda
+        proxy_pass http://localhost:8787;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
         proxy_cache_bypass $http_upgrade;
     }
 }
 ```
 
-3. Aktifkan konfigurasi:
 ```bash
 sudo ln -s /etc/nginx/sites-available/livepilot /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
+sudo nginx -t && sudo systemctl restart nginx
+sudo certbot --nginx -d domainanda.com   # pasang SSL (HTTPS)
 ```
 
-### 4. Konfigurasi Firewall
-
-**PENTING: Buka port SSH terlebih dahulu untuk menghindari terputusnya koneksi!**
+### Firewall
 
 ```bash
-# Buka port SSH
 sudo ufw allow ssh
-
-# Buka port untuk Nginx (HTTP & HTTPS)
 sudo ufw allow 'Nginx Full'
-
-# (Opsional) Buka port aplikasi langsung jika tanpa Nginx
-sudo ufw allow 8787 # Sesuaikan jika Anda mengubah port default
-
-# Aktifkan firewall
 sudo ufw enable
 ```
-*(Catatan: Jika Anda menggunakan layanan cloud seperti AWS/Tencent/GCP, pastikan Anda juga membuka port 80 dan 443 di menu Security Group/Firewall pada dashboard penyedia cloud Anda).*
-
-### 5. Install Process Manager (PM2)
-
-Install PM2 untuk mengelola aplikasi di latar belakang:
-```bash
-sudo npm install -g pm2
-```
-
-### 6. Menjalankan Aplikasi
-
-Jalankan aplikasi dengan PM2:
-```bash
-pm2 start app.js --name vaimoz-livepilot
-```
-
-Amankan domain Anda dengan SSL (HTTPS):
-```bash
-sudo certbot --nginx -d domainanda.com
-```
-*(Ikuti instruksi di layar, dan pilih opsi Redirect (2) agar semua trafik diarahkan ke HTTPS).*
-
-**Setup Auto-Restart saat Server Reboot:**
-```bash
-# Simpan konfigurasi PM2 saat ini
-pm2 save
-
-# Setup PM2 untuk auto-start saat server restart
-pm2 startup
-
-# Ikuti instruksi yang muncul, biasanya berupa command yang harus dijalankan dengan sudo
-# Contoh output: sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u username --hp /home/username
-
-# Setelah menjalankan command startup, save kembali
-pm2 save
-```
-
-**Perintah PM2 Berguna:**
-```bash
-# Lihat status aplikasi
-pm2 status
-
-# Restart aplikasi
-pm2 restart vaimoz-livepilot
-
-# Stop aplikasi
-pm2 stop vaimoz-livepilot
-
-# Lihat logs aplikasi
-pm2 logs vaimoz-livepilot
-
-# Monitor resource usage
-pm2 monit
-
-# Hapus aplikasi dari PM2
-pm2 delete vaimoz-livepilot
-```
-
-Akses aplikasi melalui browser:
-```
-http://YOUR_SERVER_IP:8787
-```
-
-Contoh: `http://88.12.34.56:8787`
 
 ---
 
-## 🐳 Docker Deployment
+## Docker
 
-### 1. Persiapan Environment
+### Jalankan dengan Docker Compose
 
-Buat file `.env` di root project:
 ```bash
 cp .env.example .env
-nano .env
-```
+nano .env   # isi konfigurasi
 
-Edit minimal configuration:
-```env
-PORT=8787
-NODE_ENV=production
-JWT_SECRET=your_generated_secret_here
-CLIENT_ORIGIN=http://localhost:8787
-APP_BASE_URL=http://localhost:8787
-GOOGLE_CLIENT_ID=your_client_id_here
-GOOGLE_CLIENT_SECRET=your_client_secret_here
-GOOGLE_REDIRECT_URI=http://localhost:8787/api/youtube/callback
-```
-
-### 2. Build dan Jalankan
-
-```bash
 docker compose up --build -d
 ```
 
-Akses aplikasi: [http://localhost:8787](http://localhost:8787)
+Akses: http://localhost:8787
 
-### 3. Data Persistence
-
-Data akan tersimpan secara otomatis di:
-- **Database**: `./database.sqlite` (mounted ke container)
-- **Uploads**: `./public/uploads/` (mounted ke container)
-
-### 4. Docker Commands
+### Perintah Docker
 
 ```bash
-# Lihat logs
-docker compose logs -f
-
-# Restart container
-docker compose restart
-
-# Stop container
-docker compose down
-
-# Rebuild dan restart
-docker compose up --build -d
-
-# Masuk ke container
-docker compose exec vaimoz-livepilot sh
+docker compose logs -f              # lihat logs
+docker compose restart              # restart
+docker compose down                 # stop dan hapus container
+docker compose up --build -d        # rebuild dan jalankan ulang
+docker compose exec vaimoz-livepilot sh   # masuk ke container
 ```
 
-### 5. Reset Password (Docker)
+### Reset Password (Docker)
 
 ```bash
 docker compose exec vaimoz-livepilot node scripts/reset-password.js
 ```
 
+### Data Persistence
+
+Data disimpan di host dan di-mount ke container:
+
+| Path di Host | Isi |
+|---|---|
+| `./database.sqlite` | Database SQLite |
+| `./public/uploads/` | File yang diupload |
+
 ---
 
-## 🔑 Google Cloud Console Setup
+## Google Cloud Console Setup
 
-### 1. Buat Project Baru
+### 1. Aktifkan YouTube Data API v3
 
-1. Buka [Google Cloud Console](https://console.cloud.google.com/)
-2. Klik **Select a project** → **New Project**
-3. Beri nama project (contoh: "Vaimoz LivePilot")
-4. Klik **Create**
+1. Buka [Google Cloud Console](https://console.cloud.google.com) → buat project baru
+2. **APIs & Services** → **Library** → cari dan aktifkan **YouTube Data API v3**
+3. (Opsional tapi disarankan) aktifkan juga **YouTube Analytics API** untuk data revenue
 
-### 2. Enable YouTube Data API v3
+### 2. Buat OAuth 2.0 Credentials
 
-1. Di sidebar, pilih **APIs & Services** → **Library**
-2. Cari "YouTube Data API v3"
-3. Klik **Enable**
-
-### 3. Buat OAuth 2.0 Credentials
-
-1. Di sidebar, pilih **APIs & Services** → **Credentials**
-2. Klik **Create Credentials** → **OAuth client ID**
-3. Jika diminta, configure OAuth consent screen:
+1. **APIs & Services** → **Credentials** → **Create Credentials** → **OAuth client ID**
+2. Configure **OAuth consent screen** terlebih dahulu:
    - User Type: **External**
-   - App name: "Vaimoz LivePilot"
-   - User support email: your email
-   - Developer contact: your email
-   - Scopes: Add `youtube`, `youtube.force-ssl`, `youtube.upload`
-   - **Test users (SANGAT PENTING):** Tambahkan alamat email Google Anda sendiri. Jika aplikasi berstatus "Testing", Anda WAJIB menambahkan email Anda di sini agar tidak terkena error *403: access_denied*.
-4. Application type: **Web application**
-5. Name: "Vaimoz LivePilot Web Client"
-6. **Authorized JavaScript origins**: 
-   - Masukkan URL HTTPS domain Anda (contoh: `https://domainanda.com`)
-   - *(Alternatif jika tidak punya domain, gunakan Ngrok)*
-7. **Authorized redirect URIs**: 
-   - Tambahkan `/api/youtube/callback` di belakang URL Anda.
-   - Contoh: `https://domainanda.com/api/youtube/callback`
-8. Klik **Create**
-9. Copy **Client ID** dan **Client Secret** ke file `.env` di VPS Anda.
+   - Scopes: tambahkan `youtube`, `youtube.force-ssl`, `youtube.upload`, `yt-analytics.readonly`
+   - **Test users:** tambahkan email Google Anda — wajib jika app masih berstatus "Testing"
+3. Application type: **Web application**
+4. Authorized redirect URIs: `https://domainanda.com/api/youtube/callback`
+5. Copy **Client ID** dan **Client Secret** ke `.env`
 
-### 4. Test OAuth Flow
+### 3. Troubleshoot OAuth
 
-1. Login ke aplikasi
-2. Buka **Settings** → **YouTube Integration**
-3. Klik **Tambah Channel**
-4. Authorize dengan Google account Anda
-5. Channel akan muncul di list
+| Error | Penyebab | Solusi |
+|---|---|---|
+| `redirect_uri_mismatch` | URI tidak cocok | Samakan `GOOGLE_REDIRECT_URI` di `.env` dengan yang di Console |
+| `access_denied` | Email tidak di Test Users | Tambahkan email di OAuth consent screen → Test users |
+| `invalid_client` | Credentials salah | Periksa Client ID dan Secret di `.env` |
 
 ---
 
-## 🤖 Telegram Bot Setup
+## Telegram Bot Setup
 
-### 1. Buat Bot Baru
+1. Buka Telegram → cari **@BotFather** → kirim `/newbot` → ikuti instruksi → copy **Bot Token**
+2. Cari **@userinfobot** → kirim `/start` → catat **Chat ID**
+3. Di aplikasi: **Settings** → **Telegram Notifications** → masukkan token dan chat ID → **Test** → **Simpan**
 
-1. Buka Telegram dan cari **@BotFather**
-2. Kirim `/newbot`
-3. Ikuti instruksi untuk memberi nama bot
-4. Copy **Bot Token** yang diberikan
+Atau isi langsung di `.env`:
 
-### 2. Dapatkan Chat ID
-
-1. Cari **@userinfobot** di Telegram
-2. Kirim `/start`
-3. Bot akan membalas dengan **Chat ID** Anda
-
-### 3. Konfigurasi di Aplikasi
-
-**Opsi 1: Via UI (Recommended)**
-1. Login ke aplikasi
-2. Buka **Settings** → **Telegram Notifications**
-3. Masukkan **Bot Token** dan **Chat ID**
-4. Klik **Test Notifikasi** untuk verifikasi
-5. Klik **Simpan Credentials**
-6. Atur **Notification Preferences** sesuai kebutuhan
-
-**Opsi 2: Via .env**
 ```env
-TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+TELEGRAM_BOT_TOKEN=1234567890:ABCdef...
 TELEGRAM_CHAT_ID=123456789
 ```
 
-### 4. Jenis Notifikasi
+**Jenis notifikasi yang tersedia:**
 
-- **Stream Started** - Saat FFmpeg mulai streaming
-- **Stream Stopped** - Saat stream dihentikan
-- **Stream Error** - Saat terjadi error pada stream
-- **Broadcast Live** - Saat YouTube broadcast status menjadi "live"
-- **Viewer Milestone** - Saat penonton mencapai kelipatan threshold (default: 100)
-- **Smart Stop Delayed** - Saat auto-stop ditunda karena penonton tinggi
+- Stream dimulai / dihentikan / error
+- YouTube broadcast berhasil live
+- Penonton mencapai milestone (threshold dapat diatur)
+- Auto-stop ditunda karena penonton tinggi
 
 ---
 
-## 📝 Reset Password
+## Scripts Utility
 
-Jika lupa password atau perlu reset akun:
+| Perintah | Fungsi |
+|---|---|
+| `node scripts/generate-secret.js` | Generate JWT_SECRET acak |
+| `node scripts/migrate.js` | Jalankan migrasi database |
+| `node scripts/seed-admin.js` | Buat ulang akun admin default |
+| `node scripts/reset-password.js` | Reset password user |
+| `node scripts/reset-data.js` | **Hapus semua data** (campaigns, assets, streams, logs) |
+| `npm run smoke:server` | Smoke test syntax aplikasi |
 
-```bash
-cd vaimoz-livepilot
-node scripts/reset-password.js
+---
+
+## Variabel Environment
+
+Semua variabel lengkap tersedia di `.env.example`. Berikut ringkasannya:
+
+| Variabel | Wajib | Default | Keterangan |
+|---|---|---|---|
+| `NODE_ENV` | — | `development` | `production` untuk server |
+| `PORT` | — | `8787` | Port backend |
+| `CLIENT_ORIGIN` | — | `http://localhost:5173` | URL frontend untuk CORS |
+| `APP_BASE_URL` | — | `http://localhost:8787` | URL base aplikasi |
+| `JWT_SECRET` | ✅ | — | Minimal 32 karakter acak |
+| `ADMIN_USERNAME` | — | `admin` | Username admin default |
+| `ADMIN_PASSWORD` | ✅ | `admin123` | **Wajib diganti!** |
+| `DATABASE_PATH` | — | `./database.sqlite` | Path file database |
+| `UPLOAD_DIR` | — | `./public/uploads` | Direktori upload |
+| `FFMPEG_PATH` | — | `ffmpeg` | Path binary FFmpeg |
+| `GOOGLE_CLIENT_ID` | ✅* | — | *Wajib untuk YouTube API mode |
+| `GOOGLE_CLIENT_SECRET` | ✅* | — | *Wajib untuk YouTube API mode |
+| `GOOGLE_REDIRECT_URI` | ✅* | — | *Wajib untuk YouTube API mode |
+| `TELEGRAM_BOT_TOKEN` | — | — | Opsional, untuk notifikasi |
+| `TELEGRAM_CHAT_ID` | — | — | Opsional, untuk notifikasi |
+
+---
+
+## Struktur Proyek
+
 ```
-
-Ikuti prompt untuk memasukkan username dan password baru.
-
-**Untuk Docker:**
-```bash
-docker compose exec vaimoz-livepilot node scripts/reset-password.js
+vaimoz-livepilot/
+├── client/                     # Frontend React + Vite
+│   ├── src/
+│   │   ├── app/                # Routing dan root component
+│   │   ├── components/         # Komponen UI reusable
+│   │   │   ├── auth/           # Halaman login
+│   │   │   ├── layout/         # Sidebar, TopBar, navigasi
+│   │   │   ├── shared/         # Widget dan card bersama
+│   │   │   └── ui/             # Primitif (button, card)
+│   │   ├── features/           # Halaman per fitur
+│   │   │   ├── analytics/      # Halaman analytics
+│   │   │   ├── assets/         # Asset library
+│   │   │   ├── campaign/       # Manajemen campaign
+│   │   │   ├── dashboard/      # Dashboard utama
+│   │   │   ├── monitor/        # Stream monitor
+│   │   │   ├── production/     # Video production
+│   │   │   └── settings/       # Pengaturan
+│   │   ├── data/               # Konfigurasi navigasi, data statis
+│   │   └── lib/                # API client, utilities
+│   ├── index.html
+│   ├── vite.config.js
+│   └── tailwind.config.js
+├── db/
+│   └── database.js             # Inisialisasi SQLite + migrasi
+├── middleware/
+│   ├── auth.js                 # JWT authentication
+│   └── errorHandler.js         # Global error handler
+├── public/
+│   ├── frontend/               # Output build React
+│   └── uploads/                # File yang diupload user
+├── scripts/                    # Script utilitas
+├── services/
+│   ├── http/                   # Express route handlers
+│   │   ├── analytics.routes.js
+│   │   ├── assets.routes.js
+│   │   ├── auth.routes.js
+│   │   ├── campaigns.routes.js
+│   │   ├── monitor.routes.js
+│   │   ├── playlists.routes.js
+│   │   ├── production.routes.js
+│   │   ├── scheduler.routes.js
+│   │   ├── settings.routes.js
+│   │   ├── streams.routes.js
+│   │   └── youtube.routes.js
+│   ├── ffmpegRunner.js         # Manajemen proses FFmpeg
+│   ├── geminiService.js        # Integrasi Gemini AI
+│   ├── productionService.js    # Video production jobs
+│   ├── scheduler.js            # node-cron scheduling
+│   ├── streamManager.js        # Stop/cleanup stream
+│   ├── telegramService.js      # Notifikasi Telegram
+│   ├── youtubeAnalyticsService.js
+│   ├── youtubeChatService.js   # Live chat chatbot
+│   ├── youtubeLiveService.js   # Broadcast lifecycle
+│   ├── youtubeService.js       # OAuth + YouTube API
+│   └── youtubeTokenUtils.js
+├── utils/
+│   ├── asyncHandler.js         # Wrapper async route
+│   ├── config.js               # Konfigurasi env
+│   └── serializers.js          # Serialisasi response
+├── .env.example
+├── app.js                      # Entry point Express
+├── docker-compose.yml
+├── Dockerfile
+└── package.json
 ```
 
 ---
 
-## ⏰ Pengaturan Timezone Server
+## API Reference
 
-Untuk memastikan scheduled streaming berjalan dengan waktu yang akurat:
+Semua endpoint di-prefix `/api/` dan memerlukan header `Authorization: Bearer <token>` kecuali yang ditandai **publik**.
 
-### Cek timezone saat ini:
-```bash
-timedatectl status
-```
+### Auth
 
-### Lihat daftar timezone tersedia:
-```bash
-timedatectl list-timezones | grep Asia
-```
+| Method | Endpoint | Auth | Keterangan |
+|---|---|---|---|
+| `POST` | `/api/auth/login` | publik | Login, returns `{ token, user }` |
+| `POST` | `/api/auth/register` | publik* | *Hanya jika belum ada user; setelahnya butuh auth |
+| `GET` | `/api/auth/me` | ✅ | Info user yang login |
+| `PATCH` | `/api/auth/me` | ✅ | Update nama/password |
 
-### Set timezone ke WIB (Jakarta):
-```bash
-sudo timedatectl set-timezone Asia/Jakarta
-```
-
-### Restart aplikasi setelah mengubah timezone:
-```bash
-pm2 restart vaimoz-livepilot
-```
-
-**Untuk Docker:**
-```bash
-docker compose restart
-```
-
----
-
-## 🛠️ Script Utilities
-
-### Generate JWT Secret
-```bash
-node scripts/generate-secret.js
-```
-
-### Database Migration
-```bash
-node scripts/migrate.js
-```
-
-### Seed Admin User
-```bash
-node scripts/seed-admin.js
-```
-
-### Reset Password
-```bash
-node scripts/reset-password.js
-```
-
-### Reset All Data
-```bash
-# PERINGATAN: Akan menghapus semua campaigns, assets, streams, dan logs
-node scripts/reset-data.js
-```
-
-### Smoke Test Server
-```bash
-npm run smoke:server
-```
-
----
-
-## 📚 API Documentation
-
-### Authentication
-
-```http
+**Login:**
+```json
 POST /api/auth/login
-Content-Type: application/json
-
-{
-  "username": "admin",
-  "password": "admin123"
-}
+{ "username": "admin", "password": "passwordanda" }
 ```
 
 ### Assets
 
-```http
-# List assets
-GET /api/assets?type=Video
-
-# Upload assets
-POST /api/assets/upload
-Content-Type: multipart/form-data
-
-# Upload from Google Drive
-POST /api/assets/gdrive
-Content-Type: application/json
-
-{
-  "url": "https://drive.google.com/file/d/FILE_ID/view"
-}
-
-# Rename asset
-PATCH /api/assets/:id
-Content-Type: application/json
-
-{
-  "name": "New Name"
-}
-
-# Delete asset
-DELETE /api/assets/:id
-```
+| Method | Endpoint | Keterangan |
+|---|---|---|
+| `GET` | `/api/assets` | List semua aset; `?type=Video` untuk filter |
+| `POST` | `/api/assets/upload` | Upload file (multipart/form-data, field: `files[]`) |
+| `POST` | `/api/assets/gdrive` | Import dari Google Drive: `{ "url": "..." }` |
+| `GET` | `/api/assets/gdrive/progress/:jobId` | Cek progress download GDrive |
+| `PATCH` | `/api/assets/:id` | Rename: `{ "name": "nama-baru.mp4" }` |
+| `DELETE` | `/api/assets/:id` | Hapus aset |
 
 ### Campaigns
 
-```http
-# List campaigns
-GET /api/campaigns
+| Method | Endpoint | Keterangan |
+|---|---|---|
+| `GET` | `/api/campaigns` | List semua campaign |
+| `POST` | `/api/campaigns` | Buat campaign baru |
+| `GET` | `/api/campaigns/:id` | Detail campaign |
+| `PATCH` | `/api/campaigns/:id` | Update campaign |
+| `DELETE` | `/api/campaigns/:id` | Hapus campaign |
+| `POST` | `/api/campaigns/:id/start` | Start stream Manual RTMP |
+| `POST` | `/api/campaigns/:id/start-youtube-live` | Start YouTube Live |
+| `POST` | `/api/campaigns/:id/stop` | Stop stream aktif |
+| `GET` | `/api/campaigns/:id/analytics` | Analytics stream aktif |
+| `POST` | `/api/campaigns/:id/chatbot/start` | Start chatbot |
+| `POST` | `/api/campaigns/:id/chatbot/stop` | Stop chatbot |
+| `GET` | `/api/campaigns/:id/chatbot/status` | Status chatbot |
+| `POST` | `/api/campaigns/:id/chatbot/send` | Kirim pesan manual |
 
-# Create campaign
-POST /api/campaigns
-Content-Type: application/json
+### Streams
 
-{
-  "name": "My Campaign",
-  "mode": "youtube-api",
-  "config_json": {
-    "videoIds": [1, 2, 3],
-    "thumbnailIds": [4, 5],
-    "autoStop": true,
-    "autoStopMinutes": 60
-  }
-}
-
-# Start YouTube Live
-POST /api/campaigns/:id/start-youtube-live
-Content-Type: application/json
-
-{
-  "channelId": 1,
-  "title": "Live Stream Title",
-  "description": "Stream description",
-  "privacy": "public"
-}
-
-# Stop campaign
-POST /api/campaigns/:id/stop
-```
+| Method | Endpoint | Keterangan |
+|---|---|---|
+| `GET` | `/api/streams` | List history stream (paginasi) |
+| `GET` | `/api/streams/running` | Stream yang sedang aktif |
+| `POST` | `/api/streams/:id/stop` | Stop stream by ID |
+| `POST` | `/api/streams/delete` | Hapus history: `{ "ids": [1,2,3] }` |
+| `POST` | `/api/streams/sync` | Sync stats YouTube: `{ "ids": [1,2] }` |
 
 ### YouTube
 
-```http
-# Get OAuth URL
-GET /api/youtube/auth-url
+| Method | Endpoint | Keterangan |
+|---|---|---|
+| `GET` | `/api/youtube/auth-url` | URL OAuth Google |
+| `GET` | `/api/youtube/callback` | Callback OAuth (redirect dari Google) |
+| `GET` | `/api/youtube/channels` | List channel yang terhubung |
+| `DELETE` | `/api/youtube/channels/:id` | Cabut channel |
+| `POST` | `/api/youtube/channels/:id/default` | Set sebagai channel default |
+| `GET` | `/api/youtube/channels/:id/playlists` | List playlist channel |
+| `POST` | `/api/youtube/channels/:id/playlists` | Buat playlist baru |
+| `GET` | `/api/youtube/channels/:id/analytics` | Analytics channel (atau `all`) |
 
-# List connected channels
-GET /api/youtube/channels
+### Scheduler
 
-# Set default channel
-POST /api/youtube/channels/:id/default
+| Method | Endpoint | Keterangan |
+|---|---|---|
+| `POST` | `/api/scheduler/campaigns/:id/schedule` | Jadwalkan campaign |
+| `POST` | `/api/scheduler/campaigns/:id/unschedule` | Hapus jadwal |
+| `POST` | `/api/scheduler/campaigns/:id/pause` | Jeda jadwal |
+| `POST` | `/api/scheduler/campaigns/:id/resume` | Lanjutkan jadwal |
+| `PUT` | `/api/scheduler/campaigns/:id/recurring` | Update pengaturan recurring |
+| `GET` | `/api/scheduler/campaigns/:id/history` | Riwayat eksekusi |
+| `GET` | `/api/scheduler/campaigns` | Semua campaign terjadwal |
 
-# Remove channel
-DELETE /api/youtube/channels/:id
-```
+### Monitor & Settings
 
-### Chatbot
-
-```http
-# Start chatbot
-POST /api/campaigns/:id/chatbot/start
-Content-Type: application/json
-
-{
-  "messages": ["Hello!", "Welcome to the stream!"],
-  "intervalMinutes": 5
-}
-
-# Stop chatbot
-POST /api/campaigns/:id/chatbot/stop
-
-# Get chatbot status
-GET /api/campaigns/:id/chatbot/status
-```
-
-### Monitor
-
-```http
-# Get metrics
-GET /api/monitor/metrics
-
-# Get logs
-GET /api/monitor/logs?level=ERROR&limit=50
-
-# Clear logs
-DELETE /api/monitor/logs
-```
-
-### Settings
-
-```http
-# Get all settings
-GET /api/settings
-
-# Save settings
-POST /api/settings
-Content-Type: application/json
-
-{
-  "telegram_bot_token": "your_token",
-  "telegram_chat_id": "your_chat_id"
-}
-
-# Test Telegram
-POST /api/settings/telegram/test
-Content-Type: application/json
-
-{
-  "botToken": "your_token",
-  "chatId": "your_chat_id"
-}
-```
+| Method | Endpoint | Keterangan |
+|---|---|---|
+| `GET` | `/api/monitor/metrics` | CPU, RAM, disk, network, active streams |
+| `GET` | `/api/monitor/logs` | Logs: `?limit=200&source=FFmpeg` |
+| `DELETE` | `/api/monitor/logs` | Bersihkan semua log |
+| `GET` | `/api/settings` | Baca semua settings |
+| `POST` | `/api/settings` | Simpan settings (key yang diizinkan saja) |
+| `POST` | `/api/settings/telegram/test` | Test koneksi Telegram |
+| `POST` | `/api/settings/telegram/save` | Simpan Telegram credentials |
+| `GET` | `/api/settings/notifications/prefs` | Baca preferensi notifikasi |
+| `POST` | `/api/settings/notifications` | Simpan preferensi notifikasi |
 
 ---
 
-## 🪛 Troubleshooting
+## Tech Stack
 
-### Permission Error
+**Frontend:** React 19 · Vite 8 · Tailwind CSS 4 · Framer Motion · Recharts · Lucide React
+
+**Backend:** Node.js · Express 5 · better-sqlite3 · bcryptjs · jsonwebtoken · multer · googleapis · node-cron
+
+**Infrastruktur:** FFmpeg · Docker · PM2 · SQLite
+
+---
+
+## Troubleshooting
+
+### Stream tidak mau start
 
 ```bash
-chmod -R 755 public/uploads/
-chmod 644 database.sqlite
+# Cek FFmpeg tersedia
+ffmpeg -version
+
+# Cek logs server
+pm2 logs vaimoz-livepilot --lines 50
+
+# Test FFmpeg manual
+ffmpeg -re -i public/uploads/video.mp4 -c copy -f flv rtmp://url-stream-anda
 ```
 
-### Port Already in Use
+### Port sudah dipakai
 
 ```bash
-# Cek proses yang menggunakan port
-sudo lsof -i :8787
-
-# Kill proses jika diperlukan
-sudo kill -9 <PID>
-
-# Atau ubah PORT di .env
-nano .env
-# PORT=8788
+sudo lsof -i :8787      # cari proses yang pakai port
+sudo kill -9 <PID>      # kill proses
+# atau ganti PORT di .env
 ```
 
-### Database Error
+### Error saat upload besar
+
+Tambahkan di Nginx config:
+```nginx
+client_max_body_size 5G;
+```
+
+Restart Nginx: `sudo systemctl restart nginx`
+
+### Password lupa / ingin reset
 
 ```bash
-# Backup database terlebih dahulu
-cp database.sqlite database.sqlite.backup
+node scripts/reset-password.js
+# Docker:
+docker compose exec vaimoz-livepilot node scripts/reset-password.js
+```
 
-# Reset database (PERINGATAN: akan menghapus semua data)
+### Database rusak atau locked
+
+```bash
+cp database.sqlite database.sqlite.backup   # backup dulu!
 rm database.sqlite
+pm2 restart vaimoz-livepilot               # database baru dibuat otomatis
+```
 
-# Restart aplikasi untuk membuat database baru
+### Timezone tidak sesuai (jadwal tidak akurat)
+
+```bash
+# Cek timezone saat ini
+timedatectl status
+
+# Set ke WIB
+sudo timedatectl set-timezone Asia/Jakarta
+
+# Restart aplikasi
 pm2 restart vaimoz-livepilot
 ```
 
-### FFmpeg Not Found
+### YouTube OAuth error
+
+| Error | Solusi |
+|---|---|
+| `redirect_uri_mismatch` | Samakan `GOOGLE_REDIRECT_URI` di `.env` dengan yang di Google Console |
+| `access_denied` | Tambahkan email Anda di OAuth consent screen → Test users |
+| `invalid_client` | Periksa Client ID dan Secret |
+| Token expired | Re-connect channel dari Settings → YouTube Integration |
+
+### Telegram tidak kirim notifikasi
 
 ```bash
-# Install FFmpeg
-sudo apt install ffmpeg -y
-
-# Verifikasi instalasi
-ffmpeg -version
-
-# Jika FFmpeg di lokasi custom, set di .env
-nano .env
-# FFMPEG_PATH=/usr/local/bin/ffmpeg
-```
-
-### YouTube OAuth Error
-
-**Error: redirect_uri_mismatch**
-- Pastikan `GOOGLE_REDIRECT_URI` di `.env` sama persis dengan yang di Google Cloud Console
-- Jangan lupa tambahkan `/api/youtube/callback` di akhir URL
-
-**Error: invalid_client**
-- Periksa `GOOGLE_CLIENT_ID` dan `GOOGLE_CLIENT_SECRET` di `.env`
-- Pastikan credentials masih aktif di Google Cloud Console
-
-**Error: access_denied**
-- Pastikan user sudah ditambahkan sebagai Test User di OAuth consent screen
-- Pastikan scopes YouTube sudah ditambahkan
-
-### Telegram Notification Not Working
-
-```bash
-# Test manual via curl
-curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/sendMessage" \
+# Test manual
+curl -X POST "https://api.telegram.org/bot<TOKEN>/sendMessage" \
   -H "Content-Type: application/json" \
-  -d '{"chat_id":"<CHAT_ID>","text":"Test message"}'
+  -d '{"chat_id":"<CHAT_ID>","text":"Test"}'
 
-# Periksa logs
-pm2 logs vaimoz-livepilot --lines 100
-
-# Atau untuk Docker
-docker compose logs -f --tail=100
-```
-
-### Stream Not Starting
-
-**Periksa FFmpeg:**
-```bash
-ffmpeg -version
-```
-
-**Periksa logs:**
-```bash
-pm2 logs vaimoz-livepilot --lines 50
-```
-
-**Periksa video file:**
-```bash
-ls -lh public/uploads/
-```
-
-**Test FFmpeg manual:**
-```bash
-ffmpeg -re -i public/uploads/your-video.mp4 -c copy -f flv rtmp://test-url
-```
-
-### Docker Troubleshooting
-
-**Tidak bisa login:**
-- Pastikan `JWT_SECRET` tidak berubah
-- Periksa permission folder:
-  ```bash
-  sudo chmod -R 777 public/uploads/
-  ```
-- Clear browser cookies dan coba lagi
-
-**Container restart terus:**
-```bash
-# Lihat logs error
-docker compose logs vaimoz-livepilot
-
-# Periksa .env configuration
-cat .env
-```
-
-**Database locked:**
-```bash
-# Stop container
-docker compose down
-
-# Hapus database (PERINGATAN: data hilang)
-rm database.sqlite
-
-# Start ulang
-docker compose up -d
+# Cek logs
+pm2 logs vaimoz-livepilot | grep Telegram
 ```
 
 ---
 
-## 🏗️ Project Structure
+## Keamanan
 
-```
-vaimoz-livepilot/
-├── client/                    # Frontend React application
-│   ├── src/
-│   │   ├── app/              # Main app components
-│   │   ├── components/       # Reusable UI components
-│   │   ├── features/         # Feature-specific pages
-│   │   ├── data/             # Mock data and navigation
-│   │   ├── lib/              # Utilities and API client
-│   │   └── index.css         # Global styles
-│   ├── index.html
-│   ├── vite.config.js
-│   ├── tailwind.config.js
-│   └── package.json
-├── db/                        # Database initialization
-│   └── database.js
-├── middleware/                # Express middleware
-│   ├── auth.js
-│   └── errorHandler.js
-├── models/                    # Database models (future)
-├── public/                    # Static assets
-│   ├── frontend/             # Built React app
-│   └── uploads/              # User uploaded files
-├── scripts/                   # Utility scripts
-│   ├── generate-secret.js
-│   ├── migrate.js
-│   ├── seed-admin.js
-│   ├── reset-password.js
-│   └── reset-data.js
-├── services/                  # Business logic
-│   ├── http/                 # API routes
-│   │   ├── auth.routes.js
-│   │   ├── assets.routes.js
-│   │   ├── campaigns.routes.js
-│   │   ├── streams.routes.js
-│   │   ├── youtube.routes.js
-│   │   ├── monitor.routes.js
-│   │   ├── scheduler.routes.js
-│   │   └── settings.routes.js
-│   ├── scheduler.js          # Campaign scheduling
-│   ├── telegramService.js    # Telegram notifications
-│   └── youtubeAnalyticsService.js
-├── utils/                     # Shared utilities
-│   ├── config.js
-│   ├── asyncHandler.js
-│   └── serializers.js
-├── views/                     # Server-side views (if any)
-├── .env.example              # Environment template
-├── .gitignore
-├── app.js                    # Main Express server
-├── database.sqlite           # SQLite database
-├── docker-compose.yml        # Docker Compose config
-├── Dockerfile                # Docker image config
-├── package.json              # Dependencies and scripts
-└── README.md                 # This file
-```
+- **JWT_SECRET** wajib diganti dari nilai default sebelum deploy ke production — server akan menolak startup jika masih default di `NODE_ENV=production`
+- **ADMIN_PASSWORD** wajib diganti — minimal 8 karakter, kombinasi huruf dan angka
+- Password di-hash dengan **bcrypt cost factor 12**
+- Upload file divalidasi ekstensi di server-side (bukan hanya MIME dari client)
+- OAuth state parameter divalidasi untuk mencegah CSRF attack
+- Semua route kecuali `/api/auth/login` memerlukan JWT yang valid
 
 ---
 
-## 🔧 Tech Stack
+## Berkontribusi
 
-### Frontend
-- **React 18** - UI library
-- **Vite** - Build tool and dev server
-- **Tailwind CSS** - Utility-first CSS framework
-- **Lucide React** - Icon library
-- **Framer Motion** - Animation library
-- **Recharts** - Chart library
-
-### Backend
-- **Node.js** - JavaScript runtime
-- **Express.js** - Web framework
-- **better-sqlite3** - SQLite database driver
-- **bcryptjs** - Password hashing
-- **jsonwebtoken** - JWT authentication
-- **multer** - File upload handling
-- **googleapis** - YouTube Data API v3 client
-- **node-cron** - Task scheduling
-
-### DevOps
-- **Docker** - Containerization
-- **PM2** - Process manager
-- **FFmpeg** - Video processing and streaming
+1. Fork repository
+2. Buat branch: `git checkout -b feature/nama-fitur`
+3. Commit: `git commit -m 'feat: deskripsi singkat'`
+4. Push: `git push origin feature/nama-fitur`
+5. Buka Pull Request
 
 ---
 
-## 📖 Usage Guide
+## Lisensi
 
-### 1. Upload Assets
-
-1. Login ke aplikasi
-2. Buka **Asset Library**
-3. Klik **Upload** atau **Import from Google Drive**
-4. Pilih file video (MP4, MKV, AVI) atau thumbnail (JPG, PNG)
-5. Tunggu upload selesai
-
-### 2. Create Campaign
-
-1. Buka **Dashboard**
-2. Klik **Create Campaign**
-3. Pilih mode:
-   - **YouTube API** - Untuk YouTube Live otomatis
-   - **Manual RTMP** - Untuk platform custom
-4. Isi nama campaign
-5. Pilih video dan thumbnail
-6. Atur konfigurasi (auto stop, duration, dll)
-7. Klik **Save**
-
-### 3. Start YouTube Live
-
-1. Pastikan sudah connect YouTube channel di **Settings**
-2. Buka campaign yang sudah dibuat
-3. Klik **Start YouTube Live**
-4. Isi:
-   - **Title** - Judul live stream
-   - **Description** - Deskripsi stream
-   - **Privacy** - Public, Unlisted, atau Private
-5. Klik **Start**
-6. Aplikasi akan:
-   - Membuat YouTube broadcast
-   - Membuat YouTube stream
-   - Start FFmpeg streaming
-   - Transition broadcast ke "live"
-
-### 4. Monitor Stream
-
-1. Buka **Stream Monitor**
-2. Lihat informasi:
-   - Stream status (Online/Offline)
-   - YouTube broadcast ID
-   - Watch URL
-   - Concurrent viewers
-   - Duration
-   - FFmpeg PID
-3. Klik **Stop** untuk menghentikan stream
-
-### 5. Enable Chatbot
-
-1. Saat stream sedang berjalan
-2. Buka **Campaign** → **Chatbot**
-3. Isi pesan-pesan yang akan dikirim
-4. Atur interval (menit)
-5. Klik **Start Chatbot**
-6. Bot akan mengirim pesan ke live chat secara otomatis
-
-### 6. View Analytics
-
-1. Buka **Analytics**
-2. Pilih campaign
-3. Lihat statistik:
-   - Total views
-   - Concurrent viewers
-   - Likes
-   - Comments
-   - Watch time
+[MIT License](LICENSE) — bebas digunakan, dimodifikasi, dan didistribusikan.
 
 ---
 
-## 🤝 Contributing
+## Dukungan
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+- **Bug / Feature Request:** [GitHub Issues](https://github.com/vaimozz/vaimoz-livepilot/issues)
+- **Diskusi:** [GitHub Discussions](https://github.com/vaimozz/vaimoz-livepilot/discussions)
 
 ---
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- [FFmpeg](https://ffmpeg.org/) - Video processing
-- [YouTube Data API v3](https://developers.google.com/youtube/v3) - YouTube integration
-- [React](https://react.dev/) - UI library
-- [Express.js](https://expressjs.com/) - Web framework
-- [Tailwind CSS](https://tailwindcss.com/) - CSS framework
-
----
-
-## 📞 Support
-
-- **GitHub Issues**: [Report bugs or request features](https://github.com/vaimozz/vaimoz-livepilot/issues)
-- **Discussions**: [Ask questions or share ideas](https://github.com/vaimozz/vaimoz-livepilot/discussions)
-- **Email**: support@vaimoz.com
-
----
-
-**Made with ❤️ by Vaimoz Team**
-
-© 2026 Vaimoz LivePilot. All rights reserved.
+*Vaimoz LivePilot v0.3.0 · © 2026 Vaimoz Team*
