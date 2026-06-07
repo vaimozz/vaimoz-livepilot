@@ -48,6 +48,21 @@ export function AssetLibraryPage() {
   const selectedVideos = mediaFiles.filter((item) => selectedIds.includes(item.id) && (item.type === 'Video' || item.type === 'Images'));
   const selectedAudios = mediaFiles.filter((item) => selectedIds.includes(item.id) && item.type === 'Audio');
 
+  const loadPlaylists = async () => {
+    try {
+      const result = await api.playlists.list();
+      setPlaylists(result.playlists || []);
+    } catch (e) {
+      console.error('Gagal memuat playlist', e);
+    }
+  };
+
+  useEffect(() => {
+    if (mainTab === 'Koleksi / Playlist') {
+      loadPlaylists();
+    }
+  }, [mainTab]);
+
   const loadProductionJobs = async () => {
     try {
       const res = await api.production.jobs();
@@ -211,13 +226,36 @@ export function AssetLibraryPage() {
     }
   };
 
-  const createPlaylist = () => {
+  const createPlaylist = async () => {
     const cleanName = playlistName.trim();
     if (!cleanName) return setStatusMessage('Nama playlist wajib diisi.');
-    const nextId = playlists.length ? Math.max(...playlists.map((item) => item.id)) + 1 : 1;
-    setPlaylists((items) => [{ id: nextId, name: cleanName, type: 'Video', items: selectedIds.length, updatedAt: 'Baru dibuat' }, ...items]);
-    setPlaylistName('');
-    setStatusMessage(`${cleanName} berhasil dibuat. Tahap berikutnya bisa disambungkan ke API playlist.`);
+    const itemIds = selectedIds.length > 0 ? selectedIds : [];
+    setStatusMessage('Membuat playlist...');
+    try {
+      await api.playlists.create({
+        name: cleanName,
+        itemIds,
+        type: 'Video',
+        privacy: 'Private',
+      });
+      setPlaylistName('');
+      setSelectedIds([]);
+      setStatusMessage(`Playlist "${cleanName}" berhasil dibuat dan disimpan.`);
+      loadPlaylists();
+    } catch (e) {
+      setStatusMessage(`Gagal membuat playlist: ${getErrorMessage(e)}`);
+    }
+  };
+
+  const deletePlaylist = async (id, name) => {
+    if (!window.confirm(`Hapus playlist "${name}"?`)) return;
+    try {
+      await api.playlists.remove(id);
+      setStatusMessage(`Playlist "${name}" dihapus.`);
+      loadPlaylists();
+    } catch (e) {
+      setStatusMessage(`Gagal menghapus: ${getErrorMessage(e)}`);
+    }
   };
 
   const createProductionJob = async () => {
@@ -413,15 +451,44 @@ export function AssetLibraryPage() {
       ) : mainTab === 'Koleksi / Playlist' ? (
         <div className="space-y-5">
           <div className="flex flex-col gap-3 md:flex-row">
-            <input value={playlistName} onChange={(event) => setPlaylistName(event.target.value)} className="h-11 flex-1 rounded-lg border border-slate-600 bg-slate-800 px-4 text-sm text-white outline-none" placeholder="Nama playlist baru" />
-            <Button className="bg-cyan-600 text-white hover:bg-cyan-500" onClick={createPlaylist}>+ Buat Playlist</Button>
+            <input
+              value={playlistName}
+              onChange={(event) => setPlaylistName(event.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && createPlaylist()}
+              className="h-11 flex-1 rounded-lg border border-slate-600 bg-slate-800 px-4 text-sm text-white outline-none placeholder:text-slate-400"
+              placeholder="Nama playlist baru"
+            />
+            <Button className="bg-cyan-600 text-white hover:bg-cyan-500 shrink-0" onClick={createPlaylist}>
+              + Buat Playlist
+            </Button>
           </div>
+          {selectedIds.length > 0 && (
+            <p className="text-xs text-slate-400">
+              <span className="text-cyan-400 font-semibold">{selectedIds.length} aset</span> terpilih akan dimasukkan ke playlist baru.
+            </p>
+          )}
           {playlists.length ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {playlists.map((playlist) => (
-                <div key={playlist.id} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-                  <p className="text-sm font-bold text-white">{playlist.name}</p>
-                  <p className="mt-1 text-xs text-slate-500">{playlist.items} item • {playlist.updatedAt}</p>
+                <div key={playlist.id} className="group relative rounded-2xl border border-slate-800 bg-slate-900/70 p-5 transition hover:border-slate-600">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-white">{playlist.name}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {playlist.items ?? (playlist.itemIds?.length ?? 0)} item
+                        {playlist.privacy ? ` · ${playlist.privacy}` : ''}
+                        {playlist.updatedAt ? ` · ${new Date(playlist.updatedAt).toLocaleDateString('id-ID')}` : ''}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => deletePlaylist(playlist.id, playlist.name)}
+                      className="shrink-0 text-slate-600 opacity-0 transition hover:text-red-400 group-hover:opacity-100"
+                      title="Hapus playlist"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -429,7 +496,7 @@ export function AssetLibraryPage() {
             <div className="flex min-h-[180px] items-center justify-center rounded-2xl border border-dashed border-slate-700/80 bg-slate-950/20 text-center">
               <div>
                 <p className="text-sm font-semibold text-white">Belum ada koleksi / playlist.</p>
-                <p className="mt-1 text-xs text-slate-400">Pilih beberapa media lalu buat playlist baru.</p>
+                <p className="mt-1 text-xs text-slate-400">Pilih beberapa media dari tab "File Media" lalu buat playlist baru.</p>
               </div>
             </div>
           )}

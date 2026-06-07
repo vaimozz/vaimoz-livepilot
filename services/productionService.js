@@ -32,11 +32,8 @@ export function startProductionJob(jobId) {
     const videoListPath = path.join(tempDir, 'videos.txt');
     let videoListContent = '';
     for (const bg of bgAssets) {
-        // Escape single quotes for ffmpeg concat
-        const safePath = bg.path.replace(/'/g, "'\\''");
-        // If image, maybe we need special handling, but let's assume it works with loop if we specify duration or it's a short video
-        // Concat demuxer works best with videos of same codec/resolution. For mixed, we might need complex filter.
-        // For simplicity, we just pass it to concat demuxer.
+        // Konversi backslash Windows ke forward slash agar FFmpeg concat demuxer bisa membaca path
+        const safePath = bg.path.replace(/\\/g, '/').replace(/'/g, "'\\''");
         videoListContent += `file '${safePath}'\n`;
     }
     fs.writeFileSync(videoListPath, videoListContent);
@@ -50,7 +47,8 @@ export function startProductionJob(jobId) {
         }
         let audioListContent = '';
         for (const au of audioListToUse) {
-            const safePath = au.path.replace(/'/g, "'\\''");
+            // Konversi backslash Windows ke forward slash agar FFmpeg concat demuxer bisa membaca path
+            const safePath = au.path.replace(/\\/g, '/').replace(/'/g, "'\\''");
             audioListContent += `file '${safePath}'\n`;
         }
         fs.writeFileSync(audioListPath, audioListContent);
@@ -58,6 +56,8 @@ export function startProductionJob(jobId) {
 
     const outputFileName = `prod_${Date.now()}_${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp4`;
     const outputPath = path.join(config.uploadDir, outputFileName);
+    // Konversi ke forward slash untuk kompatibilitas FFmpeg di Windows
+    const outputPathFFmpeg = outputPath.replace(/\\/g, '/');
 
     const args = [];
     
@@ -101,8 +101,8 @@ export function startProductionJob(jobId) {
         args.push('-c:a', 'aac', '-b:a', '128k', '-ar', '44100');
     }
 
-    // Output format
-    args.push('-y', outputPath);
+    // Output format — gunakan path FFmpeg (forward slash) sebagai output
+    args.push('-y', outputPathFFmpeg);
 
     logEvent('INFO', 'Production', `Memulai FFmpeg untuk job #${jobId}: ffmpeg ${args.join(' ')}`);
 

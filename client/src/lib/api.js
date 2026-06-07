@@ -146,6 +146,7 @@ export const api = {
       return apiRequest(`/playlists${search ? `?${search}` : ''}`);
     },
     create: (payload) => apiRequest('/playlists', { method: 'POST', body: JSON.stringify(payload) }),
+    update: (id, payload) => apiRequest(`/playlists/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
     remove: (id) => apiRequest(`/playlists/${id}`, { method: 'DELETE' }),
   },
   campaigns: {
