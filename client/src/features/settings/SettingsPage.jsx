@@ -61,6 +61,8 @@ export function SettingsPage() {
       setBackupStatus(result);
     } catch { /* ok */ }
   };
+
+  const loadSettings = async () => {
     try {
       const [sr, pr] = await Promise.all([api.settings.get(), api.settings.getNotifPrefs()]);
       const s = sr.settings || {};
