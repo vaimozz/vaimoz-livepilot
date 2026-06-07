@@ -13,6 +13,12 @@ const tables = [
   'youtube_channels',
   'settings',
   'logs',
+  'notifications',
+  'webhooks',
+  'api_keys',
+  'campaign_templates',
+  'recurring_history',
+  'production_jobs',
 ];
 
 const transaction = db.transaction(() => {

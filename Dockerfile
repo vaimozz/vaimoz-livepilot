@@ -16,6 +16,10 @@ FROM base AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 
+# Buat non-root user untuk keamanan
+RUN groupadd --gid 1001 nodejs \
+  && useradd --uid 1001 --gid nodejs --shell /bin/bash --create-home vaimoz
+
 # Install production deps
 COPY package*.json ./
 RUN npm install --omit=dev
@@ -36,8 +40,17 @@ COPY views ./views
 # Copy env example as reference (actual .env injected via docker-compose env_file)
 COPY .env.example ./.env.example
 
-# Ensure upload and frontend dirs exist
-RUN mkdir -p /app/public/uploads /app/public/frontend
+# Ensure upload and frontend dirs exist dan set ownership
+RUN mkdir -p /app/public/uploads /app/public/frontend \
+  && chown -R vaimoz:nodejs /app
+
+# Jalankan sebagai non-root user
+USER vaimoz
 
 EXPOSE 8787
+
+# Health check — cek endpoint /api/health setiap 30 detik
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD node -e "fetch('http://localhost:' + (process.env.PORT || 8787) + '/api/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+
 CMD ["node", "app.js"]

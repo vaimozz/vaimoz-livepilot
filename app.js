@@ -94,10 +94,44 @@ if (fs.existsSync(path.join(frontendDir, 'index.html'))) {
 app.use(notFound);
 app.use(errorHandler);
 
-app.listen(config.port, () => {
+const server = app.listen(config.port, () => {
   const scheduled = loadScheduledCampaigns();
   setupAutoCleanup();
   logEvent('SERVER', 'Server', `Vaimoz LivePilot backend online pada port ${config.port}`);
   console.log(`Vaimoz LivePilot backend: http://localhost:${config.port}`);
   if (scheduled.length) console.log(`Loaded ${scheduled.length} scheduled campaign(s).`);
 });
+
+// Graceful shutdown — hentikan semua FFmpeg process saat Docker stop (SIGTERM)
+async function gracefulShutdown(signal) {
+  logEvent('INFO', 'Server', `Menerima signal ${signal}. Memulai graceful shutdown...`);
+  console.log(`[Shutdown] Menerima ${signal}, menutup server...`);
+
+  // Stop semua stream aktif
+  try {
+    const { listRunningStreams, stopFfmpegStream } = await import('./services/ffmpegRunner.js');
+    const running = listRunningStreams();
+    for (const s of running) {
+      stopFfmpegStream(s.streamId);
+      logEvent('INFO', 'Server', `Menghentikan stream #${s.streamId} (PID ${s.pid}) saat shutdown.`);
+    }
+  } catch (e) {
+    console.error('[Shutdown] Gagal menghentikan stream:', e.message);
+  }
+
+  // Tutup HTTP server
+  server.close(() => {
+    logEvent('INFO', 'Server', 'HTTP server ditutup. Goodbye!');
+    console.log('[Shutdown] HTTP server ditutup. Selesai.');
+    process.exit(0);
+  });
+
+  // Force exit setelah 10 detik jika server tidak mau tutup
+  setTimeout(() => {
+    console.error('[Shutdown] Force exit setelah timeout 10 detik.');
+    process.exit(1);
+  }, 10_000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
