@@ -69,6 +69,7 @@ export function AnalyticsPage() {
 
   const [youtubeChannels, setYoutubeChannels] = useState([]);
   const [selectedChannelId, setSelectedChannelId] = useState('all');
+  const [selectedYoutubePeriod, setSelectedYoutubePeriod] = useState('28 Hari Terakhir');
   const [channelAnalytics, setChannelAnalytics] = useState(null);
   const [isLoadingChannelAnalytics, setIsLoadingChannelAnalytics] = useState(false);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
@@ -136,14 +137,15 @@ export function AnalyticsPage() {
     }).catch(console.error);
   }, []);
 
-  const fetchChannelAnalytics = async (channelId = selectedChannelId) => {
+  const fetchChannelAnalytics = async (channelId = selectedChannelId, periodStr = selectedYoutubePeriod) => {
     if (!channelId) {
       setChannelAnalytics(null);
       return;
     }
     setIsLoadingChannelAnalytics(true);
     try {
-      const data = await api.youtube.analytics(channelId);
+      const days = periodStr.includes('7') ? 7 : 28;
+      const data = await api.youtube.analytics(channelId, { days });
       setChannelAnalytics(data);
     } catch (err) {
       console.error('Failed to fetch channel analytics', err);
@@ -155,7 +157,7 @@ export function AnalyticsPage() {
   // Load Channel Analytics
   useEffect(() => {
     fetchChannelAnalytics();
-  }, [selectedChannelId]);
+  }, [selectedChannelId, selectedYoutubePeriod]);
 
   const campaigns = useMemo(() => {
     if (!analyticsData?.campaignsList) return ['Semua Kampanye'];
@@ -272,10 +274,12 @@ export function AnalyticsPage() {
             <div className="flex-1 md:flex-none">
               <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Periode</label>
               <select 
-                className="h-10 w-full md:w-48 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-4 text-sm font-semibold text-[var(--text-secondary)] outline-none"
-                disabled
+                value={selectedYoutubePeriod}
+                onChange={(e) => setSelectedYoutubePeriod(e.target.value)}
+                className="h-10 w-full md:w-48 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-4 text-sm font-semibold text-[var(--text-primary)] outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all"
               >
-                <option>28 Hari Terakhir</option>
+                <option value="7 Hari Terakhir">7 Hari Terakhir</option>
+                <option value="28 Hari Terakhir">28 Hari Terakhir</option>
               </select>
             </div>
           </div>
@@ -311,7 +315,7 @@ export function AnalyticsPage() {
                     <div className="mt-2">
                       <h3 className="text-3xl font-extrabold text-rose-400">{(Math.round((channelAnalytics.estimatedMinutesWatched || 0) / 60)).toLocaleString('id-ID')}</h3>
                     </div>
-                    <p className="mt-1 text-xs text-[var(--text-tertiary)] font-medium">Total Jam (28 Hari)</p>
+                    <p className="mt-1 text-xs text-[var(--text-tertiary)] font-medium">Total Jam ({selectedYoutubePeriod})</p>
                   </CardContent>
                 </Card>
 
@@ -407,7 +411,7 @@ export function AnalyticsPage() {
                       </ResponsiveContainer>
                     ) : (
                       <div className="flex h-full items-center justify-center text-sm font-semibold text-[var(--text-tertiary)] border border-dashed border-[var(--border-primary)] rounded-2xl">
-                        Tidak ada data grafik harian (28 Hari Terakhir)
+                        Tidak ada data grafik harian ({selectedYoutubePeriod})
                       </div>
                     )}
                   </div>

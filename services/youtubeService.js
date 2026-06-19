@@ -172,7 +172,7 @@ export async function createBroadcastAndStream(tokens, payload) {
   return { broadcast: broadcast.data, stream: stream.data };
 }
 
-export async function getChannelAnalytics(tokens, channelId) {
+export async function getChannelAnalytics(tokens, channelId, days = 28) {
   const client = getOAuthClient(tokens);
   
   // 1. YouTube Data API v3 (Subscribers & Total Views)
@@ -187,12 +187,12 @@ export async function getChannelAnalytics(tokens, channelId) {
     estimatedMinutesWatched: 0,
   };
 
-  // 2. YouTube Analytics API v2 (Pendapatan & Jam Tayang 28 hari terakhir)
+  // 2. YouTube Analytics API v2 (Pendapatan & Jam Tayang N hari terakhir)
   try {
     const analytics = google.youtubeAnalytics({ version: 'v2', auth: client });
     
     const endDate = new Date().toISOString().split('T')[0];
-    const startDate = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     
     // Basic metrics that work for all channels
     try {

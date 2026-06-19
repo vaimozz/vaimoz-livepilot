@@ -165,8 +165,9 @@ youtubeRouter.get('/channels/:id/analytics', asyncHandler(async (req, res) => {
     
     const dailyMap = new Map();
     
+    const days = parseInt(req.query.days, 10) || 28;
     for (const row of rows) {
-      const analytics = await getChannelAnalytics(tokenFromChannel(row), String(row.id));
+      const analytics = await getChannelAnalytics(tokenFromChannel(row), String(row.id), days);
       aggregated.subscribers += (analytics.subscribers || 0);
       aggregated.totalViews += (analytics.totalViews || 0);
       aggregated.estimatedRevenue += (analytics.estimatedRevenue || 0);
@@ -196,6 +197,7 @@ youtubeRouter.get('/channels/:id/analytics', asyncHandler(async (req, res) => {
   if (!row) return res.status(404).json({ error: 'Channel YouTube tidak ditemukan.' });
   if (!row.refresh_token && !row.access_token) return res.status(400).json({ error: 'Channel ini belum punya token OAuth YouTube asli.' });
   
-  const analytics = await getChannelAnalytics(tokenFromChannel(row), String(row.id));
+  const days = parseInt(req.query.days, 10) || 28;
+  const analytics = await getChannelAnalytics(tokenFromChannel(row), String(row.id), days);
   res.json(analytics);
 }));
