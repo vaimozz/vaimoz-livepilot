@@ -1,4 +1,4 @@
-﻿/**
+/**
  * YouTube Live Service
  * 
  * Service untuk mengelola lifecycle YouTube live broadcast:
@@ -324,6 +324,40 @@ export async function getBroadcastStatus(channelId, broadcastId) {
   } catch (error) {
     logEvent('ERROR', 'YouTube Live', `Failed to get broadcast status: ${error.message}`);
     return null;
+  }
+}
+
+/**
+ * Cleanup failed broadcast and stream
+ */
+export async function cleanupFailedStream(channelId, broadcastId, streamId) {
+  const tokens = getChannelTokens(channelId);
+  const youtube = youtubeWithTokens(tokens);
+
+  try {
+    if (broadcastId) {
+      const current = await getBroadcastStatus(channelId, broadcastId);
+      const status = current?.status?.lifeCycleStatus;
+      
+      if (status === 'live') {
+        logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} is live, transitioning to complete`);
+        await youtube.liveBroadcasts.transition({
+          part: ['id', 'status'],
+          broadcastStatus: 'complete',
+          id: broadcastId,
+        });
+      } else if (status !== 'complete' && status !== 'revoked') {
+        logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} is ${status}, deleting...`);
+        await youtube.liveBroadcasts.delete({ id: broadcastId });
+      }
+    }
+
+    if (streamId) {
+      logEvent('INFO', 'YouTube Live', `Deleting stream key ${streamId}`);
+      await youtube.liveStreams.delete({ id: streamId });
+    }
+  } catch (error) {
+    logEvent('WARN', 'YouTube Live', `Cleanup failed stream error: ${error.message}`);
   }
 }
 

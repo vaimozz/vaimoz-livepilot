@@ -184,6 +184,26 @@ export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP',
         logEvent('WARN', 'FFmpeg Server', `Gagal membersihkan service terkait stream #${streamId}: ${err.message}`);
       }
       
+      // Helper function to cleanup YouTube broadcast & stream key
+      const triggerYoutubeCleanup = async () => {
+        const streamRow = db.prepare('SELECT campaign_id, youtube_broadcast_id, youtube_stream_id FROM streams WHERE id = ?').get(streamId);
+        if (streamRow && streamRow.youtube_broadcast_id && streamRow.campaign_id) {
+          const campRow = db.prepare('SELECT config_json FROM campaigns WHERE id = ?').get(streamRow.campaign_id);
+          if (campRow) {
+            try {
+              const cfg = JSON.parse(campRow.config_json || '{}');
+              const channelId = cfg.youtubeChannelId || cfg.channelId;
+              if (channelId) {
+                const { cleanupFailedStream } = await import('./youtubeLiveService.js');
+                await cleanupFailedStream(channelId, streamRow.youtube_broadcast_id, streamRow.youtube_stream_id);
+              }
+            } catch (e) {
+              logEvent('WARN', 'FFmpeg Server', 'Gagal cleanup YouTube: ' + e.message);
+            }
+          }
+        }
+      };
+
       if (!isError) {
         db.prepare('UPDATE streams SET status = ?, stopped_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
           .run('Stopped', new Date().toISOString(), streamId);
@@ -193,6 +213,7 @@ export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP',
         createNotification('stream_stop', 'Stream Dihentikan', `Campaign "${campaignName}" telah selesai streaming.`, { streamId, campaignName });
         // Fitur 7: Webhook outbound
         triggerWebhooks('stream.stop', { streamId, campaignName });
+        triggerYoutubeCleanup(); // Hapus key/broadcast jika menggantung
         return;
       }
 
@@ -253,6 +274,7 @@ export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP',
         createNotification('stream_error', 'Stream Error', `Campaign "${campaignName}" gagal reconnect setelah ${maxRetries} percobaan.`, { streamId, campaignName, code, signal });
         // Fitur 7: Webhook outbound
         triggerWebhooks('stream.error', { streamId, campaignName, code, signal });
+        triggerYoutubeCleanup(); // Hapus key/broadcast karena gagal reconnect
       }
     });
 
