@@ -166,10 +166,13 @@ export function startFfmpegStream({ campaignId = null, platform = 'Manual RTMP',
     });
     
     child.on('exit', async (code, signal) => {
+      const dbRow = db.prepare('SELECT status FROM streams WHERE id = ?').get(streamId);
+      const isManualStop = dbRow && dbRow.status === 'Stopping';
+
       runningProcesses.delete(streamId);
       // Fitur 1: Hapus health data saat stream berhenti
       streamHealth.delete(streamId);
-      const isError = code !== 0 && signal !== 'SIGTERM' && signal !== 'SIGKILL';
+      const isError = !isManualStop && code !== 0 && signal !== 'SIGTERM' && signal !== 'SIGKILL';
       
       // Cleanup associated services to prevent memory/API quota leaks
       try {
@@ -364,9 +367,12 @@ export function startSimulcastStream({ campaignId = null, platform = 'Simulcast'
   });
 
   child.on('exit', (code, signal) => {
+    const dbRow = db.prepare('SELECT status FROM streams WHERE id = ?').get(streamId);
+    const isManualStop = dbRow && dbRow.status === 'Stopping';
+
     runningProcesses.delete(streamId);
     streamHealth.delete(streamId);
-    const isStopped = code === 0 || signal === 'SIGTERM' || signal === 'SIGKILL';
+    const isStopped = isManualStop || code === 0 || signal === 'SIGTERM' || signal === 'SIGKILL';
     const status = isStopped ? 'Stopped' : 'Error';
     db.prepare('UPDATE streams SET status = ?, stopped_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
       .run(status, new Date().toISOString(), streamId);
