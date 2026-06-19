@@ -11,6 +11,7 @@
 import { db, logEvent } from '../db/database.js';
 import { youtubeWithTokens } from './youtubeService.js';
 import { getChannelTokens } from './youtubeTokenUtils.js'; // BUG-020 FIX: Shared utility
+import { notifyViewerMilestone, notifySmartStopDelayed } from './telegramService.js';
 
 /**
  * Get live stream statistics (concurrent viewers, etc.)
@@ -105,6 +106,8 @@ export async function getStreamHealth(channelId, streamId) {
  * Monitor live stream and update database periodically
  */
 const activeMonitors = new Map(); // streamId -> intervalId
+const streamMilestones = new Map(); // streamId -> highest milestone achieved
+const lastSmartStopNotified = new Map(); // streamId -> timestamp of last notification
 
 export function startStreamMonitoring(streamId, config) {
   // Stop existing monitor if any
@@ -148,6 +151,27 @@ export function startStreamMonitoring(streamId, config) {
 
       logEvent('INFO', 'YouTube Analytics', `Stream #${streamId}: ${stats.concurrentViewers} viewers, ${stats.viewCount} total views`);
 
+      // Check for milestones
+      const milestones = [10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000];
+      const highestAchieved = streamMilestones.get(streamId) || 0;
+      let newMilestone = 0;
+      
+      for (const m of milestones) {
+        if (stats.concurrentViewers >= m && m > highestAchieved) {
+          newMilestone = m;
+        }
+      }
+      
+      if (newMilestone > 0) {
+        streamMilestones.set(streamId, newMilestone);
+        try {
+           const campRow = db.prepare('SELECT name FROM campaigns WHERE id = (SELECT campaign_id FROM streams WHERE id = ?)').get(streamId);
+           const campaignName = campRow ? campRow.name : `Campaign #${streamId}`;
+           const watchUrl = `https://www.youtube.com/watch?v=${broadcastId}`;
+           notifyViewerMilestone({ campaignName, viewers: newMilestone, watchUrl }).catch(() => {});
+        } catch (e) { /* ignore error */ }
+      }
+
       // Check smart stop condition
       await checkSmartStopCondition(streamId, stats.concurrentViewers);
     } catch (error) {
@@ -177,6 +201,8 @@ export function stopStreamMonitoring(streamId) {
 
   clearInterval(intervalId);
   activeMonitors.delete(streamId);
+  streamMilestones.delete(streamId);
+  lastSmartStopNotified.delete(streamId);
 
   logEvent('INFO', 'YouTube Analytics', `Stopped monitoring stream #${streamId}`);
   return true;
@@ -224,6 +250,20 @@ async function checkSmartStopCondition(streamId, currentViewers) {
       );
 
       logEvent('INFO', 'Smart Stop', `Stream #${streamId}: Stop delayed by ${delayMinutes} minutes (${currentViewers} viewers)`);
+      
+      // Notify at most once every 10 minutes to avoid spam
+      const lastNotified = lastSmartStopNotified.get(streamId) || 0;
+      if (Date.now() - lastNotified > 10 * 60 * 1000) {
+        try {
+          notifySmartStopDelayed({
+            campaignName: campaign.name,
+            viewers: currentViewers,
+            threshold,
+            delayMinutes
+          }).catch(() => {});
+        } catch(e) {}
+        lastSmartStopNotified.set(streamId, Date.now());
+      }
     }
   } catch (error) {
     logEvent('ERROR', 'Smart Stop', `Failed to check condition: ${error.message}`);
