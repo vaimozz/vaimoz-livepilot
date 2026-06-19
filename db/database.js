@@ -92,6 +92,15 @@ export function initDatabase() {
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS youtube_quota_usage (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      client_id TEXT NOT NULL,
+      date TEXT NOT NULL,
+      quota_used INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(client_id, date)
+    );
+
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL,
@@ -315,6 +324,23 @@ function runMigrations() {
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // ── FITUR: YouTube API Quota & Fallback ──────────────────────────────────
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS youtube_quota_usage (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id TEXT NOT NULL,
+        date TEXT NOT NULL,
+        quota_used INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(client_id, date)
+      );
+    `);
+    
+    const ytChannelCols = db.prepare("PRAGMA table_info(youtube_channels)").all().map((c) => c.name);
+    if (!ytChannelCols.includes('fallback_tokens_json')) {
+      db.exec('ALTER TABLE youtube_channels ADD COLUMN fallback_tokens_json TEXT DEFAULT "{}"');
+    }
 
     // ── FITUR 10: API Key Management ──────────────────────────────────────────
     db.exec(`

@@ -7,6 +7,7 @@ import { facebookIntegrationChecklist } from '@/data/integrations.js';
 import { api } from '@/lib/api.js';
 import { WebhookSettings } from './WebhookSettings.jsx';
 import { ApiKeySettings } from './ApiKeySettings.jsx';
+import GoogleCloudProjects from './GoogleCloudProjects.jsx';
 
 function channelInitial(ch) {
   return ch.avatar || ch.title?.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'YT';
@@ -327,52 +328,9 @@ export function SettingsPage() {
               </p>
             </div>
 
-            {/* Kredensial Google API */}
+            {/* Kredensial Google API (Multi-Project Fallback) */}
             <div className="pt-4 border-t border-slate-800">
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-medium text-slate-300">
-                  Konfigurasi Google Cloud API
-                </label>
-                <label className="cursor-pointer flex items-center gap-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition">
-                  <input type="file" accept=".json" className="hidden" onChange={handleGoogleJsonUpload} />
-                  Impor File JSON
-                </label>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                <div>
-                  <input
-                    type="text"
-                    placeholder="Google Client ID"
-                    value={googleClientId}
-                    onChange={(e) => setGoogleClientId(e.target.value)}
-                    className="w-full px-4 py-3 border border-slate-700 rounded-2xl bg-slate-800 text-slate-200 text-sm focus:border-cyan-500 focus:outline-none placeholder:text-slate-500"
-                  />
-                </div>
-                <div>
-                  <input
-                    type="password"
-                    placeholder="Google Client Secret"
-                    value={googleClientSecret}
-                    onChange={(e) => setGoogleClientSecret(e.target.value)}
-                    className="w-full px-4 py-3 border border-slate-700 rounded-2xl bg-slate-800 text-slate-200 text-sm focus:border-cyan-500 focus:outline-none placeholder:text-slate-500"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-slate-400">
-                  {googleConfigured
-                    ? '✅ Kredensial telah tersimpan. Isi ulang hanya jika ingin mengubahnya.'
-                    : '⚠ Kredensial belum dikonfigurasi. OAuth YouTube tidak akan berfungsi.'}
-                </p>
-                <Button
-                  onClick={saveGoogleApi}
-                  disabled={isSavingGoogle || (!googleClientId.trim() && !googleClientSecret.trim())}
-                  className="gap-2 bg-cyan-500 hover:bg-cyan-600 text-white"
-                >
-                  <Save className="h-4 w-4" />
-                  Simpan Kredensial
-                </Button>
-              </div>
+              <GoogleCloudProjects />
             </div>
 
             {/* Connected Channels */}

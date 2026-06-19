@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import { db, logEvent } from '../db/database.js';
 import { getOAuthClient, youtubeWithTokens } from './youtubeService.js';
 import { getChannelTokens } from './youtubeTokenUtils.js'; // BUG-020 FIX: Shared utility
+import { consumeQuota } from './youtubeQuotaTracker.js';
 
 // getChannelTokens sekarang di youtubeTokenUtils.js (BUG-020 FIX)
 
@@ -141,6 +142,11 @@ export async function createYoutubeLiveBroadcast(options) {
   });
 
   logEvent('INFO', 'YouTube Live', `Broadcast ${broadcast.id} bound to stream ${stream.id}`);
+
+  // Report quota usage
+  if (tokens.project?.clientId) {
+    consumeQuota(tokens.project.clientId, 200); // Insert Broadcast (50), Update Video (50), Insert Stream (50), Bind (50)
+  }
 
   // Extract RTMP URL and stream key
   const rtmpUrl = stream.cdn?.ingestionInfo?.ingestionAddress || '';

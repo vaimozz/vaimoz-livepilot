@@ -11,6 +11,7 @@
 import { db, logEvent } from '../db/database.js';
 import { youtubeWithTokens } from './youtubeService.js';
 import { getChannelTokens } from './youtubeTokenUtils.js'; // BUG-020 FIX: Shared utility
+import { consumeQuota } from './youtubeQuotaTracker.js';
 import { notifyViewerMilestone, notifySmartStopDelayed } from './telegramService.js';
 
 /**
@@ -25,6 +26,10 @@ export async function getLiveStreamStats(channelId, broadcastId) {
       part: ['statistics', 'liveStreamingDetails', 'snippet'],
       id: [broadcastId],
     });
+
+    if (tokens.project?.clientId) {
+      consumeQuota(tokens.project.clientId, 1);
+    }
 
     const video = response.data.items?.[0];
     if (!video) {
@@ -298,6 +303,10 @@ export async function getChannelAnalytics(channelId) {
       part: ['statistics', 'snippet'],
       mine: true,
     });
+
+    if (tokens.project?.clientId) {
+      consumeQuota(tokens.project.clientId, 1);
+    }
 
     const channel = response.data.items?.[0];
     if (!channel) return null;

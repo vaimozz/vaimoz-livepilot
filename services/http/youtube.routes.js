@@ -41,15 +41,11 @@ function consumeOAuthState(state) {
 
 youtubeRouter.get('/auth-url', requireAuth, asyncHandler(async (req, res) => {
   // BUG-H3 FIX: Buat state unik yang bisa diverifikasi di callback
-  const state = generateOAuthState(req.user.id);
-  const client = (await import('../youtubeService.js').then(m => m.getOAuthClient))();
-  const { getYouTubeScopes } = await import('../youtubeService.js');
-  const url = client.generateAuthUrl({
-    access_type: 'offline',
-    prompt: 'consent',
-    scope: getYouTubeScopes(),
-    state,
-  });
+  const actualState = generateOAuthState(req.user.id);
+  const projectId = req.query.projectId || null;
+  const { makeAuthUrl } = await import('../youtubeService.js');
+  
+  const url = makeAuthUrl(actualState, projectId);
   res.json({ url });
 }));
 
@@ -58,16 +54,19 @@ youtubeRouter.get('/callback', asyncHandler(async (req, res) => {
   if (!code) return res.status(400).send('Kode OAuth tidak ditemukan.');
 
   // BUG-H3 FIX: Validasi state parameter untuk mencegah CSRF attack
-  const state = String(req.query.state || '');
-  if (!state) {
+  const rawState = String(req.query.state || '');
+  const [actualState, projectId] = rawState.split('|');
+  
+  if (!actualState) {
     return res.status(400).send('Parameter state OAuth tidak ditemukan. Kemungkinan CSRF attack.');
   }
-  const stateEntry = consumeOAuthState(state);
+  const stateEntry = consumeOAuthState(actualState);
   if (!stateEntry) {
     // State tidak valid atau sudah expired — tolak callback
     return res.status(400).send('State OAuth tidak valid atau sudah kedaluwarsa. Silakan coba sambungkan YouTube lagi dari halaman Pengaturan.');
   }
-  const { tokens, channel } = await exchangeCode(code);
+  
+  const { tokens, channel } = await exchangeCode(code, projectId);
   const snippet = channel?.snippet || {};
   const youtubeChannelId = channel?.id || '';
   const title = snippet.title || 'YouTube Channel';
@@ -93,6 +92,24 @@ youtubeRouter.get('/callback', asyncHandler(async (req, res) => {
 }));
 
 youtubeRouter.use(requireAuth);
+
+youtubeRouter.get('/monitor', requireAuth, asyncHandler(async (req, res) => {
+  const { getAllConfiguredProjects, getQuotaUsage, getActiveProject } = await import('../youtubeQuotaTracker.js');
+  
+  const projects = getAllConfiguredProjects();
+  const activeProj = getActiveProject();
+  
+  const stats = projects.map(p => ({
+    clientId: p.clientId,
+    name: p.name,
+    isPrimary: p.isPrimary,
+    isActive: activeProj ? activeProj.clientId === p.clientId : false,
+    quotaUsed: getQuotaUsage(p.clientId),
+    quotaLimit: 10000
+  }));
+  
+  res.json({ projects: stats });
+}));
 
 youtubeRouter.get('/channels', asyncHandler(async (req, res) => {
   const rows = db.prepare('SELECT * FROM youtube_channels ORDER BY is_default DESC, created_at DESC').all();

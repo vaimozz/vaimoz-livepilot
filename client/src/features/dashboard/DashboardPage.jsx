@@ -6,6 +6,7 @@ import { SectionLabel } from '@/components/shared/SectionTitle.jsx';
 import { StatCard, SystemStatCard, InternetSpeedCard } from '@/components/shared/StatCards.jsx';
 import { CampaignTable } from './CampaignTable.jsx';
 import { SchedulerPanel } from './SchedulerPanel.jsx';
+import ApiMonitorWidget from '../monitor/ApiMonitorWidget.jsx';
 
 import { getVisibleCampaigns, normalizeDashboardCampaign, getStreamingRows } from '@/lib/dashboardUtils.js';
 import { cx } from '@/lib/cn.js';
@@ -140,7 +141,9 @@ export function DashboardPage({ selectedPlatform, setSelectedPlatform, setActive
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{dashboardStats.map((stat, index) => <StatCard key={stat.title} {...stat} index={index} />)}</div>
       </section>
 
-
+      <section className="mb-6">
+        <ApiMonitorWidget />
+      </section>
 
       <section className="mb-6">
         <SectionLabel title="Statistik Server" description="Pantau resource server berdasarkan endpoint monitor backend." />

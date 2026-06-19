@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 import { config } from '../utils/config.js';
-import { db } from '../db/database.js';
+import { db, readJson } from '../db/database.js';
+import { getProjectByClientId } from './youtubeQuotaTracker.js';
 
 function getSetting(key, fallback = '') {
   try {
@@ -11,10 +12,18 @@ function getSetting(key, fallback = '') {
   }
 }
 
-export function getOAuthClient(tokens = null) {
-  const clientId = getSetting('google_client_id', config.googleClientId);
-  const clientSecret = getSetting('google_client_secret', config.googleClientSecret);
-  const redirectUri = getSetting('google_redirect_uri', config.googleRedirectUri);
+export function getOAuthClient(tokens = null, projectId = null) {
+  let clientId = getSetting('google_client_id', config.googleClientId);
+  let clientSecret = getSetting('google_client_secret', config.googleClientSecret);
+  let redirectUri = getSetting('google_redirect_uri', config.googleRedirectUri);
+
+  // If a specific project is passed (from tokens.project or projectId)
+  const proj = (tokens && tokens.project) || (projectId ? getProjectByClientId(projectId) : null);
+  if (proj) {
+    clientId = proj.clientId;
+    clientSecret = proj.clientSecret;
+    redirectUri = proj.redirectUri;
+  }
 
   if (!clientId || !clientSecret) {
     const error = new Error('Google Client ID dan Client Secret belum dikonfigurasi. Silakan isi secara manual di halaman Pengaturan.');
@@ -30,38 +39,53 @@ export function getOAuthClient(tokens = null) {
       const rt = newTokens.refresh_token || tokens.refresh_token;
       if (rt) {
         try {
-          // BUG-H5 FIX: Update menggunakan access_token lama sebagai identifikasi fallback
-          // agar baris tetap ditemukan meski refresh_token sudah dirotasi oleh Google
-          const oldAccessToken = tokens.access_token || '';
-          const result = db.prepare(`
-            UPDATE youtube_channels 
-            SET access_token = ?, 
-                refresh_token = ?, 
-                expires_at = ?,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE refresh_token = ?
-          `).run(
-            newTokens.access_token || tokens.access_token || '',
-            rt,
-            newTokens.expiry_date || (Date.now() + 3600 * 1000),
-            rt
-          );
-          // BUG-H5 FIX: Jika tidak ada baris yang ter-update (token sudah berubah),
-          // coba update menggunakan access_token lama sebagai identifikasi
-          if (result.changes === 0 && oldAccessToken) {
-            db.prepare(`
+          const primaryClientId = getSetting('google_client_id', config.googleClientId);
+          if (clientId === primaryClientId) {
+            // Update menggunakan access_token lama sebagai identifikasi fallback
+            // agar baris tetap ditemukan meski refresh_token sudah dirotasi oleh Google
+            const oldAccessToken = tokens.access_token || '';
+            const result = db.prepare(`
               UPDATE youtube_channels 
               SET access_token = ?, 
                   refresh_token = ?, 
                   expires_at = ?,
                   updated_at = CURRENT_TIMESTAMP
-              WHERE access_token = ?
+              WHERE refresh_token = ?
             `).run(
               newTokens.access_token || tokens.access_token || '',
               rt,
               newTokens.expiry_date || (Date.now() + 3600 * 1000),
-              oldAccessToken
+              rt
             );
+            // Jika tidak ada baris yang ter-update (token sudah berubah),
+            // coba update menggunakan access_token lama sebagai identifikasi
+            if (result.changes === 0 && oldAccessToken) {
+              db.prepare(`
+                UPDATE youtube_channels 
+                SET access_token = ?, 
+                    refresh_token = ?, 
+                    expires_at = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE access_token = ?
+              `).run(
+                newTokens.access_token || tokens.access_token || '',
+                rt,
+                newTokens.expiry_date || (Date.now() + 3600 * 1000),
+                oldAccessToken
+              );
+            }
+          } else {
+            // Simpan fallback token ke fallback_tokens_json
+            const channel = db.prepare('SELECT id, fallback_tokens_json FROM youtube_channels WHERE youtube_channel_id = ?').get(tokens.youtube_channel_id);
+            if (channel) {
+              const fallbacks = readJson(channel.fallback_tokens_json, {});
+              fallbacks[clientId] = {
+                access_token: newTokens.access_token || tokens.access_token || '',
+                refresh_token: rt,
+                expires_at: newTokens.expiry_date || (Date.now() + 3600 * 1000)
+              };
+              db.prepare('UPDATE youtube_channels SET fallback_tokens_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(JSON.stringify(fallbacks), channel.id);
+            }
           }
         } catch (e) {
           // ignore error if DB is locked
@@ -82,24 +106,26 @@ export function getYouTubeScopes() {
   ];
 }
 
-export function makeAuthUrl(state = 'vaimoz') {
-  const client = getOAuthClient();
+export function makeAuthUrl(state = 'vaimoz', projectId = null) {
+  const client = getOAuthClient(null, projectId);
   return client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
     scope: getYouTubeScopes(),
-    state,
+    state: projectId ? `${state}|${projectId}` : state, // Embed projectId in state
   });
 }
 
-export async function exchangeCode(code) {
-  const client = getOAuthClient();
+export async function exchangeCode(code, projectId = null) {
+  const client = getOAuthClient(null, projectId);
   const { tokens } = await client.getToken(code);
   client.setCredentials(tokens);
   const youtube = google.youtube({ version: 'v3', auth: client });
   const response = await youtube.channels.list({ part: ['snippet'], mine: true });
   const channel = response.data.items?.[0];
-  return { tokens, channel };
+  
+  // Return the projectId so caller knows where to save it
+  return { tokens, channel, projectId };
 }
 
 export function youtubeWithTokens(tokens) {

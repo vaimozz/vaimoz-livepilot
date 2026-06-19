@@ -69,6 +69,7 @@ const SETTINGS_ALLOWLIST = new Set([
   'google_client_id',
   'google_client_secret',
   'google_redirect_uri',
+  'google_fallback_projects',
   // Gemini AI
   'gemini_api_key',
   'gemini_api_url',
