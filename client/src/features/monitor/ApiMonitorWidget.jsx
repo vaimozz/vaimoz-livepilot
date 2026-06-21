@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BarChart2, RefreshCw, AlertTriangle } from 'lucide-react';
 
 export default function ApiMonitorWidget() {
   const [stats, setStats] = useState([]);
@@ -30,10 +31,10 @@ export default function ApiMonitorWidget() {
     <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-5 w-full">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-white flex items-center gap-2">
-          <span>ðŸ“Š</span> Monitor YouTube API Quota
+          <BarChart2 className="w-5 h-5 text-indigo-400" /> Monitor YouTube API Quota
         </h3>
         <button onClick={fetchMonitor} className="text-gray-400 hover:text-white p-1">
-          â†»
+          <RefreshCw className="w-4 h-4" />
         </button>
       </div>
 
@@ -76,7 +77,7 @@ export default function ApiMonitorWidget() {
                 
                 {isDanger && (
                   <p className="text-xs text-red-400 mt-2 flex items-center gap-1">
-                    <span>âš ï¸ </span> Kuota hampir habis!
+                    <AlertTriangle className="w-4 h-4" /> Kuota hampir habis!
                   </p>
                 )}
               </div>
