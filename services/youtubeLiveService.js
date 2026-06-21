@@ -60,15 +60,24 @@ export async function createYoutubeLiveBroadcast(options) {
   // Calculate scheduled start time (default: 10 minutes from now)
   const startTime = scheduledStartTime || new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-  logEvent('INFO', 'YouTube Live', `Creating broadcast: ${title}`);
+  // Parse Spintax
+  let finalTitle = parseSpintax(title);
+  let finalDesc = parseSpintax(description);
+
+  // Batasi panjang judul maksimal 100 karakter untuk YouTube
+  if (finalTitle.length > 100) {
+    finalTitle = finalTitle.substring(0, 97) + '...';
+  }
+
+  logEvent('INFO', 'YouTube Live', `Creating broadcast: ${finalTitle}`);
 
   // 1. Create broadcast
   const broadcastResponse = await youtube.liveBroadcasts.insert({
     part: ['snippet', 'status', 'contentDetails'],
     requestBody: {
       snippet: {
-        title,
-        description,
+        title: finalTitle,
+        description: finalDesc,
         scheduledStartTime: startTime,
       },
       status: {
@@ -95,7 +104,7 @@ export async function createYoutubeLiveBroadcast(options) {
     part: ['snippet', 'cdn', 'status'],
     requestBody: {
       snippet: {
-        title: `${title} - Stream`,
+        title: `${finalTitle} - Stream`,
       },
       cdn: {
         frameRate,
