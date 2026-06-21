@@ -20,6 +20,21 @@ import { consumeQuota } from './youtubeQuotaTracker.js';
 // getChannelTokens sekarang di youtubeTokenUtils.js (BUG-020 FIX)
 
 /**
+ * Parse Spintax format e.g. {Hello|Hi|Hey} there!
+ */
+function parseSpintax(text) {
+  if (!text) return text;
+  let result = String(text);
+  let matches;
+  while ((matches = /\{([^{}]+)\}/.exec(result)) !== null) {
+    const options = matches[1].split('|');
+    const randomOption = options[Math.floor(Math.random() * options.length)];
+    result = result.substring(0, matches.index) + randomOption + result.substring(matches.index + matches[0].length);
+  }
+  return result;
+}
+
+/**
  * Create YouTube live broadcast and stream
  * Returns: { broadcast, stream, rtmpUrl, streamKey }
  */
@@ -75,47 +90,6 @@ export async function createYoutubeLiveBroadcast(options) {
   const broadcast = broadcastResponse.data;
   logEvent('INFO', 'YouTube Live', `Broadcast created: ${broadcast.id}`);
 
-  // Update video metadata to set categoryId and tags
-  // Menambahkan retry mechanism karena API YouTube butuh waktu untuk memproses video id
-  try {
-    let videoFound = false;
-    let retries = 0;
-    
-    while (!videoFound && retries < 3) {
-      // Tunggu 3 detik sebelum mencoba atau retry
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      const videoResponse = await youtube.videos.list({
-        part: ['snippet'],
-        id: [broadcast.id]
-      });
-      
-      if (videoResponse.data.items && videoResponse.data.items.length > 0) {
-        videoFound = true;
-        const videoSnippet = videoResponse.data.items[0].snippet;
-        
-        // Simpan id kategori yang diminta
-        await youtube.videos.update({
-          part: ['snippet'],
-          requestBody: {
-            id: broadcast.id,
-            snippet: {
-              ...videoSnippet,
-              categoryId: categoryId,
-              tags: Array.isArray(tags) ? tags : String(tags || '').split(',').map(t => t.trim()).filter(Boolean),
-            }
-          }
-        });
-        logEvent('INFO', 'YouTube Live', `Updated categoryId and tags for video ${broadcast.id}`);
-      } else {
-        retries++;
-        logEvent('WARN', 'YouTube Live', `Video entity ${broadcast.id} not found yet, retrying... (${retries}/3)`);
-      }
-    }
-  } catch (error) {
-    logEvent('WARN', 'YouTube Live', `Failed to update video category and tags: ${error.message}`);
-  }
-
   // 2. Create stream
   const streamResponse = await youtube.liveStreams.insert({
     part: ['snippet', 'cdn', 'status'],
@@ -142,6 +116,52 @@ export async function createYoutubeLiveBroadcast(options) {
   });
 
   logEvent('INFO', 'YouTube Live', `Broadcast ${broadcast.id} bound to stream ${stream.id}`);
+
+  // 4. Update video metadata to set categoryId, tags, and AI content
+  // Dilakukan SETELAH bind agar tidak tertimpa oleh sinkronisasi internal YouTube
+  try {
+    let videoFound = false;
+    let retries = 0;
+    
+    while (!videoFound && retries < 3) {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      const videoResponse = await youtube.videos.list({
+        part: ['snippet', 'status'],
+        id: [broadcast.id]
+      });
+      
+      if (videoResponse.data.items && videoResponse.data.items.length > 0) {
+        videoFound = true;
+        const video = videoResponse.data.items[0];
+        const videoSnippet = video.snippet;
+        const videoStatus = video.status;
+        
+        await youtube.videos.update({
+          part: ['snippet', 'status'],
+          requestBody: {
+            id: broadcast.id,
+            snippet: {
+              ...videoSnippet,
+              categoryId: categoryId,
+              tags: Array.isArray(tags) ? tags : String(tags || '').split(',').map(t => t.trim()).filter(Boolean),
+            },
+            status: {
+               ...videoStatus,
+               // Coba injeksi alteredContent jika API mendukung, jika tidak akan diabaikan
+               ...(options.aiContentAnswer === 'Ya' ? { selfDeclaredMadeForKids: false } : {}) 
+            }
+          }
+        });
+        logEvent('INFO', 'YouTube Live', `Updated categoryId and tags for video ${broadcast.id}`);
+      } else {
+        retries++;
+        logEvent('WARN', 'YouTube Live', `Video entity ${broadcast.id} not found yet, retrying... (${retries}/3)`);
+      }
+    }
+  } catch (error) {
+    logEvent('WARN', 'YouTube Live', `Failed to update video category and tags: ${error.message}`);
+  }
 
   // Report quota usage
   if (tokens.project?.clientId) {
@@ -389,12 +409,29 @@ export async function updateBroadcastMetadata(channelId, broadcastId, updates) {
           ...current.snippet,
           title: updates.title || current.snippet.title,
           description: updates.description !== undefined ? updates.description : current.snippet.description,
-          categoryId: updates.categoryId || current.snippet.categoryId,
-          tags: updates.tags || current.snippet.tags,
         },
         status: current.status,
       },
     });
+
+    // Update tags & category pada video (liveBroadcast snippet tidak mendukung category/tags)
+    if (updates.tags || updates.categoryId) {
+      const videoResponse = await youtube.videos.list({ part: ['snippet'], id: [broadcastId] });
+      if (videoResponse.data.items?.length > 0) {
+        const videoSnippet = videoResponse.data.items[0].snippet;
+        await youtube.videos.update({
+          part: ['snippet'],
+          requestBody: {
+            id: broadcastId,
+            snippet: {
+              ...videoSnippet,
+              categoryId: updates.categoryId || videoSnippet.categoryId,
+              tags: updates.tags ? (Array.isArray(updates.tags) ? updates.tags : String(updates.tags).split(',').map(t => t.trim()).filter(Boolean)) : videoSnippet.tags,
+            }
+          }
+        });
+      }
+    }
 
     logEvent('INFO', 'YouTube Live', `Broadcast ${broadcastId} metadata updated`);
     return response.data;
@@ -436,6 +473,7 @@ export async function startYoutubeLiveCampaign(campaignId, options = {}) {
   if (!chosenVideo) throw new Error('Tidak ada video di Pustaka Aset.');
 
   // â”€â”€ Pilih THUMBNAIL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Pilih THUMBNAIL ──────────────────────────────────────────────────────────
   const thumbIds = Array.isArray(cfg.thumbnailAssetIds) ? cfg.thumbnailAssetIds.map(Number).filter(Boolean) : [];
   let chosenThumbnail = null;
   if (thumbIds.length > 0) {
@@ -445,25 +483,32 @@ export async function startYoutubeLiveCampaign(campaignId, options = {}) {
   }
   const thumbnailMode = cfg.thumbnailMode || cfg.youtubeThumbnailMode || 'Rotasi otomatis';
   if (!chosenThumbnail && thumbnailMode !== 'Tanpa thumbnail' && thumbnailMode !== 'Auto Generate via Gemini AI') {
-    chosenThumbnail = db.prepare("SELECT * FROM assets WHERE type IN ('Images','Thumbnail') ORDER BY RANDOM() LIMIT 1").get() || null;
+    // BUG FIX: Do not pick random thumbnail from all images if user forgot to select one
+    chosenThumbnail = null;
   }
 
-  // â”€â”€ Pilih JUDUL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Pilih JUDUL ─────────────────────────────────────────────────────────────
   const titles = String(cfg.youtubeLiveTitles || cfg.liveTitles || '').split('\n').map(t => t.trim()).filter(Boolean);
-  const chosenTitle = titles.length > 0 ? titles[Math.floor(Math.random() * titles.length)] : campaign.name;
+  const chosenTitleRaw = titles.length > 0 ? titles[Math.floor(Math.random() * titles.length)] : campaign.name;
+  let chosenTitle = parseSpintax(chosenTitleRaw);
+  if (chosenTitle.length > 100) chosenTitle = chosenTitle.substring(0, 97) + '...';
+  
+  let chosenDescription = parseSpintax(cfg.youtubeDescription || cfg.description || '');
+  if (chosenDescription.length > 5000) chosenDescription = chosenDescription.substring(0, 4997) + '...';
 
-  // â”€â”€ Auto Generate Gemini Thumbnail (dihapus sesuai permintaan pengguna) â”€â”€â”€â”€â”€â”€
+  // ── Auto Generate Gemini Thumbnail (dihapus sesuai permintaan pengguna) ──────
 
-  // â”€â”€ Buat broadcast YouTube â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Buat broadcast YouTube ───────────────────────────────────────────────────
   logEvent('INFO', 'Scheduler', `Scheduler memulai YouTube Live untuk kampanye #${campaignId}: ${chosenTitle}`);
 
   const privacySetting = cfg.youtubePrivacy || cfg.privacy || 'Publik';
   const broadcastData = await createYoutubeLiveBroadcast({
     channelId: youtubeChannelId,
     title: chosenTitle,
-    description: cfg.youtubeDescription || cfg.description || '',
+    description: chosenDescription,
     categoryId: cfg.categoryId || cfg.youtubeCategoryId || '10',
     tags: cfg.youtubeTags || cfg.tags || '',
+    aiContentAnswer: cfg.youtubeAiContentAnswer || cfg.aiContentAnswer || '',
     privacyStatus: privacySetting.toLowerCase() === 'publik' ? 'public'
                   : privacySetting.toLowerCase() === 'tidak publik' ? 'unlisted' : 'private',
     enableAutoStart: true,

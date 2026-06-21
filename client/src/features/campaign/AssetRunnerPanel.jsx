@@ -205,8 +205,13 @@ export function AssetSelectorPanel({
 
   const toggleVideo = (id) =>
     setters.setYoutubeSelectedVideoNames((items) => toggleSelection(items, id));
-  const toggleThumbnail = (id) =>
-    setters.setYoutubeSelectedThumbnailNames((items) => toggleSelection(items, id));
+  const toggleThumbnail = (id) => {
+    if (state.youtubeThumbnailMode === 'Pakai 1 thumbnail') {
+      setters.setYoutubeSelectedThumbnailNames([id]);
+    } else {
+      setters.setYoutubeSelectedThumbnailNames((items) => toggleSelection(items, id));
+    }
+  };
 
   const updateEncoder = (nextMode) => {
     setters.setYoutubeEncoderMode(nextMode);

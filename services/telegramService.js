@@ -57,35 +57,32 @@ export async function testTelegramConnection(botToken, chatId) {
 
 export async function notifyStreamStarted({ campaignName, platform, chosenTitle, chosenVideo, watchUrl, pid, streamId, resolution, targetDuration, serverMem }) {
   if (!isPrefEnabled('notify_stream_start')) return;
-  const os = await import('node:os');
-  const serverName = os.hostname();
 
   const lines = [
     `🔴 <b>LIVE DIMULAI</b>`,
     ``,
     `📌 <b>Kampanye:</b> ${campaignName}`,
     `🎬 <b>Platform:</b> ${platform}`,
+    chosenTitle ? `📝 <b>Judul:</b> ${chosenTitle}` : null,
     chosenVideo ? `🎥 <b>Video:</b> ${chosenVideo}` : null,
     resolution  ? `📺 <b>Kualitas:</b> ${resolution}` : null,
     targetDuration ? `⏱ <b>Target Durasi:</b> ${targetDuration}` : null,
-    streamId    ? `🆔 <b>Stream ID:</b> ${streamId}` : null,
-    `🖥 <b>Server:</b> ${serverName}`,
-    pid         ? `⚙️ <b>PID:</b> ${pid}` : null,
+    watchUrl    ? `🔗 <b>Tonton Live:</b> ${watchUrl}` : null,
     ``,
     `⏱ ${new Date().toLocaleString('id-ID')}`,
   ].filter(Boolean);
   return sendTelegram(lines.join('\n'));
 }
 
-export async function notifyStreamStopped({ campaignName, streamId, duration, concurrentViewers }) {
+export async function notifyStreamStopped({ campaignName, streamId, duration, concurrentViewers, reason }) {
   if (!isPrefEnabled('notify_stream_stop')) return;
   const lines = [
     `⏹ <b>STREAM DIHENTIKAN</b>`,
     ``,
     `📌 <b>Kampanye:</b> ${campaignName}`,
-    `🆔 <b>Stream ID:</b> ${streamId}`,
-    duration          ? `⏱ <b>Durasi:</b> ${duration}` : null,
-    concurrentViewers ? `👥 <b>Penonton terakhir:</b> ${concurrentViewers}` : null,
+    reason            ? `ℹ️ <b>Alasan:</b> ${reason}` : null,
+    duration          ? `⏱ <b>Durasi Aktual:</b> ${duration}` : null,
+    concurrentViewers !== undefined ? `👥 <b>Penonton Terakhir:</b> ${concurrentViewers}` : null,
     ``,
     `🕐 ${new Date().toLocaleString('id-ID')}`,
   ].filter(Boolean);

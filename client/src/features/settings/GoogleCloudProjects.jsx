@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { api } from '@/lib/api.js';
 
 export default function GoogleCloudProjects() {
   const [primary, setPrimary] = useState(null);
@@ -12,8 +13,7 @@ export default function GoogleCloudProjects() {
 
   const fetchConfig = async () => {
     try {
-      const res = await fetch('/api/settings');
-      const data = await res.json();
+      const data = await api.settings.get();
       
       setPrimary({
         clientId: data.settings?.google_client_id || '',
@@ -81,19 +81,15 @@ export default function GoogleCloudProjects() {
     setLoading(true);
     setMessage({ type: '', text: '' });
     try {
-      await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          google_client_id: primary.clientId,
-          google_client_secret: primary.clientSecret,
-          google_redirect_uri: primary.redirectUri,
-          google_fallback_projects: JSON.stringify(fallbacks)
-        })
+      await api.settings.save({
+        google_client_id: primary.clientId,
+        google_client_secret: primary.clientSecret,
+        google_redirect_uri: primary.redirectUri,
+        google_fallback_projects: JSON.stringify(fallbacks)
       });
       setMessage({ type: 'success', text: 'Konfigurasi Project berhasil disimpan!' });
     } catch (e) {
-      setMessage({ type: 'error', text: 'Gagal menyimpan konfigurasi.' });
+      setMessage({ type: 'error', text: `Gagal menyimpan: ${e.message}` });
     }
     setLoading(false);
   };

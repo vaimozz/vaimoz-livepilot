@@ -99,7 +99,7 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
   const [campaignAssets, setCampaignAssets] = useState([]);
   const [isLoadingCampaignAssets, setIsLoadingCampaignAssets] = useState(false);
   const [youtubeTags, setYoutubeTags] = useState('');
-  const [youtubeReplayPrivacy, setYoutubeReplayPrivacy] = useState('Unlisted');
+  const [youtubeReplayPrivacy, setYoutubeReplayPrivacy] = useState('Public');
   const [youtubeCategoryId, setYoutubeCategoryId] = useState('10');
   const [youtubeScheduleType, setYoutubeScheduleType] = useState('Harian');
   const [youtubeDurationMode, setYoutubeDurationMode] = useState('Tetap (Pilih Durasi Jam)');
@@ -265,7 +265,7 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
       setYoutubeThumbnailMode(config.youtubeThumbnailMode || config.thumbnailMode || 'Rotasi otomatis');
       setYoutubeTags(config.youtubeTags || config.tags || '');
       setYoutubeCategoryId(config.youtubeCategoryId || config.categoryId || '10');
-      setYoutubeReplayPrivacy(config.replayPrivacy || 'Unlisted');
+      setYoutubeReplayPrivacy(config.replayPrivacy || 'Public');
       // BUG-011 FIX: Load channels dan preserve channel yang dipilih dari config
       const savedChannelId = config.youtubeChannelId || config.channelId || '';
       if (savedChannelId) {
@@ -424,12 +424,7 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
     setCampaignMessage('Menyimpan draft dan menghubungkan FFmpeg...');
     try {
       // 1. Pastikan campaign sudah tersimpan
-      let campaign = null;
-      if (lastCampaignIdRef.current) {
-        campaign = { id: lastCampaignIdRef.current };
-      } else {
-        campaign = await saveManualDraft();
-      }
+      const campaign = await saveManualDraft();
       if (!campaign?.id) {
         setCampaignMessage('⚠ Gagal menyimpan draft campaign. Coba lagi.');
         return;
@@ -481,12 +476,7 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
 
     try {
       // 1. Save draft first
-      let campaign = null;
-      if (lastCampaignIdRef.current) {
-        campaign = { id: lastCampaignIdRef.current };
-      } else {
-        campaign = await saveCampaignDraft();
-      }
+      const campaign = await saveCampaignDraft();
 
       if (!campaign?.id) {
         setCampaignMessage('⚠ Gagal menyimpan draft campaign. Coba lagi.');

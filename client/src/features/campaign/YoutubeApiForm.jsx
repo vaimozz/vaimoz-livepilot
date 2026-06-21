@@ -133,13 +133,22 @@ export function YoutubeApiForm({ state, setters, youtubeChannels = [], available
           <label className="block text-xs font-semibold text-slate-400">
             Replay setelah selesai
             <select value={state.youtubeReplayPrivacy} onChange={(e) => setters.setYoutubeReplayPrivacy(e.target.value)} className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500">
-              <option>Unlisted</option><option>Private</option><option>Public</option>
+              <option>Public</option><option>Unlisted</option><option>Private</option>
             </select>
             <p className="mt-2 text-[11px] text-slate-500">Status video replay setelah live selesai.</p>
           </label>
           <label className="block text-xs font-semibold text-slate-400">
             Mode Thumbnail
-            <select value={state.youtubeThumbnailMode} onChange={(e) => setters.setYoutubeThumbnailMode(e.target.value)} className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500">
+            <select 
+              value={state.youtubeThumbnailMode} 
+              onChange={(e) => {
+                setters.setYoutubeThumbnailMode(e.target.value);
+                if (e.target.value === 'Pakai 1 thumbnail' && state.youtubeSelectedThumbnailNames.length > 1) {
+                  setters.setYoutubeSelectedThumbnailNames([state.youtubeSelectedThumbnailNames[0]]);
+                }
+              }} 
+              className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500"
+            >
               <option>Rotasi otomatis</option><option>Pakai 1 thumbnail</option><option>Tanpa thumbnail</option>
             </select>
             <p className="mt-2 text-[11px] text-slate-500">Pilih mode thumbnail untuk live.</p>

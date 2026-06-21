@@ -139,7 +139,8 @@ campaignsRouter.post('/:id/start', asyncHandler(async (req, res) => {
     if (thumbs.length > 0) chosenThumbnail = thumbs[Math.floor(Math.random() * thumbs.length)];
   }
   if (!chosenThumbnail && cfg.thumbnailMode !== 'Tanpa thumbnail') {
-    chosenThumbnail = db.prepare("SELECT * FROM assets WHERE type IN ('Images','Thumbnail') ORDER BY RANDOM() LIMIT 1").get() || null;
+    // BUG FIX: Do not pick random thumbnail from all images if user forgot to select one
+    chosenThumbnail = null;
   }
 
   // ── Pilih JUDUL acak dari liveTitles ─────────────────────────────────────
@@ -217,7 +218,8 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
   }
   const thumbnailMode = cfg.thumbnailMode || cfg.youtubeThumbnailMode || 'Rotasi otomatis';
   if (!chosenThumbnail && thumbnailMode !== 'Tanpa thumbnail' && thumbnailMode !== 'Auto Generate via Gemini AI') {
-    chosenThumbnail = db.prepare("SELECT * FROM assets WHERE type IN ('Images','Thumbnail') ORDER BY RANDOM() LIMIT 1").get() || null;
+    // BUG FIX: Do not pick random thumbnail from all images if user forgot to select one
+    chosenThumbnail = null;
   }
 
   // ── Pilih JUDUL acak dari liveTitles ─────────────────────────────────────
@@ -233,7 +235,7 @@ campaignsRouter.post('/:id/start-youtube-live', asyncHandler(async (req, res) =>
     } catch (err) {
       logEvent('WARN', 'YouTube Live', `Gagal auto-generate thumbnail Gemini: ${err.message}`);
       if (!chosenThumbnail) {
-        chosenThumbnail = db.prepare("SELECT * FROM assets WHERE type IN ('Images','Thumbnail') ORDER BY RANDOM() LIMIT 1").get() || null;
+        chosenThumbnail = null;
       }
     }
   }
