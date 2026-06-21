@@ -168,6 +168,14 @@ export function CampaignPage({ editCampaign, setEditCampaign }) {
     try {
       const result = await api.youtube.channels();
       const channels = (result.channels || []).map(normalizeYoutubeChannel);
+      
+      // Urutkan abjad, abaikan case, setelah channel default (jika ada)
+      channels.sort((a, b) => {
+        if (a.isDefault && !b.isDefault) return -1;
+        if (!a.isDefault && b.isDefault) return 1;
+        return (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' });
+      });
+
       setYoutubeChannels(channels);
       // BUG-011 FIX: Jangan timpa channel yang sedang diedit dari editCampaign
       if (preserveChannelId) {

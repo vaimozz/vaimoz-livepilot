@@ -84,8 +84,15 @@ export function SettingsPage() {
     setIsLoadingChannels(true);
     try {
       const result = await api.youtube.channels();
-      setConnectedChannels(result.channels || []);
-      setSettingsMessage(`${result.channels?.length || 0} channel YouTube terbaca.`);
+      const channels = result.channels || [];
+      // Urutkan abjad, abaikan case, setelah channel default (jika ada)
+      channels.sort((a, b) => {
+        if (a.is_default && !b.is_default) return -1;
+        if (!a.is_default && b.is_default) return 1;
+        return (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' });
+      });
+      setConnectedChannels(channels);
+      setSettingsMessage(`${channels.length || 0} channel YouTube terbaca.`);
     } catch (e) {
       setSettingsMessage(`Gagal membaca channel: ${e instanceof Error ? e.message : 'Error.'}`);
     } finally { setIsLoadingChannels(false); }
