@@ -112,7 +112,7 @@ youtubeRouter.get('/monitor', requireAuth, asyncHandler(async (req, res) => {
 }));
 
 youtubeRouter.get('/channels', asyncHandler(async (req, res) => {
-  const rows = db.prepare('SELECT * FROM youtube_channels ORDER BY is_default DESC, created_at DESC').all();
+  const rows = db.prepare('SELECT * FROM youtube_channels ORDER BY is_default DESC, title COLLATE NOCASE ASC').all();
   res.json({ channels: rows.map(serializeYoutubeChannel) });
 }));
 
